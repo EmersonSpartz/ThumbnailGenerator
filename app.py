@@ -11,6 +11,7 @@ Run with: python app.py
 Then open: http://localhost:5050
 """
 
+import os
 import json
 import time
 import threading
@@ -52,6 +53,11 @@ _stop_generation = False
 def sse_message(data: dict) -> str:
     """Format a dict as an SSE message."""
     return f"data: {json.dumps(data)}\n\n"
+
+
+def sse_keepalive() -> str:
+    """Send an SSE comment as keepalive to prevent proxy timeout."""
+    return ": keepalive\n\n"
 
 
 @app.route('/')
@@ -1949,66 +1955,76 @@ def agentic_generate():
         batch_id = f"agentic_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         # Create a job for history tracking
-        job_id = job_manager.create_job('agentic', {
-            'titles': titles,
-            'models': models_to_use,
-            'count': count,
-            'max_iterations': max_iterations,
-            'quality_threshold': quality_threshold
-        })
-
-        all_iterations = []
-
-        for concept_idx, prompt_data in enumerate(prompts_with_concepts):
-            if _stop_generation:
-                job_manager.complete_job(job_id, success=False)
-                yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
-                return
-
-            concept_name = prompt_data.get('concept_name', f'concept_{concept_idx+1}')
-
-            yield sse_message({
-                'type': 'concept_start',
-                'concept_name': concept_name,
-                'concept_num': concept_idx + 1,
-                'total_concepts': len(prompts_with_concepts),
-                'message': f'Processing concept {concept_idx+1}/{len(prompts_with_concepts)}: {concept_name}'
+        job_id = None
+        try:
+            job_id = job_manager.create_job('agentic', {
+                'titles': titles,
+                'models': models_to_use,
+                'count': count,
+                'max_iterations': max_iterations,
+                'quality_threshold': quality_threshold
             })
 
-            current_prompt_data = prompt_data.copy()
-            iteration_history = []
+            all_iterations = []
 
-            # Refinement loop for this concept
-            for iteration in range(max_iterations):
+            for concept_idx, prompt_data in enumerate(prompts_with_concepts):
                 if _stop_generation:
-                    break
+                    job_manager.complete_job(job_id, success=False)
+                    yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
+                    return
+
+                concept_name = prompt_data.get('concept_name', f'concept_{concept_idx+1}')
 
                 yield sse_message({
-                    'type': 'iteration_start',
+                    'type': 'concept_start',
                     'concept_name': concept_name,
-                    'iteration': iteration + 1,
-                    'message': f'Iteration {iteration+1}/{max_iterations}: Generating with {len(models_to_use)} models...'
+                    'concept_num': concept_idx + 1,
+                    'total_concepts': len(prompts_with_concepts),
+                    'message': f'Processing concept {concept_idx+1}/{len(prompts_with_concepts)}: {concept_name}'
                 })
 
-                # Generate with all models IN PARALLEL (SPEED BOOST #1)
-                results = {}
-                failed_models = []
+                current_prompt_data = prompt_data.copy()
+                iteration_history = []
 
-                def generate_for_model(model_name):
-                    return model_name, generator.generate_with_model(
-                        model_name,
-                        current_prompt_data,
-                        f"{batch_id}/iter{iteration+1}"
-                    )
+                # Refinement loop for this concept
+                for iteration in range(max_iterations):
+                    if _stop_generation:
+                        break
 
-                with ThreadPoolExecutor(max_workers=len(models_to_use)) as executor:
+                    yield sse_message({
+                        'type': 'iteration_start',
+                        'concept_name': concept_name,
+                        'iteration': iteration + 1,
+                        'message': f'Iteration {iteration+1}/{max_iterations}: Generating with {len(models_to_use)} models...'
+                    })
+
+                    # Generate with all models IN PARALLEL (SPEED BOOST #1)
+                    results = {}
+                    failed_models = []
+
+                    def generate_for_model(model_name):
+                        try:
+                            return model_name, generator.generate_with_model(
+                                model_name,
+                                current_prompt_data,
+                                f"{batch_id}/iter{iteration+1}"
+                            )
+                        except Exception as e:
+                            return model_name, {'success': False, 'error': str(e)}
+
+                    # Use executor without context manager to avoid blocking on cleanup
+                    executor = ThreadPoolExecutor(max_workers=len(models_to_use))
                     futures = [executor.submit(generate_for_model, m) for m in models_to_use]
 
                     for future in as_completed(futures):
                         if _stop_generation:
                             break
 
-                        model_name, result = future.result()
+                        try:
+                            model_name, result = future.result(timeout=120)
+                        except Exception as e:
+                            print(f"[AGENTIC ERROR] Future failed: {e}")
+                            continue
 
                         if result.get('success'):
                             results[model_name] = result
@@ -2027,7 +2043,7 @@ def agentic_generate():
                                 'title_ref': current_prompt_data.get('title_ref', ''),
                                 'batch_id': batch_id,
                                 'iteration': iteration + 1,
-                                'agentic_score': None  # Will be filled in after evaluation
+                                'agentic_score': None
                             })
 
                             yield sse_message({
@@ -2038,139 +2054,142 @@ def agentic_generate():
                                 'iteration': iteration + 1
                             })
                         else:
-                            # Track failed models with error details
                             error_msg = result.get('error', 'Unknown error')
                             failed_models.append(f"{model_name}: {error_msg}")
                             print(f"[AGENTIC ERROR] {model_name} failed for '{concept_name}': {error_msg}")
 
-                if not results:
-                    error_details = '; '.join(failed_models) if failed_models else 'No error details'
-                    yield sse_message({
-                        'type': 'error',
-                        'message': f'All models failed for concept: {concept_name}. Errors: {error_details}'
-                    })
-                    print(f"[AGENTIC ERROR] All models failed for concept '{concept_name}'. Skipping to next concept.")
-                    continue  # Skip to next concept instead of breaking
+                    executor.shutdown(wait=False)
 
-                # Evaluate quality with Claude - BATCH ALL IMAGES (SPEED BOOST #2)
-                yield sse_message({
-                    'type': 'evaluating',
-                    'concept_name': concept_name,
-                    'iteration': iteration + 1,
-                    'message': 'Claude evaluating all thumbnails (batch)...'
-                })
-
-                # Prepare batch evaluation data
-                images_data = []
-                for model_name, result in results.items():
-                    images_data.append({
-                        'image_path': Path(result['file_path']),
-                        'prompt_used': current_prompt_data.get('prompt', ''),
-                        'concept_name': concept_name,
-                        'model': model_name
-                    })
-
-                # Single API call for all images (MUCH faster than one-by-one)
-                evaluations = refiner.evaluate_thumbnails_batch(images_data)
-
-                # Send results to frontend AND update history with scores
-                for idx, (model_name, result) in enumerate(results.items()):
-                    if idx < len(evaluations):
-                        eval_result = evaluations[idx]
-                        eval_result['file_path'] = result['file_path'].replace(str(settings.output_dir) + '/', '')
-
-                        # Update the saved result with evaluation data
-                        job_manager.update_result(job_id, eval_result['file_path'], {
-                            'agentic_score': eval_result.get('score', 0),
-                            'description': eval_result.get('analysis', '')
-                        })
-
+                    if not results:
+                        error_details = '; '.join(failed_models) if failed_models else 'No error details'
                         yield sse_message({
-                            'type': 'evaluation_result',
-                            'model': model_name,
-                            'score': eval_result.get('score', 0),
-                            'analysis': eval_result.get('analysis', ''),
-                            'file_path': eval_result['file_path'],
-                            'concept_name': concept_name,
+                            'type': 'error',
+                            'message': f'All models failed for concept: {concept_name}. Errors: {error_details}'
+                        })
+                        print(f"[AGENTIC ERROR] All models failed for '{concept_name}'. Skipping.")
+                        break  # Break inner loop, continue to next concept
+
+                    # Evaluate quality with Claude
+                    yield sse_message({
+                        'type': 'evaluating',
+                        'concept_name': concept_name,
+                        'iteration': iteration + 1,
+                        'message': 'Claude evaluating all thumbnails (batch)...'
+                    })
+
+                    images_data = []
+                    for model_name, result in results.items():
+                        images_data.append({
+                            'image_path': Path(result['file_path']),
                             'prompt_used': current_prompt_data.get('prompt', ''),
-                            'iteration': iteration + 1
+                            'concept_name': concept_name,
+                            'model': model_name
                         })
 
-                # Calculate average score
-                scores = [e['score'] for e in evaluations]
-                avg_score = sum(scores) / len(scores) if scores else 0
+                    evaluations = refiner.evaluate_thumbnails_batch(images_data)
 
-                iteration_history.append({
-                    'iteration': iteration + 1,
-                    'evaluations': evaluations,
-                    'avg_score': avg_score,
-                    'prompt': current_prompt_data.get('prompt', '')
-                })
+                    # Send results to frontend AND update history
+                    for idx, (model_name, result) in enumerate(results.items()):
+                        if idx < len(evaluations):
+                            eval_result = evaluations[idx]
+                            eval_result['file_path'] = result['file_path'].replace(str(settings.output_dir) + '/', '')
 
-                yield sse_message({
-                    'type': 'iteration_complete',
-                    'concept_name': concept_name,
-                    'iteration': iteration + 1,
-                    'avg_score': avg_score,
-                    'message': f'Iteration {iteration+1} complete: Average quality score {avg_score:.1f}/10'
-                })
+                            job_manager.update_result(job_id, eval_result['file_path'], {
+                                'agentic_score': eval_result.get('score', 0),
+                                'description': eval_result.get('analysis', '')
+                            })
 
-                # Last iteration? Don't refine (always do all iterations)
-                if iteration >= max_iterations - 1:
-                    yield sse_message({
-                        'type': 'max_iterations_reached',
-                        'concept_name': concept_name,
-                        'final_score': avg_score,
-                        'message': f'Max iterations reached. Final score: {avg_score:.1f}/10'
+                            yield sse_message({
+                                'type': 'evaluation_result',
+                                'model': model_name,
+                                'score': eval_result.get('score', 0),
+                                'analysis': eval_result.get('analysis', ''),
+                                'file_path': eval_result['file_path'],
+                                'concept_name': concept_name,
+                                'prompt_used': current_prompt_data.get('prompt', ''),
+                                'iteration': iteration + 1
+                            })
+
+                    scores = [e.get('score', 0) for e in evaluations]
+                    avg_score = sum(scores) / len(scores) if scores else 0
+
+                    iteration_history.append({
+                        'iteration': iteration + 1,
+                        'evaluations': evaluations,
+                        'avg_score': avg_score,
+                        'prompt': current_prompt_data.get('prompt', '')
                     })
-                    break
 
-                # Refine the prompt for next iteration
-                yield sse_message({
-                    'type': 'refining',
+                    yield sse_message({
+                        'type': 'iteration_complete',
+                        'concept_name': concept_name,
+                        'iteration': iteration + 1,
+                        'avg_score': avg_score,
+                        'message': f'Iteration {iteration+1} complete: Average quality score {avg_score:.1f}/10'
+                    })
+
+                    # Last iteration? Don't refine
+                    if iteration >= max_iterations - 1:
+                        yield sse_message({
+                            'type': 'max_iterations_reached',
+                            'concept_name': concept_name,
+                            'final_score': avg_score,
+                            'message': f'Max iterations reached. Final score: {avg_score:.1f}/10'
+                        })
+                        break
+
+                    # Refine the prompt for next iteration
+                    yield sse_message({
+                        'type': 'refining',
+                        'concept_name': concept_name,
+                        'iteration': iteration + 1,
+                        'message': 'Claude is refining the prompt...'
+                    })
+
+                    current_prompt_data = refiner.refine_prompt_batch(evaluations, current_prompt_data)
+
+                    yield sse_message({
+                        'type': 'prompt_refined',
+                        'concept_name': concept_name,
+                        'new_prompt': current_prompt_data.get('prompt', ''),
+                        'iteration': iteration + 2,
+                        'message': f'Prompt refined. Starting iteration {iteration+2}...'
+                    })
+
+                # Concept complete
+                final_avg = iteration_history[-1]['avg_score'] if iteration_history else 0
+                all_iterations.append({
                     'concept_name': concept_name,
-                    'iteration': iteration + 1,
-                    'message': 'Claude is refining the prompt...'
+                    'iterations': iteration_history,
+                    'final_score': final_avg
                 })
 
-                current_prompt_data = refiner.refine_prompt_batch(evaluations, current_prompt_data)
-
                 yield sse_message({
-                    'type': 'prompt_refined',
+                    'type': 'concept_complete',
                     'concept_name': concept_name,
-                    'new_prompt': current_prompt_data.get('prompt', ''),
-                    'iteration': iteration + 2,
-                    'message': f'Prompt refined. Starting iteration {iteration+2}...'
+                    'final_score': final_avg,
+                    'total_iterations': len(iteration_history),
+                    'message': f'Concept complete: {concept_name} (final score: {final_avg:.1f}/10)'
                 })
 
-            # Concept complete
-            final_avg = iteration_history[-1]['avg_score'] if iteration_history else 0
-            all_iterations.append({
-                'concept_name': concept_name,
-                'iterations': iteration_history,
-                'final_score': final_avg
-            })
+            # All done!
+            overall_avg = sum(c['final_score'] for c in all_iterations) / len(all_iterations) if all_iterations else 0
+            job_manager.complete_job(job_id, success=True)
 
             yield sse_message({
-                'type': 'concept_complete',
-                'concept_name': concept_name,
-                'final_score': final_avg,
-                'total_iterations': len(iteration_history),
-                'message': f'Concept complete: {concept_name} (final score: {final_avg:.1f}/10)'
+                'type': 'agentic_complete',
+                'total_concepts': len(all_iterations),
+                'overall_avg_score': overall_avg,
+                'message': f'Agentic generation complete! Overall average quality: {overall_avg:.1f}/10'
             })
 
-        # All done!
-        overall_avg = sum(c['final_score'] for c in all_iterations) / len(all_iterations) if all_iterations else 0
-
-        # Complete the job
-        job_manager.complete_job(job_id, success=True)
-
-        yield sse_message({
-            'type': 'agentic_complete',
-            'total_concepts': len(all_iterations),
-            'overall_avg_score': overall_avg,
-            'message': f'Agentic generation complete! Overall average quality: {overall_avg:.1f}/10'
-        })
+        except Exception as e:
+            print(f"[AGENTIC ERROR] Unhandled exception: {e}")
+            import traceback
+            traceback.print_exc()
+            if job_id:
+                job_manager.complete_job(job_id, success=False)
+            yield sse_message({'type': 'error', 'message': f'Generation error: {str(e)}'})
 
     return Response(generate_stream(), mimetype='text/event-stream')
 

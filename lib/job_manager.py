@@ -32,14 +32,23 @@ class JobManager:
             try:
                 with open(self.history_file, 'r') as f:
                     return json.load(f)
-            except:
+            except Exception as e:
+                print(f"[JOB MANAGER] Error loading history: {e}")
                 return {"sessions": [], "thumbnails": []}
         return {"sessions": [], "thumbnails": []}
 
     def _save_history(self):
-        """Save history to disk."""
-        with open(self.history_file, 'w') as f:
-            json.dump(self.history, f, indent=2, default=str)
+        """Save history to disk atomically (write to temp then rename)."""
+        import tempfile
+        tmp_path = self.history_file.with_suffix('.tmp')
+        try:
+            with open(tmp_path, 'w') as f:
+                json.dump(self.history, f, indent=2, default=str)
+            tmp_path.replace(self.history_file)
+        except Exception as e:
+            print(f"[JOB MANAGER] Error saving history: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink()
 
     def create_job(self, job_type, params):
         """Create a new generation job."""
@@ -178,8 +187,14 @@ class JobManager:
 
                 self._save_history()
 
-                # Remove from active after a delay (let UI catch up)
-                # In practice, we'll keep it for a bit then clean up
+                # Clean up completed job from active_jobs after saving
+                del self.active_jobs[job_id]
+
+                # Also clean up any stale jobs while we're at it
+                stale = [jid for jid, j in self.active_jobs.items()
+                         if j["status"] in ("completed", "failed")]
+                for jid in stale:
+                    del self.active_jobs[jid]
 
     def get_job(self, job_id):
         """Get job status."""

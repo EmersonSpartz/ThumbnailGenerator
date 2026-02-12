@@ -833,6 +833,18 @@
             display: inline-block;
         }
 
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #333;
+            border-top-color: #ff0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
         /* History Tab Styles */
         .history-filters {
             display: flex;
@@ -1358,7 +1370,7 @@
                                 <div style="font-size: 12px; color: #888;">Worse</div>
                             </div>
                             <div>
-                                <div style="font-size: 24px; font-weight: bold;" id="stats-avg-change" style="color: #888;">-</div>
+                                <div style="font-size: 24px; font-weight: bold; color: #888;" id="stats-avg-change">-</div>
                                 <div style="font-size: 12px; color: #888;">Avg Change</div>
                             </div>
                         </div>
@@ -3026,11 +3038,24 @@
                         eventSource.close();
                         break;
 
+                    case 'quota_exhausted':
+                        console.warn('Quota exhausted:', data.message);
+                        updateJob(jobId, {
+                            progress: {
+                                ...activeJobs[jobId].progress,
+                                phase: `⚠️ ${data.message || 'API quota exhausted'}`
+                            }
+                        });
+                        break;
+
                     case 'error':
                         console.error('Error:', data.message);
-                        alert(`Generation error: ${data.message}`);
-                        completeJob(jobId, false);
-                        eventSource.close();
+                        updateJob(jobId, {
+                            progress: {
+                                ...activeJobs[jobId].progress,
+                                phase: `❌ ${data.message}`
+                            }
+                        });
                         break;
                 }
             };

@@ -73,13 +73,16 @@ class AgenticImageRefiner:
         if not images_data:
             return []
 
-        # Build content array with all images
+        # Build content array with all images - filter out missing files first
+        valid_images = []
         content = []
 
-        for idx, img_data in enumerate(images_data):
+        for img_data in images_data:
             image_path = img_data['image_path']
             if not image_path.exists():
+                print(f"[AGENTIC WARN] Image not found, skipping: {image_path}")
                 continue
+            valid_images.append(img_data)
 
             ext = image_path.suffix.lower()
             media_type_map = {
@@ -102,10 +105,13 @@ class AgenticImageRefiner:
                 }
             })
 
-        # Build evaluation prompt for all images at once
-        prompt_parts = [f"Evaluate these {len(images_data)} YouTube thumbnails for the Species channel.\n"]
+        if not valid_images:
+            return []
 
-        for idx, img_data in enumerate(images_data):
+        # Build evaluation prompt only for valid images (synced with content array)
+        prompt_parts = [f"Evaluate these {len(valid_images)} YouTube thumbnails for the Species channel.\n"]
+
+        for idx, img_data in enumerate(valid_images):
             prompt_parts.append(f"\n**Image {idx+1}** ({img_data['model']})")
             prompt_parts.append(f"Concept: {img_data['concept_name']}")
             prompt_parts.append(f"Prompt: {img_data['prompt_used']}\n")
@@ -127,7 +133,7 @@ Respond with JSON array:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=4000,
-                timeout=30.0,  # 30 second timeout
+                timeout=120.0,  # 120 second timeout for Opus 4.6
                 messages=[{"role": "user", "content": content}]
             )
             print(f"[AGENTIC] Evaluation complete, parsing response...")
@@ -146,9 +152,9 @@ Respond with JSON array:
 
             results = json.loads(response_text)
 
-            # Match results back to images
+            # Match results back to valid images (synced indices)
             evaluations = []
-            for idx, img_data in enumerate(images_data):
+            for idx, img_data in enumerate(valid_images):
                 if idx < len(results):
                     result = results[idx]
                     evaluations.append({
@@ -226,7 +232,7 @@ Provide your response as JSON:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=2000,
-                timeout=30.0,  # 30 second timeout
+                timeout=120.0,  # 120 second timeout for Opus 4.6
                 messages=[{
                     "role": "user",
                     "content": [
@@ -322,6 +328,7 @@ Return ONLY the dramatically improved prompt text, no JSON, no explanation."""
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=1000,
+                timeout=90.0,  # 90 second timeout for refinement
                 messages=[{
                     "role": "user",
                     "content": synthesis_prompt
