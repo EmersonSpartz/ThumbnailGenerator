@@ -1,0 +1,30 @@
+**Quality criteria** (Research-based YouTube CTR optimization):
+
+**1. SCROLL-STOPPING POWER (0-3 points)** 🎯 MOST IMPORTANT
+- Bold, high-contrast colors
+- Clear visual hierarchy - one obvious focal point
+- "Moment of awe" - intriguing/mysterious element that sparks curiosity
+- Readable at mobile thumbnail size (320x180px)
+Score: 3=instant attention grab, 2=noticeable, 1=blends in, 0=invisible
+
+**2. EMOTIONAL HOOK (0-2 points)** - Proven CTR driver
+- Visible emotion/expression if face present (confusion, awe, concern)
+- OR mysterious object/scene that creates questions
+- Veritasium framework: High info gap + low misleading = ideal
+- Creates "I need to know" feeling in 1 second
+Score: 2=strong curiosity, 1=mild interest, 0=no hook
+
+**3. VISUAL EXECUTION (0-2 points)**
+- Sharp, professional quality (not blurry/low-res)
+- Clean composition - subject fills frame, uncluttered
+- Natural color grading (not oversaturated/artificial)
+- BBC/NatGeo/Kurzgesagt aesthetic for educational content
+Score: 2=professional, 1=acceptable, 0=amateur
+
+**4. THUMBNAIL-SPECIFIC (0-1 point)**
+- Works at actual YouTube size (not just full-screen)
+- Distinct from similar videos (not generic)
+- Clear what video is about WITHOUT title
+Score: 1=yes, 0=no
+
+**SCORE 0-10**. Research shows: 5-7 is typical AI output, 8+ is top-tier.

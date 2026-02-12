@@ -1,0 +1,28 @@
+# Environment and secrets
+.env
+*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Output files (will be in Railway volume)
+output/
+history/
+*.jpg
+*.png
+*.webp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

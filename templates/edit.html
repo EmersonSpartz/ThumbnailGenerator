@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Thumbnail</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            min-height: 100vh;
+        }
+
+        /* Left side - Image preview */
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            background: #1a1a1a;
+        }
+
+        .image-container {
+            position: relative;
+            max-width: 100%;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .image-nav {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .history-thumb {
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .history-thumb:hover {
+            opacity: 0.8;
+        }
+
+        .history-thumb.active {
+            opacity: 1;
+            border-color: #ff0000;
+        }
+
+        /* Right side - Controls */
+        .control-panel {
+            padding: 30px;
+            overflow-y: auto;
+            border-left: 1px solid #333;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #888;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            color: #fff;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .section h3 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Refinement input */
+        .refine-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .refine-input input {
+            flex: 1;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .refine-input input:focus {
+            outline: none;
+            border-color: #ff0000;
+        }
+
+        .refine-input button {
+            padding: 12px 20px;
+            background: #ff0000;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .refine-input button:hover {
+            background: #cc0000;
+        }
+
+        /* Quick suggestions */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion {
+            padding: 8px 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion:hover {
+            background: #333;
+            border-color: #666;
+        }
+
+        /* Text overlay controls */
+        .text-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .text-input-group input {
+            flex: 1;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+        }
+
+        .style-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .style-option {
+            padding: 12px;
+            background: #222;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .style-option:hover {
+            border-color: #444;
+        }
+
+        .style-option.selected {
+            border-color: #ff0000;
+        }
+
+        .style-option h4 {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .style-option p {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .position-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+            background: #222;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .position-btn {
+            padding: 8px;
+            background: #333;
+            border: none;
+            border-radius: 4px;
+            color: #888;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .position-btn:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        .position-btn.selected {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        /* Prompt editor */
+        .prompt-editor {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .prompt-editor:focus {
+            outline: none;
+            border-color: #ff0000;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #cc0000;
+        }
+
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background: #444;
+        }
+
+        /* Model selector */
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .model-option {
+            flex: 1;
+            padding: 10px;
+            background: #222;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .model-option:hover {
+            border-color: #444;
+        }
+
+        .model-option.selected {
+            border-color: #ff0000;
+        }
+
+        /* Loading state */
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: #888;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top-color: #ff0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status messages */
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .status.success {
+            display: block;
+            background: #1a3d1a;
+            color: #4ade80;
+        }
+
+        .status.error {
+            display: block;
+            background: #3d1a1a;
+            color: #f87171;
+        }
+
+        .changes-made {
+            padding: 10px;
+            background: #1a1a3d;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #818cf8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left: Image Preview -->
+        <div class="preview-panel">
+            <div class="image-container">
+                <img id="current-image" src="/output/{{ image_path }}" alt="Thumbnail">
+            </div>
+            <div class="image-nav" id="history-nav">
+                <!-- History thumbnails will appear here -->
+            </div>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="control-panel">
+            <a href="/" class="back-link">&larr; Back to Generator</a>
+
+            <h2>Edit Thumbnail</h2>
+
+            <!-- Quick Refine Section -->
+            <div class="section">
+                <h3>Quick Refine</h3>
+                <p style="color: #888; font-size: 13px; margin-bottom: 15px;">
+                    Describe what to change and get a new version instantly
+                </p>
+
+                <div class="refine-input">
+                    <input type="text" id="refine-feedback" placeholder="e.g., make it more dramatic, zoom in, add red tones...">
+                    <button id="refine-btn">Refine</button>
+                </div>
+
+                <div class="suggestions" id="suggestions">
+                    <!-- Suggestions loaded dynamically -->
+                </div>
+
+                <div class="loading" id="refine-loading">
+                    <div class="spinner"></div>
+                    <span>Generating...</span>
+                </div>
+
+                <div class="status" id="refine-status"></div>
+                <div class="changes-made" id="changes-made" style="display: none;"></div>
+            </div>
+
+            <!-- Add Text Section -->
+            <div class="section">
+                <h3>Add Text</h3>
+
+                <div class="text-input-group">
+                    <input type="text" id="text-input" placeholder="Enter text...">
+                </div>
+
+                <div class="style-options" id="text-styles">
+                    <div class="style-option selected" data-style="impact">
+                        <h4>IMPACT</h4>
+                        <p>Big bold text</p>
+                    </div>
+                    <div class="style-option" data-style="number">
+                        <h4 style="color: #FFFF00;">123</h4>
+                        <p>Numbers/stats</p>
+                    </div>
+                    <div class="style-option" data-style="subtitle">
+                        <h4>Subtitle</h4>
+                        <p>Smaller text</p>
+                    </div>
+                    <div class="style-option" data-style="label">
+                        <h4 style="background: #ff0000; padding: 2px 6px; border-radius: 3px;">Label</h4>
+                        <p>With background</p>
+                    </div>
+                </div>
+
+                <p style="color: #888; font-size: 12px; margin-bottom: 8px;">Position:</p>
+                <div class="position-grid">
+                    <button class="position-btn" data-pos="top-left">Top Left</button>
+                    <button class="position-btn" data-pos="top-center">Top</button>
+                    <button class="position-btn" data-pos="top-right">Top Right</button>
+                    <button class="position-btn" data-pos="center">Center</button>
+                    <button class="position-btn" data-pos="center">Center</button>
+                    <button class="position-btn" data-pos="center">Center</button>
+                    <button class="position-btn" data-pos="bottom-left">Bot Left</button>
+                    <button class="position-btn selected" data-pos="bottom-center">Bottom</button>
+                    <button class="position-btn" data-pos="bottom-right">Bot Right</button>
+                </div>
+
+                <button class="btn btn-secondary" id="add-text-btn">Add Text</button>
+            </div>
+
+            <!-- Direct Prompt Edit Section -->
+            <div class="section">
+                <h3>Edit Prompt Directly</h3>
+                <p style="color: #888; font-size: 13px; margin-bottom: 15px;">
+                    For full control, edit the prompt and regenerate
+                </p>
+
+                <textarea class="prompt-editor" id="prompt-editor" placeholder="Loading prompt..."></textarea>
+
+                <div class="model-selector">
+                    <div class="model-option selected" data-model="aispecies">AI Species</div>
+                    <div class="model-option" data-model="flux">Flux</div>
+                    <div class="model-option" data-model="ideogram">Ideogram</div>
+                </div>
+
+                <button class="btn btn-primary" id="regenerate-btn">Regenerate</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentImagePath = '{{ image_path }}';
+        // Load prompt from URL parameter if available
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentPrompt = decodeURIComponent(urlParams.get('prompt') || '');
+        let selectedModel = 'aispecies';
+        let selectedTextStyle = 'impact';
+        let selectedPosition = 'bottom-center';
+        let history = [{ path: currentImagePath, prompt: currentPrompt }];
+        let historyIndex = 0;
+
+        // Set the prompt in the editor on load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentPrompt) {
+                document.getElementById('prompt-editor').value = currentPrompt;
+            }
+        });
+
+        // Load suggestions on page load
+        async function loadSuggestions() {
+            try {
+                const response = await fetch('/api/suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: currentPrompt })
+                });
+                const data = await response.json();
+
+                const container = document.getElementById('suggestions');
+                container.innerHTML = data.suggestions.map(s =>
+                    `<div class="suggestion" onclick="useSuggestion('${s}')">${s}</div>`
+                ).join('');
+            } catch (e) {
+                console.error('Failed to load suggestions', e);
+            }
+        }
+
+        function useSuggestion(text) {
+            document.getElementById('refine-feedback').value = text;
+            document.getElementById('refine-feedback').focus();
+        }
+
+        // Refine and generate
+        document.getElementById('refine-btn').addEventListener('click', refineAndGenerate);
+        document.getElementById('refine-feedback').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') refineAndGenerate();
+        });
+
+        async function refineAndGenerate() {
+            const feedback = document.getElementById('refine-feedback').value.trim();
+            if (!feedback) return;
+
+            const loading = document.getElementById('refine-loading');
+            const status = document.getElementById('refine-status');
+            const changesDiv = document.getElementById('changes-made');
+
+            loading.classList.add('active');
+            status.className = 'status';
+            status.style.display = 'none';
+            changesDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/refine-and-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        original_prompt: currentPrompt || 'A YouTube thumbnail',
+                        feedback: feedback,
+                        model: selectedModel
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const text = decoder.decode(value);
+                    const lines = text.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.type === 'refined') {
+                                currentPrompt = data.new_prompt;
+                                document.getElementById('prompt-editor').value = currentPrompt;
+                                if (data.changes) {
+                                    changesDiv.textContent = '✓ ' + data.changes;
+                                    changesDiv.style.display = 'block';
+                                }
+                            } else if (data.type === 'complete') {
+                                // Update image
+                                currentImagePath = data.file_path;
+                                document.getElementById('current-image').src = '/output/' + data.file_path;
+                                currentPrompt = data.prompt;
+
+                                // Add to history
+                                history.push({ path: data.file_path, prompt: data.prompt });
+                                historyIndex = history.length - 1;
+                                updateHistoryNav();
+
+                                status.textContent = 'Generated new thumbnail!';
+                                status.className = 'status success';
+
+                                // Clear input
+                                document.getElementById('refine-feedback').value = '';
+                            } else if (data.type === 'error') {
+                                status.textContent = data.message;
+                                status.className = 'status error';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                status.textContent = 'Error: ' + e.message;
+                status.className = 'status error';
+            }
+
+            loading.classList.remove('active');
+        }
+
+        // Direct regenerate
+        document.getElementById('regenerate-btn').addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt-editor').value.trim();
+            if (!prompt) return;
+
+            const btn = document.getElementById('regenerate-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const response = await fetch('/api/quick-generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        model: selectedModel
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentImagePath = data.file_path;
+                    currentPrompt = prompt;
+                    document.getElementById('current-image').src = '/output/' + data.file_path;
+
+                    history.push({ path: data.file_path, prompt: prompt });
+                    historyIndex = history.length - 1;
+                    updateHistoryNav();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Regenerate';
+        });
+
+        // Add text
+        document.getElementById('add-text-btn').addEventListener('click', async () => {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                alert('Please enter some text');
+                return;
+            }
+
+            const btn = document.getElementById('add-text-btn');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            try {
+                const response = await fetch('/api/add-text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image_path: currentImagePath,
+                        text: text,
+                        position: selectedPosition,
+                        style: selectedTextStyle
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentImagePath = data.file_path;
+                    document.getElementById('current-image').src = '/output/' + data.file_path + '?t=' + Date.now();
+
+                    history.push({ path: data.file_path, prompt: currentPrompt });
+                    historyIndex = history.length - 1;
+                    updateHistoryNav();
+
+                    document.getElementById('text-input').value = '';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Add Text';
+        });
+
+        // Model selection
+        document.querySelectorAll('.model-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.model-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedModel = opt.dataset.model;
+            });
+        });
+
+        // Text style selection
+        document.querySelectorAll('.style-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedTextStyle = opt.dataset.style;
+            });
+        });
+
+        // Position selection
+        document.querySelectorAll('.position-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.position-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedPosition = btn.dataset.pos;
+            });
+        });
+
+        // History navigation
+        function updateHistoryNav() {
+            const nav = document.getElementById('history-nav');
+            nav.innerHTML = history.map((item, i) => `
+                <img src="/output/${item.path}" class="history-thumb ${i === historyIndex ? 'active' : ''}"
+                     onclick="goToHistory(${i})" alt="Version ${i + 1}">
+            `).join('');
+        }
+
+        function goToHistory(index) {
+            historyIndex = index;
+            const item = history[index];
+            currentImagePath = item.path;
+            currentPrompt = item.prompt || '';
+            document.getElementById('current-image').src = '/output/' + item.path;
+            document.getElementById('prompt-editor').value = currentPrompt;
+            updateHistoryNav();
+        }
+
+        // Initialize
+        loadSuggestions();
+        updateHistoryNav();
+    </script>
+</body>
+</html>

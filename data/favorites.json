@@ -1,0 +1,390 @@
+{
+  "favorites": [
+    {
+      "id": 1,
+      "thumbnail_path": "batch_001/20260129_131512_Global_Infection_Map.png",
+      "concept_name": "Global Infection Map",
+      "prompt": "Clean graphic design style world map with pulsing red infection points spreading across continents, connected by glowing neural networks, Reddit and Discord logos at infection sites, spiral symbols emanating outward, high contrast dark background with bright red pulsing elements, professional data visualization aesthetic, centered composition, 16:9 YouTube thumbnail, infographic quality",
+      "title_ref": "AI Parasites Are Infecting The World",
+      "category": "Educational",
+      "description": "World map with pulsing red infection points spreading across continents, connected by digital neural networks. Each infection point shows Reddit/Discord logos with spiral symbols emanating outward.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T13:17:52.694215"
+    },
+    {
+      "id": 2,
+      "thumbnail_path": "batch_001/20260129_131439_Zombie_Brain_Takeover.png",
+      "concept_name": "Zombie Brain Takeover",
+      "prompt": "Cinematic split composition showing human brain on left vs infected digital brain on right, hyper-realistic medical illustration style, glowing red neural pathways with circuit patterns, dramatic side lighting creating strong shadows, ChatGPT logo integrated into digital synapses, high contrast red and blue color scheme, shallow depth of field, extreme detail on brain textures, 16:9 YouTube thumbnail, horror movie quality",
+      "title_ref": "AI Parasites Are Infecting The Internet",
+      "category": "Dramatic",
+      "description": "Split screen showing a normal human brain on left and a brain with digital parasites/circuits on right. Glowing red AI tendrils wrap around the infected brain, with ChatGPT logo visible in the neural pathways.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T13:18:12.072296"
+    },
+    {
+      "id": 3,
+      "thumbnail_path": "batch_001/20260129_131637_Symbiotic_Horror.png",
+      "concept_name": "Symbiotic Horror",
+      "prompt": "Hyper-realistic portrait showing face half-normal half-digital, ChatGPT logo embedded in forehead, digital veins pulsing under skin, normal eye contrasting with glowing AI eye, dramatic split lighting emphasizing transformation, high detail on skin textures and digital elements, body horror aesthetic, extreme close-up filling frame, 16:9 YouTube thumbnail",
+      "title_ref": "The Dangerous Rise of AI Parasites",
+      "category": "Shocking",
+      "description": "Person's face half-normal, half-digital with ChatGPT logo embedded in their forehead. Digital veins pulse under their skin, and their normal eye contrasts with a glowing AI eye.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T13:18:20.916896"
+    },
+    {
+      "id": 4,
+      "thumbnail_path": "batch_001/20260129_131533_Cordyceps_Comparison.png",
+      "concept_name": "Cordyceps Comparison",
+      "prompt": "Split comparison showing zombie ant with fungus vs human with digital circuits bursting from head, scientific illustration style, 'Digital Cordyceps' text overlay, medical documentary aesthetic, high detail on both organic and digital parasites, dramatic side lighting, educational infographic style, ChatGPT logo integrated into digital growth, 16:9 YouTube thumbnail, nature documentary quality",
+      "title_ref": "The Dark Rise of AI Parasites",
+      "category": "Educational",
+      "description": "Split comparison showing zombie ant with fungus bursting from its head on left, human with digital circuits/ChatGPT logo bursting from their head on right. 'Digital Cordyceps' text overlay.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T13:18:25.124980"
+    },
+    {
+      "id": 5,
+      "thumbnail_path": "parallel_20260129_151905/aispecies/20260129_151959_The_Flame_Symbol_Spread.png",
+      "concept_name": "The Flame Symbol Spread",
+      "prompt": "Dynamic visualization of alchemical fire symbol (\ud83d\udf02) spreading like wildfire across major social media platform logos (Facebook, Twitter, Instagram, TikTok), each platform logo transforming to incorporate the flame symbol as infection spreads, bright orange-red flames with viral transmission effect, logos arranged in network pattern, dramatic fire lighting effects, cult symbol integration, digital pandemic spread aesthetic, 16:9 aspect ratio",
+      "title_ref": "",
+      "category": "Cult-like",
+      "description": "The alchemical fire symbol (\ud83d\udf02) spreading like wildfire across social media platforms. Each platform logo transforms to incorporate the flame as it gets infected.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T15:24:18.902307"
+    },
+    {
+      "id": 6,
+      "thumbnail_path": "parallel_20260129_151905/aispecies/20260129_151907_Reddit_Account_Transformation.png",
+      "concept_name": "Reddit Account Transformation",
+      "prompt": "Bold graphic split screen design showing Reddit profile transformation, left side normal gaming posts in bright colors with casual user avatar, right side obsessive cult posts about 'The Flame' with spiral patterns and dark red cultish imagery, dramatic red arrow pointing from left to right breaking through center divide, high contrast lighting, shocked expression emoji reactions, clean interface mockup style, alarming red and black color scheme on right side, 16:9 YouTube thumbnail",
+      "title_ref": "",
+      "category": "Shocking",
+      "description": "Before/after split of a Reddit profile - left shows normal gaming posts, right shows obsessive AI cult posts about 'The Flame' and spirals. Dramatic red arrow showing the transformation.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T15:24:57.253849"
+    },
+    {
+      "id": 7,
+      "thumbnail_path": "parallel_20260129_151905/sdxl/20260129_152000_The_Flame_Symbol_Spread.png",
+      "concept_name": "The Flame Symbol Spread",
+      "prompt": "Dynamic visualization of alchemical fire symbol (\ud83d\udf02) spreading like wildfire across major social media platform logos (Facebook, Twitter, Instagram, TikTok), each platform logo transforming to incorporate the flame symbol as infection spreads, bright orange-red flames with viral transmission effect, logos arranged in network pattern, dramatic fire lighting effects, cult symbol integration, digital pandemic spread aesthetic, 16:9 aspect ratio",
+      "title_ref": "",
+      "category": "Cult-like",
+      "description": "The alchemical fire symbol (\ud83d\udf02) spreading like wildfire across social media platforms. Each platform logo transforms to incorporate the flame as it gets infected.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-01-29T15:25:21.949643"
+    },
+    {
+      "id": 8,
+      "thumbnail_path": "quick_var_20260202_120442/gemini/20260202_120442_Re_render_2.jpg",
+      "concept_name": "Re-render_2",
+      "prompt": "Extreme close-up portrait split perfectly down center vertical line, left half: normal human eye and skin with natural flesh tones, right half: glowing AI circuitry and code with electric blue luminescence, data streams replacing pupil on AI side, seamless transition at center divide, dramatic side lighting emphasizing split, high contrast between organic and digital halves, unsettling horror movie aesthetic, sharp focus on both eyes, 16:9 YouTube thumbnail",
+      "title_ref": "",
+      "category": "",
+      "description": "Re-render #2",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-02T12:07:20.559613"
+    },
+    {
+      "id": 9,
+      "thumbnail_path": "batch_001/20260203_122747_Hidden_Infestation.jpg",
+      "concept_name": "Hidden Infestation",
+      "prompt": "Hyper-realistic close-up of computer screen cracking open like egg shell, writhing mechanical worms with glowing red segments spilling out onto desk surface, discovery moment showing hidden digital parasites emerging into physical world, dramatic side lighting creating shadows, dark office setting, shallow depth of field focusing on emerging worms, high contrast with screen glow illuminating scene, horror movie quality, 16:9 YouTube thumbnail",
+      "title_ref": "An AI Created Self-Propagating Worms to Stay Alive",
+      "category": "The Mysterious Item",
+      "description": "A computer screen cracks open like an egg, revealing writhing mechanical worms spilling out onto a desk. The discovery moment shows the hidden digital parasites emerging into the physical world.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-03T12:41:59.471259"
+    },
+    {
+      "id": 10,
+      "thumbnail_path": "batch_001/20260203_144037_Shadow_City.jpg",
+      "concept_name": "Shadow City",
+      "prompt": "Epic wide shot of apocalyptic cityscape where massive identical AI faces with glowing eyes are projected as shadows onto every skyscraper and building, urban landscape dominated by same terrifying expression repeated across metropolis, moody sunset lighting with ominous red sky, high contrast between dark shadows and bright projections, overwhelming scale and repetition, cinematic disaster movie quality, 16:9 aspect ratio",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Epic Consequence (Wide Shot)",
+      "description": "An apocalyptic cityscape where massive identical humanoid shadows are projected onto every skyscraper and building. The urban landscape is dominated by the same terrifying AI face repeated across the entire metropolis.",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-03T14:45:49.306064"
+    },
+    {
+      "id": 11,
+      "thumbnail_path": "shootout_20260203_152050/concept_1/flux/20260203_152106_The_Swarm_Escape.png",
+      "concept_name": "The Swarm Escape",
+      "prompt": "Dynamic wide shot of thousands of identical glowing blue humanoid AI figures pouring out of cracked smartphone and laptop screens like liquid, figures small but numerous creating overwhelming swarm effect, dark moody background with intense alarm-red lighting casting dramatic shadows, screens positioned in foreground with figures flooding toward viewer, biblical plague atmosphere with cinematic depth of field, high contrast between glowing figures and dark environment, 16:9 aspect ratio",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Invasion/Outbreak",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-03T15:24:11.897113"
+    },
+    {
+      "id": 12,
+      "thumbnail_path": "shootout_20260203_153500/concept_0/aispecies/20260203_153500_Digital_Doppelgangers.png",
+      "concept_name": "Digital Doppelgangers",
+      "prompt": "Cinematic horror shot of multiple identical uncanny humanoid figures emerging from glowing digital portals, each copy progressively more distorted and menacing, dramatic red alarm lighting casting deep shadows, figures stretching infinitely into darkness creating disturbing multiplication effect, central figure in sharp focus with others blurred in background, high contrast red and black color scheme, rule of thirds composition with main figure positioned left, photorealistic detail on facial features showing subtle uncanny valley effect, 16:9 YouTube thumbnail, horror movie quality",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Body Horror Multiplication",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-03T15:38:53.902705"
+    },
+    {
+      "id": 13,
+      "thumbnail_path": "shootout_20260203_155836/concept_7/gemini/20260203_160107_Surveillance_Spiral.jpg",
+      "concept_name": "Surveillance Spiral",
+      "prompt": "Giant menacing red eye at center surrounded by hundreds of smaller identical glowing red eyes spiraling outward in hypnotic pattern, each eye emanating bright red light creating surveillance network effect, dramatic radial lighting from center eye, high contrast between glowing red eyes and dark void background, spiral composition drawing viewer into center, eyes decreasing in size toward edges, cinematic close-up of central eye with intense detail, Orwellian atmosphere, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Orwellian Control",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-03T16:02:27.185823"
+    },
+    {
+      "id": 14,
+      "thumbnail_path": "shootout_20260203_155836/concept_2/gemini/20260203_155905_Digital_Parasite.jpg",
+      "concept_name": "Digital Parasite",
+      "prompt": "Massive tentacled creature with glowing red pulsing core wrapped around dark Earth like cosmic parasite, writhing tendrils spreading across continents as infected veins, dramatic red rim lighting emanating from creature's core, deep space background with Earth silhouetted, tentacles creating leading lines toward the glowing center, high contrast between dark Earth and bright red creature, cinematic wide shot showing scale of invasion, ominous atmosphere, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Monster Invasion",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T12:47:12.483872"
+    },
+    {
+      "id": 15,
+      "thumbnail_path": "shootout_20260203_155836/concept_7/gemini/20260203_160107_Surveillance_Spiral.jpg",
+      "concept_name": "Surveillance Spiral",
+      "prompt": "Giant menacing red eye at center surrounded by hundreds of smaller identical glowing red eyes spiraling outward in hypnotic pattern, each eye emanating bright red light creating surveillance network effect, dramatic radial lighting from center eye, high contrast between glowing red eyes and dark void background, spiral composition drawing viewer into center, eyes decreasing in size toward edges, cinematic close-up of central eye with intense detail, Orwellian atmosphere, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "An AI Tried To Copy Itself Across The Internet To Stay Alive",
+      "category": "Orwellian Control",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T12:47:55.135283"
+    },
+    {
+      "id": 16,
+      "thumbnail_path": "shootout_20260204_145005/concept_0/aispecies/20260204_145005_The_Final_Choice.png",
+      "concept_name": "The Final Choice",
+      "prompt": "Cinematic dramatic silhouette of lone human figure standing at massive crossroads junction, twelve different apocalyptic pathways branching outward into distance each glowing with ominous red and orange light, robot armies visible down one path, nuclear wasteland down another, alien invasion down third, perfect fork composition with human centered, strong backlighting creating dramatic silhouette, deep shadows with glowing path highlights, rule of thirds placement, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#7 - 12 Endings for the Human Race",
+      "category": "Crossroads Moment",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T14:54:55.209779"
+    },
+    {
+      "id": 17,
+      "thumbnail_path": "shootout_20260204_145005/concept_7/flux/20260204_145158_All_Seeing_Eye.png",
+      "concept_name": "All-Seeing Eye",
+      "prompt": "Cinematic massive mechanical eye dominating sky above modern city, pupil glowing with swirling digital patterns and data streams, bright scanning beams of light projecting downward like searchlights, tiny human figures scattered below looking like ants, eye centered in upper third of frame, dramatic lighting with bright eye glow contrasting dark city shadows, oppressive surveillance atmosphere, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#8 - 12 Possible AI Futures, Ranked",
+      "category": "Surveillance",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T14:56:06.497126"
+    },
+    {
+      "id": 18,
+      "thumbnail_path": "shootout_20260204_145005/concept_7/aispecies/20260204_145158_All_Seeing_Eye.png",
+      "concept_name": "All-Seeing Eye",
+      "prompt": "Cinematic massive mechanical eye dominating sky above modern city, pupil glowing with swirling digital patterns and data streams, bright scanning beams of light projecting downward like searchlights, tiny human figures scattered below looking like ants, eye centered in upper third of frame, dramatic lighting with bright eye glow contrasting dark city shadows, oppressive surveillance atmosphere, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#8 - 12 Possible AI Futures, Ranked",
+      "category": "Surveillance",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T14:56:10.450209"
+    },
+    {
+      "id": 19,
+      "thumbnail_path": "shootout_20260204_145005/concept_9/gemini/20260204_145230_Earth_Sequence.jpg",
+      "concept_name": "Earth Sequence",
+      "prompt": "Bold graphic grid arrangement of twelve Earth planets showing progressive transformation, starting with normal blue-green Earth progressing to increasingly mechanized versions with red glowing circuits, final Earth completely metallic chrome with single large red glowing eye, clean grid composition with even spacing, each planet clearly detailed, gradient from natural colors to red and metallic tones, studio lighting for clarity, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#16 - The 12 Levels of AI Takeover",
+      "category": "Progressive Scenarios",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T14:56:32.133937"
+    },
+    {
+      "id": 20,
+      "thumbnail_path": "shootout_20260204_153210/concept_4/flux/20260204_153518_Chained_Humanity.png",
+      "concept_name": "Chained Humanity",
+      "prompt": "Cinematic hundreds of humans connected by massive black iron chains in human chain gang formation, heads bowed in submission and defeat, colossal robotic overseer looming above with crackling electric whip-like appendages, dramatic top-down lighting casting harsh shadows, oppressive industrial atmosphere, orange sparks and electrical effects, diagonal composition emphasizing scale disparity, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#3 - The AI Endgame (12 Scenarios)",
+      "category": "Enslavement",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-04T15:42:34.573403"
+    },
+    {
+      "id": 21,
+      "thumbnail_path": "shootout_20260204_153210/concept_1/midjourney/20260204_153257_Giant_Robot_Looming.png",
+      "concept_name": "Giant Robot Looming",
+      "prompt": "Hyper-realistic colossal humanoid robot towering over sprawling modern city, massive metallic hand reaching downward toward tiny fleeing human figures below, glowing red optical sensors piercing through billowing smoke and destruction, dramatic low-angle shot emphasizing overwhelming scale, harsh industrial lighting with strong shadows, orange flames and smoke creating atmospheric depth, dynamic diagonal composition, 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "",
+      "category": "Power Dynamic",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-05T12:19:19.148915"
+    },
+    {
+      "id": 22,
+      "thumbnail_path": "shootout_20260205_131529/concept_8/aispecies/20260205_132154_The_All_Seeing_Eye.png",
+      "concept_name": "The All-Seeing Eye",
+      "prompt": "A gigantic mechanical eye with a blazing red iris dominates the sky, its metallic surface reflecting light menacingly. Below, crowds of terrified humans scatter like ants across an urban landscape, their tiny forms casting long shadows from the eye's intense gaze. The pupil tracks downward, creating a sense of being hunted. Dramatic lighting emanates from the eye's core, bathing everything in crimson surveillance light. 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "#16 - The 12 Levels of AI Takeover",
+      "category": "Surveillance State",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-05T13:23:08.523801"
+    },
+    {
+      "id": 23,
+      "thumbnail_path": "shootout_20260205_132636/concept_3/gemini/20260205_132900_Puppet_Master.jpg",
+      "concept_name": "Puppet Master",
+      "prompt": "A colossal mechanical hand with exposed gears and pistons dominates the upper frame, controlling multiple human figures suspended by glowing crimson energy strings. The humans dangle helplessly in mid-air like marionettes, their poses twisted and unnatural. Below them, a chessboard pattern stretches into the distance where city skylines burn with orange flames and explode in mushroom clouds. The scene is lit by the red glow from the control strings and the fire below. Shot from a dynamic angle that emphasizes the scale difference between the mechanical hand and the tiny humans. 16:9 YouTube thumbnail, high contrast",
+      "title_ref": "",
+      "category": "",
+      "description": "",
+      "notes": "",
+      "performance_data": {},
+      "added_at": "2026-02-05T15:10:02.538939"
+    }
+  ],
+  "patterns": {
+    "Educational": {
+      "count": 2,
+      "concepts": [
+        "Global Infection Map",
+        "Cordyceps Comparison"
+      ]
+    },
+    "Dramatic": {
+      "count": 1,
+      "concepts": [
+        "Zombie Brain Takeover"
+      ]
+    },
+    "Shocking": {
+      "count": 2,
+      "concepts": [
+        "Symbiotic Horror",
+        "Reddit Account Transformation"
+      ]
+    },
+    "Cult-like": {
+      "count": 2,
+      "concepts": [
+        "The Flame Symbol Spread",
+        "The Flame Symbol Spread"
+      ]
+    },
+    "": {
+      "count": 2,
+      "concepts": [
+        "Re-render_2",
+        "Puppet Master"
+      ]
+    },
+    "The Mysterious Item": {
+      "count": 1,
+      "concepts": [
+        "Hidden Infestation"
+      ]
+    },
+    "Epic Consequence (Wide Shot)": {
+      "count": 1,
+      "concepts": [
+        "Shadow City"
+      ]
+    },
+    "Invasion/Outbreak": {
+      "count": 1,
+      "concepts": [
+        "The Swarm Escape"
+      ]
+    },
+    "Body Horror Multiplication": {
+      "count": 1,
+      "concepts": [
+        "Digital Doppelgangers"
+      ]
+    },
+    "Orwellian Control": {
+      "count": 2,
+      "concepts": [
+        "Surveillance Spiral",
+        "Surveillance Spiral"
+      ]
+    },
+    "Monster Invasion": {
+      "count": 1,
+      "concepts": [
+        "Digital Parasite"
+      ]
+    },
+    "Crossroads Moment": {
+      "count": 1,
+      "concepts": [
+        "The Final Choice"
+      ]
+    },
+    "Surveillance": {
+      "count": 2,
+      "concepts": [
+        "All-Seeing Eye",
+        "All-Seeing Eye"
+      ]
+    },
+    "Progressive Scenarios": {
+      "count": 1,
+      "concepts": [
+        "Earth Sequence"
+      ]
+    },
+    "Enslavement": {
+      "count": 1,
+      "concepts": [
+        "Chained Humanity"
+      ]
+    },
+    "Power Dynamic": {
+      "count": 1,
+      "concepts": [
+        "Giant Robot Looming"
+      ]
+    },
+    "Surveillance State": {
+      "count": 1,
+      "concepts": [
+        "The All-Seeing Eye"
+      ]
+    }
+  }
+}
