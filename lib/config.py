@@ -19,18 +19,25 @@ class Settings:
         self.claude_model = os.getenv('CLAUDE_MODEL', 'claude-opus-4-5-20251101')
         self.thinking_budget_tokens = int(os.getenv('THINKING_BUDGET_TOKENS', '10000'))
 
-        # Directories
+        # Directories - use persistent volume on Railway, local dirs otherwise
         self.base_dir = Path(__file__).parent.parent
-        self.data_dir = self.base_dir / 'data'
-        self.output_dir = self.base_dir / 'output'
+        persistent_dir = Path('/app/persistent')
+        if persistent_dir.exists():
+            # Railway deployment - use persistent volume
+            self.data_dir = persistent_dir / 'data'
+            self.output_dir = persistent_dir / 'output'
+        else:
+            # Local development
+            self.data_dir = self.base_dir / 'data'
+            self.output_dir = self.base_dir / 'output'
         self.templates_dir = self.base_dir / 'templates'
 
         # Favorites database
         self.favorites_db_path = self.data_dir / 'favorites.json'
 
         # Ensure directories exist
-        self.data_dir.mkdir(exist_ok=True)
-        self.output_dir.mkdir(exist_ok=True)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _parse_google_keys(self) -> list:
         """Parse Google API keys from environment (comma-separated)."""

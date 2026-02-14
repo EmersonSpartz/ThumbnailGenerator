@@ -232,5 +232,7 @@ class JobManager:
                 del self.active_jobs[job_id]
 
 
-# Global instance
-job_manager = JobManager()
+# Global instance - use persistent volume on Railway
+_persistent = Path('/app/persistent/data')
+_default_dir = _persistent if _persistent.parent.exists() else Path('data')
+job_manager = JobManager(str(_default_dir))

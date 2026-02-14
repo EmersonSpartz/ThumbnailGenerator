@@ -43,11 +43,59 @@ from lib.claude_client import (
     get_current_thinking, get_current_response, reset_current_stream
 )
 
+from functools import wraps
+
 app = Flask(__name__, template_folder='templates')
+app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-prod')
 settings = Settings()
 
 # Global stop flag
 _stop_generation = False
+
+# Simple password auth (only enforced in production)
+APP_PASSWORD = os.getenv('APP_PASSWORD', '')
+
+def require_auth(f):
+    """Simple password auth for production deployment."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not APP_PASSWORD:
+            return f(*args, **kwargs)  # No auth in local dev
+        # Check session cookie
+        from flask import session
+        if session.get('authenticated'):
+            return f(*args, **kwargs)
+        # Check query param (for SSE endpoints)
+        if request.args.get('auth') == APP_PASSWORD:
+            return f(*args, **kwargs)
+        # Show login form
+        if request.method == 'POST' and request.form.get('password') == APP_PASSWORD:
+            session['authenticated'] = True
+            return f(*args, **kwargs)
+        return '''
+        <html><body style="background:#111;color:#fff;font-family:system-ui;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;">
+        <form method="post" style="text-align:center;">
+            <h2>Thumbnail Generator</h2>
+            <input type="password" name="password" placeholder="Password" autofocus
+                   style="padding:12px;font-size:16px;border-radius:8px;border:1px solid #444;background:#222;color:#fff;margin:10px;">
+            <br><button type="submit" style="padding:12px 24px;font-size:16px;border-radius:8px;border:none;background:#ff0000;color:#fff;cursor:pointer;">Enter</button>
+        </form></body></html>
+        ''', 401
+    return decorated
+
+@app.before_request
+def check_auth_api():
+    """Protect all /api/ routes with auth."""
+    if not APP_PASSWORD:
+        return  # No auth in local dev
+    if not request.path.startswith('/api/') and not request.path.startswith('/output/'):
+        return  # Only protect API and output routes (main page has its own auth)
+    from flask import session
+    if session.get('authenticated'):
+        return
+    if request.args.get('auth') == APP_PASSWORD:
+        return
+    return jsonify({'error': 'Unauthorized'}), 401
 
 
 def sse_message(data: dict) -> str:
@@ -60,7 +108,8 @@ def sse_keepalive() -> str:
     return ": keepalive\n\n"
 
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
+@require_auth
 def index():
     """Serve the main web UI."""
     return render_template('index.html')

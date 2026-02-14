@@ -262,5 +262,18 @@
       "chars_added": -2001
     },
     "note": ""
+  },
+  {
+    "timestamp": "2026-02-12T14:50:08.451307",
+    "key": "image_prompt_template",
+    "old_value": "Write prompts for each thumbnail concept.\n\nCRITICAL RULES:\n- ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE - this is the #1 priority\n- Keep prompts focused on ONE clear visual\n- Describe the scene cinematically\n- Include lighting and composition details\n- End every prompt with: no text, no words, no letters, no logos, 16:9 YouTube thumbnail, high contrast",
+    "new_value": "Write prompts for each thumbnail concept.\n\nCRITICAL RULES:\n- ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE - this is the #1 priority\n- Keep prompts focused on ONE clear visual\n- Describe the scene cinematically\n- Include lighting and composition details\n- End every prompt with: no text, no words, no letters, no logos, 16:9 YouTube thumbnail, high contrast",
+    "diff": {
+      "diff_text": "",
+      "added_words": [],
+      "removed_words": [],
+      "chars_added": 0
+    },
+    "note": "QA test - no change"
   }
 ]
