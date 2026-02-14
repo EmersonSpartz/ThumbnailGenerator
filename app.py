@@ -88,6 +88,8 @@ def check_auth_api():
     """Protect all /api/ routes with auth."""
     if not APP_PASSWORD:
         return  # No auth in local dev
+    if request.path == '/health':
+        return  # Health check bypasses auth
     if not request.path.startswith('/api/') and not request.path.startswith('/output/'):
         return  # Only protect API and output routes (main page has its own auth)
     from flask import session
@@ -96,6 +98,12 @@ def check_auth_api():
     if request.args.get('auth') == APP_PASSWORD:
         return
     return jsonify({'error': 'Unauthorized'}), 401
+
+
+@app.route('/health')
+def health():
+    """Health check endpoint for Railway (no auth required)."""
+    return jsonify({'status': 'ok'})
 
 
 def sse_message(data: dict) -> str:
@@ -2823,4 +2831,5 @@ if __name__ == '__main__':
 
     print(f"Open http://localhost:{port} to start")
     print("=" * 60)
-    app.run(debug=True, host=host, port=port)
+    is_production = bool(os.getenv('PORT'))
+    app.run(debug=not is_production, host=host, port=port)
