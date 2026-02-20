@@ -98,7 +98,7 @@ class ClaudeIdeator:
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=16000,
+            max_tokens=32000,
             thinking={
                 "type": "enabled",
                 "budget_tokens": self.budget_tokens
@@ -152,7 +152,7 @@ class ClaudeIdeator:
         # Stream the response
         with self.client.messages.stream(
             model=self.model,
-            max_tokens=16000,
+            max_tokens=32000,
             thinking={
                 "type": "enabled",
                 "budget_tokens": self.budget_tokens
@@ -232,7 +232,7 @@ class ClaudeIdeator:
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=16000,
+            max_tokens=32000,
             thinking={
                 "type": "enabled",
                 "budget_tokens": self.budget_tokens
@@ -262,7 +262,7 @@ class ClaudeIdeator:
 
         with self.client.messages.stream(
             model=self.model,
-            max_tokens=16000,
+            max_tokens=32000,
             thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
             messages=[{"role": "user", "content": prompt}]
         ) as stream:
@@ -311,7 +311,7 @@ class ClaudeIdeator:
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=16000,
+            max_tokens=32000,
             thinking={
                 "type": "enabled",
                 "budget_tokens": self.budget_tokens
