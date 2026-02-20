@@ -31,10 +31,10 @@ class TextOverlay:
     # Pre-defined text styles
     STYLES = {
         "impact": {
-            "font_size_ratio": 0.15,  # Relative to image height
+            "font_size_ratio": 0.20,  # Relative to image height
             "color": "#FFFFFF",
-            "stroke_color": "#000000",
-            "stroke_width_ratio": 0.008,
+            "stroke_color": "#FFFFFF",
+            "stroke_width_ratio": 0,
             "uppercase": True,
             "font_weight": "bold",
         },
