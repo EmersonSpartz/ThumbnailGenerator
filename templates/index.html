@@ -1161,6 +1161,7 @@
                 <button class="tab" data-tab="generate">Generate <span id="tab-job-count" style="display:none; background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:5px;">0</span></button>
                 <button class="tab" data-tab="prompts">🧠 System Logic</button>
                 <button class="tab" data-tab="favorites">Favorites</button>
+                <button class="tab" data-tab="text-tab">✏️ Text</button>
             </div>
         </header>
 
@@ -1629,6 +1630,66 @@
             </div>
 
             <div class="thumbnail-grid" id="favorites-grid"></div>
+        </div>
+
+        <!-- Text Thumbnails Panel -->
+        <div id="text-tab" class="panel">
+            <div class="generate-form">
+                <div>
+                    <div class="form-group">
+                        <label>Video Titles (one per line)</label>
+                        <textarea id="text-titles" placeholder="Enter your video title options..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: #fbbf24;">✏️ Thumbnail Copy <span style="color: #888; font-weight: normal; font-size: 11px;">(text that gets baked into each image)</span></label>
+                        <input type="text" id="text-thumbnail-copy" placeholder="e.g. AI IS TAKING OVER" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #fbbf24; border-radius: 6px; color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 1px;">
+                    </div>
+                    <div class="form-group">
+                        <label>Creative Direction (optional)</label>
+                        <textarea id="text-creative-direction" placeholder="e.g. 'dark surreal imagery', 'epic scale', 'body horror'..." style="min-height: 80px;"></textarea>
+                    </div>
+                </div>
+                <div class="settings-panel">
+                    <h3>Settings</h3>
+                    <div class="form-group">
+                        <label>Number of Concepts</label>
+                        <input type="number" id="text-count" value="5" min="1" max="30">
+                    </div>
+                    <div class="form-group">
+                        <label>Image Models</label>
+                        <div class="model-checkboxes" id="text-model-checkboxes">
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="gemini" checked> Gemini
+                            </label>
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="flux" checked> Flux
+                            </label>
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="sdxl" checked> SDXL
+                            </label>
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="aispecies" checked> AI Species
+                            </label>
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="recraft"> Recraft V3
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Iterations</label>
+                        <input type="number" id="text-max-iterations" value="2" min="1" max="5">
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">⚡ 2 = Before/After comparison</p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; flex-direction: column;">
+                        <button class="btn btn-primary" onclick="startTextGeneration()" id="text-generate-btn">✏️ Generate with Text</button>
+                        <button class="btn btn-secondary" onclick="stopGeneration()" style="display:none" id="text-stop-btn">⏹ Stop</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="text-status" style="display:none; margin: 20px 0; padding: 15px; background: #1a1a1a; border-radius: 8px; color: #aaa; font-size: 13px;"></div>
+            <div class="thumbnail-grid" id="text-thumbnail-grid"></div>
         </div>
 
     </div>
@@ -2586,6 +2647,7 @@
                 document.getElementById(tab.dataset.tab).classList.add('active');
 
                 if (tab.dataset.tab === 'favorites') loadFavorites();
+                if (tab.dataset.tab === 'text-tab') loadTextTabHistory();
             });
         });
 
@@ -2699,6 +2761,66 @@
                 completeJob(jobId, false);
             }
         });
+
+        function loadTextTabHistory() {
+            const grid = document.getElementById('text-thumbnail-grid');
+            if (grid.children.length > 0) return; // Already has results, don't overwrite
+            fetch('/api/history?limit=100')
+                .then(r => r.json())
+                .then(data => {
+                    const thumbs = (data.thumbnails || []).filter(t => t.thumbnail_text);
+                    if (thumbs.length === 0) {
+                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#555;padding:40px;font-size:13px;">No text thumbnails generated yet. Enter your thumbnail copy above and click Generate.</div>';
+                        return;
+                    }
+                    thumbs.forEach(thumb => {
+                        const card = document.createElement('div');
+                        card.className = 'thumbnail-card';
+                        card.innerHTML = `
+                            <img src="/output/${escapeHtml(thumb.file_path)}" alt="${escapeHtml(thumb.concept_name || '')}" onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;\\'>Image not found</div>'">
+                            <div class="thumbnail-info">
+                                <h4>${escapeHtml(thumb.concept_name || '')}</h4>
+                                <p style="color:#fbbf24;font-size:11px;font-weight:bold;">"${escapeHtml(thumb.thumbnail_text || '')}"</p>
+                                <p>${escapeHtml(thumb.description || '')}</p>
+                                ${thumb.model ? `<span class="category-badge">${escapeHtml(thumb.model)}</span>` : ''}
+                            </div>`;
+                        grid.appendChild(card);
+                    });
+                })
+                .catch(() => {});
+        }
+
+        function startTextGeneration() {
+            const titles = document.getElementById('text-titles').value.trim();
+            const thumbnailText = document.getElementById('text-thumbnail-copy').value.trim();
+            const creativeDirection = document.getElementById('text-creative-direction').value.trim();
+            const count = document.getElementById('text-count').value;
+            const maxIterations = document.getElementById('text-max-iterations').value;
+
+            if (!titles) { alert('Please enter video titles'); return; }
+            if (!thumbnailText) { alert('Please enter thumbnail copy text'); return; }
+
+            const modelCheckboxes = document.querySelectorAll('#text-model-checkboxes input:checked');
+            const models = Array.from(modelCheckboxes).map(cb => cb.value);
+            if (models.length === 0) { alert('Please select at least one model'); return; }
+
+            const url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=true&max_iterations=${maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(thumbnailText)}`;
+
+            document.getElementById('text-generate-btn').style.display = 'none';
+            document.getElementById('text-stop-btn').style.display = 'block';
+
+            startGeneration(url, 'text-thumbnail-grid', '✏️ Text', models);
+
+            // Re-show generate button when done (poll for idle state)
+            const check = setInterval(() => {
+                const activeCount = Object.values(activeJobs || {}).filter(j => j.status === 'running').length;
+                if (activeCount === 0) {
+                    clearInterval(check);
+                    document.getElementById('text-generate-btn').style.display = 'block';
+                    document.getElementById('text-stop-btn').style.display = 'none';
+                }
+            }, 2000);
+        }
 
         function startGeneration(url, gridId, jobType, models = [], llms = []) {
             const grid = document.getElementById(gridId);
@@ -3281,7 +3403,8 @@
             const card = document.createElement('div');
             card.className = 'thumbnail-card';
             card.innerHTML = `
-                <img src="/output/${data.file_path}" alt="${data.concept_name || 'Thumbnail'}">
+                <img src="/output/${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
+                     onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
                 <div class="thumbnail-info">
                     <h4>${data.concept_name || 'Untitled'}</h4>
                     <p>${data.concept_summary || data.title_ref || ''}</p>
@@ -3393,7 +3516,7 @@
                 const card = document.createElement('div');
                 card.className = 'thumbnail-card favorited';
                 card.innerHTML = `
-                    <img src="/output/${fav.thumbnail_path}" alt="${fav.concept_name}">
+                    <img src="/output/${fav.thumbnail_path}" alt="${fav.concept_name}" onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image not on server</div>'">
                     <div class="thumbnail-info">
                         <h4>${fav.concept_name}</h4>
                         <p>${fav.description || fav.notes || ''}</p>

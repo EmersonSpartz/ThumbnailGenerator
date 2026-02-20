@@ -106,14 +106,24 @@ def health():
     return jsonify({'status': 'ok'})
 
 
+
 def sse_message(data: dict) -> str:
     """Format a dict as an SSE message."""
     return f"data: {json.dumps(data)}\n\n"
 
 
 def sse_keepalive() -> str:
-    """Send an SSE comment as keepalive to prevent proxy timeout."""
-    return ": keepalive\n\n"
+    """Send an SSE keepalive data event to prevent proxy timeout."""
+    return 'data: {"type":"keepalive"}\n\n'
+
+
+def sse_response(stream):
+    """Create an SSE Response with headers that prevent Railway/Nginx buffering."""
+    resp = Response(stream, mimetype='text/event-stream')
+    resp.headers['X-Accel-Buffering'] = 'no'
+    resp.headers['Cache-Control'] = 'no-cache'
+    resp.headers['Connection'] = 'keep-alive'
+    return resp
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -554,7 +564,7 @@ def generate_variations():
             'message': f'Generated {generated} variations'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/api/quick-variations')
@@ -711,7 +721,7 @@ def quick_variations():
             'message': f'Generated {total_completed} quick variations'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/api/parallel-variations')
@@ -876,7 +886,7 @@ def parallel_variations_get():
             'message': f'Generated {total_completed} variations across {len(models_to_use)} models'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 # ============================================================
@@ -1111,7 +1121,7 @@ def generate():
             'message': f'Generation complete! Created {generated} thumbnails.'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/stop', methods=['POST'])
@@ -1320,7 +1330,7 @@ def model_shootout():
             'message': f'Shootout complete! Compare {len(prompts_with_concepts)} concepts across {len(models_to_use)} models'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 # ============================================================
@@ -1499,7 +1509,7 @@ def refine_and_generate():
                 'message': f'Generation failed: {result.get("error", "Unknown")}'
             })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/api/quick-generate', methods=['POST'])
@@ -1901,7 +1911,7 @@ def parallel_generate():
             'message': f'Generated {total_completed} images across {len(models_to_use)} models'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/api/agentic-generate')
@@ -1928,6 +1938,7 @@ def agentic_generate():
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
     max_iterations = int(request.args.get('max_iterations', 2))  # 2 = before/after comparison
     quality_threshold = float(request.args.get('quality_threshold', 9.0))  # High = always refine to see reasoning
+    thumbnail_text = request.args.get('thumbnail_text', '').strip()
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
@@ -1976,19 +1987,31 @@ def agentic_generate():
             'message': 'Claude is generating thumbnail concepts...'
         })
 
-        try:
-            concepts = ideator.generate_concepts(
-                titles=titles,
-                used_ideas=freshness.get_summary_list(),
-                batch_number=1,
-                script=script,
-                favorites_context=favorites_context,
-                count=count
-            )
-        except Exception as e:
-            yield sse_message({'type': 'error', 'message': f'Claude error: {str(e)}'})
+        # Phase 1: concepts (blocking Claude call — run in thread + keepalive)
+        concepts_box = [None]
+        concepts_err = [None]
+        def _run_concepts():
+            try:
+                concepts_box[0] = ideator.generate_concepts(
+                    titles=titles,
+                    used_ideas=freshness.get_summary_list(),
+                    batch_number=1,
+                    script=script,
+                    favorites_context=favorites_context,
+                    count=count
+                )
+            except Exception as e:
+                concepts_err[0] = e
+        t1 = threading.Thread(target=_run_concepts)
+        t1.start()
+        while t1.is_alive():
+            yield sse_keepalive()
+            t1.join(timeout=5)
+        if concepts_err[0]:
+            yield sse_message({'type': 'error', 'message': f'Claude error: {str(concepts_err[0])}'})
             return
 
+        concepts = concepts_box[0]
         if not concepts:
             yield sse_message({'type': 'error', 'message': 'No concepts generated'})
             return
@@ -2001,12 +2024,23 @@ def agentic_generate():
             'message': f'Got {len(concepts)} concepts, generating prompts...'
         })
 
-        # PHASE 2: Generate prompts
-        try:
-            prompts_with_concepts = ideator.generate_prompts_for_concepts(concepts)
-        except Exception as e:
-            yield sse_message({'type': 'error', 'message': f'Prompt error: {str(e)}'})
+        # PHASE 2: Generate prompts (also blocking — thread + keepalive)
+        prompts_box = [None]
+        prompts_err = [None]
+        def _run_prompts():
+            try:
+                prompts_box[0] = ideator.generate_prompts_for_concepts(concepts)
+            except Exception as e:
+                prompts_err[0] = e
+        t2 = threading.Thread(target=_run_prompts)
+        t2.start()
+        while t2.is_alive():
+            yield sse_keepalive()
+            t2.join(timeout=5)
+        if prompts_err[0]:
+            yield sse_message({'type': 'error', 'message': f'Prompt error: {str(prompts_err[0])}'})
             return
+        prompts_with_concepts = prompts_box[0]
 
         # PHASE 3: Agentic refinement loop
         batch_id = f"agentic_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -2061,10 +2095,17 @@ def agentic_generate():
 
                     def generate_for_model(model_name):
                         try:
+                            prompt_data_for_gen = current_prompt_data
+                            if thumbnail_text:
+                                prompt_data_for_gen = dict(current_prompt_data)
+                                prompt_data_for_gen['prompt'] = (
+                                    current_prompt_data.get('prompt', '') +
+                                    f'\n\nIMPORTANT: Leave the bottom 20% of the image as a clean, uncluttered area for text overlay. Do NOT include any text, words, or letters anywhere in the image.'
+                                )
                             return model_name, generator.generate_with_model(
                                 model_name,
-                                current_prompt_data,
-                                f"{batch_id}/iter{iteration+1}"
+                                prompt_data_for_gen,
+                                f"{batch_id}/iter{iteration+1}/{model_name}"
                             )
                         except Exception as e:
                             return model_name, {'success': False, 'error': str(e)}
@@ -2089,8 +2130,23 @@ def agentic_generate():
                             # Show the generated image
                             file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
 
+                            # Apply text overlay if thumbnail_text provided
+                            if thumbnail_text:
+                                try:
+                                    abs_path = str(settings.output_dir / file_path)
+                                    text_overlay_obj = TextOverlay()
+                                    text_overlay_obj.add_text(
+                                        abs_path,
+                                        thumbnail_text,
+                                        position='bottom-center',
+                                        style='impact',
+                                        output_path=abs_path
+                                    )
+                                except Exception as te:
+                                    print(f"[TEXT OVERLAY] Failed for {file_path}: {te}")
+
                             # Save to history
-                            job_manager.add_result(job_id, {
+                            result_record = {
                                 'file_path': file_path,
                                 'model': model_name,
                                 'concept_name': concept_name,
@@ -2101,7 +2157,10 @@ def agentic_generate():
                                 'batch_id': batch_id,
                                 'iteration': iteration + 1,
                                 'agentic_score': None
-                            })
+                            }
+                            if thumbnail_text:
+                                result_record['thumbnail_text'] = thumbnail_text
+                            job_manager.add_result(job_id, result_record)
 
                             yield sse_message({
                                 'type': 'image_generated',
@@ -2114,6 +2173,10 @@ def agentic_generate():
                             error_msg = result.get('error', 'Unknown error')
                             failed_models.append(f"{model_name}: {error_msg}")
                             print(f"[AGENTIC ERROR] {model_name} failed for '{concept_name}': {error_msg}")
+                            yield sse_message({
+                                'type': 'phase',
+                                'message': f'⚠️ {model_name} failed: {error_msg[:80]}'
+                            })
 
                     executor.shutdown(wait=False)
 
@@ -2126,24 +2189,46 @@ def agentic_generate():
                         print(f"[AGENTIC ERROR] All models failed for '{concept_name}'. Skipping.")
                         break  # Break inner loop, continue to next concept
 
-                    # Evaluate quality with Claude
-                    yield sse_message({
-                        'type': 'evaluating',
-                        'concept_name': concept_name,
-                        'iteration': iteration + 1,
-                        'message': 'Claude evaluating all thumbnails (batch)...'
-                    })
+                    # Skip evaluation on the last iteration (nothing to refine)
+                    is_last_iteration = (iteration >= max_iterations - 1)
 
-                    images_data = []
-                    for model_name, result in results.items():
-                        images_data.append({
-                            'image_path': Path(result['file_path']),
-                            'prompt_used': current_prompt_data.get('prompt', ''),
+                    if is_last_iteration:
+                        evaluations = []
+                    else:
+                        # Evaluate quality with Claude (only when refinement will follow)
+                        yield sse_message({
+                            'type': 'evaluating',
                             'concept_name': concept_name,
-                            'model': model_name
+                            'iteration': iteration + 1,
+                            'message': 'Claude evaluating all thumbnails (batch)...'
                         })
 
-                    evaluations = refiner.evaluate_thumbnails_batch(images_data)
+                        images_data = []
+                        for model_name, result in results.items():
+                            images_data.append({
+                                'image_path': Path(result['file_path']),
+                                'prompt_used': current_prompt_data.get('prompt', ''),
+                                'concept_name': concept_name,
+                                'model': model_name
+                            })
+
+                        eval_box = [None]
+                        eval_err = [None]
+                        def _run_eval():
+                            try:
+                                eval_box[0] = refiner.evaluate_thumbnails_batch(images_data)
+                            except Exception as e:
+                                eval_err[0] = e
+                        t_eval = threading.Thread(target=_run_eval)
+                        t_eval.start()
+                        while t_eval.is_alive():
+                            yield sse_keepalive()
+                            t_eval.join(timeout=5)
+                        if eval_err[0]:
+                            print(f"[AGENTIC] Evaluation error: {eval_err[0]}")
+                            evaluations = []
+                        else:
+                            evaluations = eval_box[0] or []
 
                     # Send results to frontend AND update history
                     for idx, (model_name, result) in enumerate(results.items()):
@@ -2203,7 +2288,18 @@ def agentic_generate():
                         'message': 'Claude is refining the prompt...'
                     })
 
-                    current_prompt_data = refiner.refine_prompt_batch(evaluations, current_prompt_data)
+                    refine_box = [current_prompt_data]
+                    def _run_refine():
+                        try:
+                            refine_box[0] = refiner.refine_prompt_batch(evaluations, current_prompt_data)
+                        except Exception:
+                            pass
+                    t_refine = threading.Thread(target=_run_refine)
+                    t_refine.start()
+                    while t_refine.is_alive():
+                        yield sse_keepalive()
+                        t_refine.join(timeout=5)
+                    current_prompt_data = refine_box[0]
 
                     yield sse_message({
                         'type': 'prompt_refined',
@@ -2248,7 +2344,7 @@ def agentic_generate():
                 job_manager.complete_job(job_id, success=False)
             yield sse_message({'type': 'error', 'message': f'Generation error: {str(e)}'})
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 @app.route('/api/get-rubric')
@@ -2511,7 +2607,7 @@ def parallel_variations():
             'message': f'Generated {successful} images across {len(models_to_use)} models'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 # ============================================================
@@ -2808,7 +2904,7 @@ def full_parallel_generate():
             'message': f'Generated {total_completed} images from {len(all_concepts)} concepts across {len(selected_llms)} LLMs and {len(selected_models)} image models'
         })
 
-    return Response(generate_stream(), mimetype='text/event-stream')
+    return sse_response(generate_stream())
 
 
 if __name__ == '__main__':
