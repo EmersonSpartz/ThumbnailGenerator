@@ -3407,7 +3407,8 @@
                      onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
                 <div class="thumbnail-info">
                     <h4>${data.concept_name || 'Untitled'}</h4>
-                    <p>${data.concept_summary || data.title_ref || ''}</p>
+                    <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${data.concept_summary || data.title_ref || ''}</p>
+                    ${data.prompt ? `<details style="margin-top:4px;"><summary style="font-size:10px;color:#666;cursor:pointer;">View prompt</summary><p style="font-size:10px;color:#555;margin-top:4px;line-height:1.4;">${escapeHtml(data.prompt)}</p></details>` : ''}
                     ${data.category ? `<span class="category-badge">${data.category}</span>` : ''}
                     ${data.model ? `<span class="category-badge">${data.model}</span>` : ''}
                 </div>

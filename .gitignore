@@ -10,9 +10,16 @@ __pycache__/
 *.pyd
 .Python
 
-# Output files (will be in Railway volume)
+# Output files and data (will be in Railway volume)
 output/
 history/
+# Runtime data files (generated, not deployed)
+data/history.json
+data/active_jobs.json
+data/freshness_tracker.json
+data/prompt_history.json
+data/performance.json
+data/favorites.json
 *.jpg
 *.png
 *.webp

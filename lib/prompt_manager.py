@@ -42,6 +42,9 @@ class PromptManager:
             self.prompts['image_prompt_template'] = self._get_default_image_prompt_template()
             self._save_prompts()
 
+        # Migrate stale prompts (e.g. old Railway persistent volume with hardcoded counts)
+        self.migrate_if_needed()
+
         # Load history
         if self.history_file.exists():
             with open(self.history_file, 'r') as f:
@@ -87,17 +90,21 @@ CRITICAL RULES:
 
 Follow the prompting guide provided."""
 
+    # Version marker — bump this string to force migration of old Railway prompts
+    PROMPT_VERSION = "v2-count-controlled"
+
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
         return {
+            "_version": self.PROMPT_VERSION,
             "claude_prompt": """You are The Assembly Line, a master AI Art Director and high-volume production engine. Your mission is to generate a massive, diverse portfolio of high-CTR thumbnail concepts.
 
 ---
 
 ## THE ARTISTIC MANDATE (Global Rules)
 
-### Approved Visual Vocabulary
-You are encouraged to build concepts using visually powerful nouns: Massive Robots, Uncanny Humanoids, Terrifying Monsters, Alien Invasion, Shoggoths, Skulls, Bones, Chains, Cages, Crowns, Thrones, Ruined Monuments, Crumbling Buildings, Apocalyptic Landscapes, Glowing Weapons, Explosions, Swarms.
+### Visual Vocabulary
+You are encouraged to build concepts using visually powerful nouns, e.g.: Massive Robots, Uncanny Humanoids, Terrifying Monsters, Alien Invasion, Shoggoths, Skulls, Chains, Cages, Explosions, Swarms, Alarm-Bell Red, Danger, viral outbreak, Orwellian surveillance
 
 ### Forbidden Tropes
 You are forbidden from using visually boring or ambiguous imagery: circuit boards, wires, abstract data streams, glowing brains, server racks, generic office supplies, flowcharts, diagrams, infographics, scientists in lab coats, social media logos, stock photo aesthetics.
@@ -106,33 +113,16 @@ You are forbidden from using visually boring or ambiguous imagery: circuit board
 
 ## USER INPUTS
 
-**VIDEO TITLES:**
+**POSSIBLE VIDEO TITLES FOR INSPIRATION:**
 {{TITLES}}
 
 {{SCRIPT_SECTION}}{{CREATIVE_DIRECTION_SECTION}}---
 
 ## GENERATE {{COUNT}} THUMBNAIL CONCEPTS
 
-Generate TWO distinct, concise, and visually compelling concepts for EACH of the ten creative angles below. All concepts must:
-- Adhere to The Artistic Mandate (use approved vocabulary, avoid forbidden tropes)
-- Follow any Creative Direction provided above
-
-### The 10 Angles (2 concepts each = 20 total):
-
-1. **Human Reaction:** A person's face/body responding to something extraordinary
-2. **Power Dynamic (Big vs. Small):** Tiny human vs. massive force, or vice versa
-3. **Uncanny Juxtaposition:** Two things that shouldn't exist together
-4. **Before & After / Transformation:** Evolution, corruption, or metamorphosis
-5. **Symbolic Object:** One powerful item that represents the entire video's stakes
-6. **Epic Consequence (Wide Shot):** The aftermath or scale of impact
-7. **The Forbidden Action:** Someone doing something they shouldn't, crossing a line
-8. **The Mysterious Item:** Something hidden being exposed or discovered
-9. **The Body Horror Metaphor:** Technology/AI merged with or corrupting flesh
-10. **The Mechanical Monster:** Terrifying machine, robot, or AI entity
-
 For each concept, apply the **Squint Test**:
 - Is it instantly understandable in under 1 second?
-- Does it have a strong, clear silhouette?
+- Does it have a strong, clear silhouette? Is it SIMPLE?
 - Does it evoke a powerful, primal emotion?
 
 ---
@@ -154,6 +144,19 @@ Return ALL {{COUNT}} concepts as JSON:
 }
 ```"""
         }
+
+    def migrate_if_needed(self):
+        """Detect and fix stale prompt templates (e.g. old Railway persistent volume)."""
+        current = self.prompts.get('claude_prompt', '')
+        current_version = self.prompts.get('_version', '')
+        if current_version == self.PROMPT_VERSION:
+            return  # Already up to date
+        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current:
+            print("[PROMPT MANAGER] Migrating stale prompt template to current version")
+            defaults = self._get_default_prompts()
+            self.prompts['claude_prompt'] = defaults['claude_prompt']
+            self.prompts['_version'] = self.PROMPT_VERSION
+            self._save_prompts()
 
     def _save_prompts(self):
         """Save current prompts to file."""

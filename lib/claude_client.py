@@ -242,6 +242,56 @@ class ClaudeIdeator:
 
         return self._parse_prompts(response, concepts)
 
+    def generate_prompts_for_concepts_streaming(self, concepts: list[dict]):
+        """
+        STEP 2: Generate prompts with streaming for real-time visibility.
+        Yields events as Claude thinks and writes.
+        """
+        global _last_prompt, _last_response, _last_thinking, _current_thinking, _current_response
+
+        if not concepts:
+            yield {"type": "prompts", "prompts": []}
+            return
+
+        prompt = self._build_prompts_prompt(concepts)
+        _last_prompt = prompt
+        _current_thinking = ""
+        _current_response = ""
+
+        yield {"type": "prompt", "content": prompt}
+
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=16000,
+            thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            for event in stream:
+                if event.type == "content_block_start":
+                    if hasattr(event.content_block, 'type'):
+                        if event.content_block.type == "thinking":
+                            yield {"type": "thinking_start"}
+                        elif event.content_block.type == "text":
+                            yield {"type": "response_start"}
+                elif event.type == "content_block_delta":
+                    if hasattr(event.delta, 'thinking'):
+                        _current_thinking += event.delta.thinking
+                        yield {"type": "thinking_delta", "content": event.delta.thinking}
+                    elif hasattr(event.delta, 'text'):
+                        _current_response += event.delta.text
+                        yield {"type": "response_delta", "content": event.delta.text}
+                elif event.type == "message_stop":
+                    _last_thinking = _current_thinking
+                    _last_response = _current_response
+                    yield {"type": "complete"}
+
+        # Parse and merge prompts with concepts
+        class FakeResponse:
+            def __init__(self, text):
+                self.content = [type('Block', (), {'text': text})()]
+        result = self._parse_prompts(FakeResponse(_current_response), concepts)
+        yield {"type": "prompts", "prompts": result}
+
     def generate_variations(
         self,
         base_concept: dict,

@@ -1933,6 +1933,7 @@ def agentic_generate():
     """
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
+    creative_direction = request.args.get('creative_direction', '').strip()
     count = int(request.args.get('count', 10))
     models_str = request.args.get('models', 'gemini,flux,sdxl')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
@@ -1980,38 +1981,63 @@ def agentic_generate():
             'message': f'Starting agentic generation with {len(models_to_use)} models (up to {max_iterations} refinement iterations)'
         })
 
-        # PHASE 1: Generate initial concepts with Claude
+        # PHASE 1: Generate initial concepts with Claude (streaming)
         yield sse_message({
             'type': 'progress',
             'phase': 'ideation',
             'message': 'Claude is generating thumbnail concepts...'
         })
+        yield sse_message({'type': 'claude_prompt', 'content': 'Generating thumbnail concepts...'})
+        yield sse_message({'type': 'claude_thinking_start'})
 
-        # Phase 1: concepts (blocking Claude call — run in thread + keepalive)
-        concepts_box = [None]
-        concepts_err = [None]
-        def _run_concepts():
+        concepts_queue = queue.Queue()
+        def _stream_concepts():
             try:
-                concepts_box[0] = ideator.generate_concepts(
+                for event in ideator.generate_concepts_streaming(
                     titles=titles,
                     used_ideas=freshness.get_summary_list(),
                     batch_number=1,
                     script=script,
                     favorites_context=favorites_context,
+                    creative_direction=creative_direction,
                     count=count
-                )
+                ):
+                    concepts_queue.put(event)
             except Exception as e:
-                concepts_err[0] = e
-        t1 = threading.Thread(target=_run_concepts)
-        t1.start()
-        while t1.is_alive():
-            yield sse_keepalive()
-            t1.join(timeout=5)
-        if concepts_err[0]:
-            yield sse_message({'type': 'error', 'message': f'Claude error: {str(concepts_err[0])}'})
-            return
+                concepts_queue.put({'type': 'error', 'error': str(e)})
+            finally:
+                concepts_queue.put(None)  # sentinel
 
-        concepts = concepts_box[0]
+        threading.Thread(target=_stream_concepts, daemon=True).start()
+
+        concepts = None
+        while True:
+            try:
+                event = concepts_queue.get(timeout=5)
+            except queue.Empty:
+                yield sse_keepalive()
+                continue
+            if event is None:
+                break
+            etype = event.get('type')
+            if etype == 'error':
+                yield sse_message({'type': 'error', 'message': f'Claude error: {event["error"]}'})
+                return
+            elif etype == 'prompt':
+                yield sse_message({'type': 'claude_prompt', 'content': event['content']})
+            elif etype == 'thinking_start':
+                yield sse_message({'type': 'claude_thinking_start'})
+            elif etype == 'thinking_delta':
+                yield sse_message({'type': 'claude_thinking', 'content': event['content']})
+            elif etype == 'response_start':
+                yield sse_message({'type': 'claude_response_start'})
+            elif etype == 'response_delta':
+                yield sse_message({'type': 'claude_response', 'content': event['content']})
+            elif etype == 'complete':
+                yield sse_message({'type': 'claude_complete'})
+            elif etype == 'concepts':
+                concepts = event['concepts']
+
         if not concepts:
             yield sse_message({'type': 'error', 'message': 'No concepts generated'})
             return
@@ -2023,24 +2049,53 @@ def agentic_generate():
             'phase': 'prompting',
             'message': f'Got {len(concepts)} concepts, generating prompts...'
         })
+        yield sse_message({'type': 'claude_prompt', 'content': 'Writing image generation prompts...'})
+        yield sse_message({'type': 'claude_thinking_start'})
 
-        # PHASE 2: Generate prompts (also blocking — thread + keepalive)
-        prompts_box = [None]
-        prompts_err = [None]
-        def _run_prompts():
+        # PHASE 2: Generate prompts (streaming)
+        prompts_queue = queue.Queue()
+        def _stream_prompts():
             try:
-                prompts_box[0] = ideator.generate_prompts_for_concepts(concepts)
+                for event in ideator.generate_prompts_for_concepts_streaming(concepts):
+                    prompts_queue.put(event)
             except Exception as e:
-                prompts_err[0] = e
-        t2 = threading.Thread(target=_run_prompts)
-        t2.start()
-        while t2.is_alive():
-            yield sse_keepalive()
-            t2.join(timeout=5)
-        if prompts_err[0]:
-            yield sse_message({'type': 'error', 'message': f'Prompt error: {str(prompts_err[0])}'})
+                prompts_queue.put({'type': 'error', 'error': str(e)})
+            finally:
+                prompts_queue.put(None)
+
+        threading.Thread(target=_stream_prompts, daemon=True).start()
+
+        prompts_with_concepts = None
+        while True:
+            try:
+                event = prompts_queue.get(timeout=5)
+            except queue.Empty:
+                yield sse_keepalive()
+                continue
+            if event is None:
+                break
+            etype = event.get('type')
+            if etype == 'error':
+                yield sse_message({'type': 'error', 'message': f'Prompt error: {event["error"]}'})
+                return
+            elif etype == 'prompt':
+                yield sse_message({'type': 'claude_prompt', 'content': event['content']})
+            elif etype == 'thinking_start':
+                yield sse_message({'type': 'claude_thinking_start'})
+            elif etype == 'thinking_delta':
+                yield sse_message({'type': 'claude_thinking', 'content': event['content']})
+            elif etype == 'response_start':
+                yield sse_message({'type': 'claude_response_start'})
+            elif etype == 'response_delta':
+                yield sse_message({'type': 'claude_response', 'content': event['content']})
+            elif etype == 'complete':
+                yield sse_message({'type': 'claude_complete'})
+            elif etype == 'prompts':
+                prompts_with_concepts = event['prompts']
+
+        if not prompts_with_concepts:
+            yield sse_message({'type': 'error', 'message': 'Failed to generate prompts'})
             return
-        prompts_with_concepts = prompts_box[0]
 
         # PHASE 3: Agentic refinement loop
         batch_id = f"agentic_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -2167,6 +2222,10 @@ def agentic_generate():
                                 'model': model_name,
                                 'file_path': file_path,
                                 'concept_name': concept_name,
+                                'concept_summary': current_prompt_data.get('description', ''),
+                                'prompt': current_prompt_data.get('prompt', ''),
+                                'title_ref': current_prompt_data.get('title_ref', ''),
+                                'category': current_prompt_data.get('category', ''),
                                 'iteration': iteration + 1
                             })
                         else:
