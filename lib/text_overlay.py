@@ -70,9 +70,9 @@ class TextOverlay:
         "top-center": (0.5, 0.08),
         "top-right": (0.95, 0.08),
         "center": (0.5, 0.5),
-        "bottom-left": (0.05, 0.88),
-        "bottom-center": (0.5, 0.88),
-        "bottom-right": (0.95, 0.88),
+        "bottom-left": (0.05, 0.80),
+        "bottom-center": (0.5, 0.80),
+        "bottom-right": (0.95, 0.80),
     }
 
     def __init__(self):
