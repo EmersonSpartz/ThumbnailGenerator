@@ -1252,6 +1252,9 @@
                                     <input type="checkbox" value="gemini" checked> Gemini
                                 </label>
                                 <label class="model-checkbox selected">
+                                    <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
+                                </label>
+                                <label class="model-checkbox selected">
                                     <input type="checkbox" value="aispecies" checked> AI Species
                                 </label>
                                 <label class="model-checkbox selected">
@@ -1287,6 +1290,9 @@
                             <div class="model-checkboxes" id="full-model-checkboxes">
                                 <label class="model-checkbox selected">
                                     <input type="checkbox" value="gemini" checked> Gemini
+                                </label>
+                                <label class="model-checkbox selected">
+                                    <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                                 </label>
                                 <label class="model-checkbox selected">
                                     <input type="checkbox" value="aispecies" checked> AI Species
@@ -1436,6 +1442,9 @@
                         <div class="model-checkboxes" id="shootout-model-checkboxes">
                             <label class="model-checkbox selected">
                                 <input type="checkbox" value="gemini" checked> Gemini
+                            </label>
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                             </label>
                             <label class="model-checkbox selected">
                                 <input type="checkbox" value="aispecies" checked> AI Species
@@ -1662,22 +1671,25 @@
                                 <input type="checkbox" value="gemini" checked> Gemini
                             </label>
                             <label class="model-checkbox selected">
-                                <input type="checkbox" value="flux" checked> Flux
-                            </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="sdxl" checked> SDXL
-                            </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="aispecies" checked> AI Species
+                                <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                             </label>
                             <label class="model-checkbox">
-                                <input type="checkbox" value="recraft"> Recraft V3
+                                <input type="checkbox" value="flux"> Flux
+                            </label>
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="sdxl"> SDXL
+                            </label>
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="aispecies"> AI Species
+                            </label>
+                            <label class="model-checkbox selected">
+                                <input type="checkbox" value="recraft" checked> Recraft V3
                             </label>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Max Iterations</label>
-                        <input type="number" id="text-max-iterations" value="2" min="1" max="5">
+                        <input type="number" id="text-max-iterations" value="1" min="1" max="5">
                         <p style="font-size: 10px; color: #666; margin-top: 4px;">⚡ 2 = Before/After comparison</p>
                     </div>
 
@@ -1807,6 +1819,9 @@
                     <div class="model-checkboxes" id="var-model-checkboxes">
                         <label class="model-checkbox selected">
                             <input type="checkbox" value="gemini" checked> Gemini
+                        </label>
+                        <label class="model-checkbox selected">
+                            <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                         </label>
                         <label class="model-checkbox selected">
                             <input type="checkbox" value="aispecies" checked> AI Species
@@ -2774,16 +2789,50 @@
                         return;
                     }
                     thumbs.forEach(thumb => {
+                        const cardData = {
+                            file_path: thumb.file_path,
+                            concept_name: thumb.concept_name || '',
+                            concept_summary: thumb.description || '',
+                            prompt: thumb.prompt || '',
+                            title_ref: thumb.title_ref || '',
+                            category: thumb.category || '',
+                            model: thumb.model || '',
+                            thumbnail_text: thumb.thumbnail_text || ''
+                        };
                         const card = document.createElement('div');
                         card.className = 'thumbnail-card';
+                        card.dataset.thumbnail = JSON.stringify(cardData);
                         card.innerHTML = `
-                            <img src="/output/${escapeHtml(thumb.file_path)}" alt="${escapeHtml(thumb.concept_name || '')}" onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;\\'>Image not found</div>'">
+                            <img src="/output/${escapeHtml(thumb.file_path)}" alt="${escapeHtml(thumb.concept_name || '')}"
+                                 onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image not found</div>'">
                             <div class="thumbnail-info">
                                 <h4>${escapeHtml(thumb.concept_name || '')}</h4>
-                                <p style="color:#fbbf24;font-size:11px;font-weight:bold;">"${escapeHtml(thumb.thumbnail_text || '')}"</p>
-                                <p>${escapeHtml(thumb.description || '')}</p>
+                                ${thumb.thumbnail_text ? `<p style="color:#fbbf24;font-size:11px;font-weight:bold;">"${escapeHtml(thumb.thumbnail_text)}"</p>` : ''}
+                                <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${escapeHtml(thumb.description || '')}</p>
                                 ${thumb.model ? `<span class="category-badge">${escapeHtml(thumb.model)}</span>` : ''}
+                            </div>
+                            <div class="thumbnail-actions">
+                                <button class="btn btn-secondary favorite-btn" title="Add to favorites">Fav</button>
+                                <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
                             </div>`;
+
+                        card.querySelector('img').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            openLightbox(cardData, card);
+                        });
+                        card.querySelector('.favorite-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            currentThumbnail = cardData;
+                            document.getElementById('favorite-modal').classList.add('active');
+                        });
+                        card.querySelector('.variations-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            currentThumbnail = cardData;
+                            document.getElementById('variations-modal').dataset.prompt = cardData.prompt || '';
+                            document.getElementById('variations-modal').dataset.filePath = cardData.file_path || '';
+                            document.getElementById('variations-modal').classList.add('active');
+                        });
+
                         grid.appendChild(card);
                     });
                 })

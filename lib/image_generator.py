@@ -60,6 +60,7 @@ class GeminiImageGenerator(ImageGeneratorBase):
         # Model options
         self.models = {
             "nanobanana": "gemini-3-pro-image-preview",  # NanoBanana Pro (Gemini 3 Pro Image)
+            "nanobanana2": "gemini-3.1-flash-image-preview",  # NanoBanana 2 Pro (Pro quality at Flash speed)
             "flash": "gemini-2.5-flash-image",  # Nano Banana standard (faster, good quality)
         }
         self.model_key = model_key
@@ -866,6 +867,7 @@ class MultiModelGenerator:
         # Initialize available generators (auto-registered based on API keys)
         if GENAI_AVAILABLE and settings.google_api_keys:
             self.generators["gemini"] = GeminiImageGenerator(settings)
+            self.generators["nanobanana2"] = GeminiImageGenerator(settings, model_key="nanobanana2")
 
         if REPLICATE_AVAILABLE and os.getenv('REPLICATE_API_TOKEN'):
             self.generators["flux"] = ReplicateImageGenerator(settings, "flux-schnell")

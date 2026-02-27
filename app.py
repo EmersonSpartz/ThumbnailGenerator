@@ -148,6 +148,7 @@ def get_available_models():
     # Add model info
     model_info = {
         "gemini": {"name": "Gemini NanoBanana", "description": "Google's image model, good general quality"},
+        "nanobanana2": {"name": "NanoBanana 2 Pro", "description": "Pro quality at Flash speed - Google's best image model"},
         "flux": {"name": "Flux Schnell", "description": "Fast, high-quality images with good composition"},
         "sdxl": {"name": "SDXL Lightning", "description": "Stability AI model, very fast"},
         "ideogram": {"name": "Ideogram", "description": "Best for text in images - great for thumbnails with titles"},
@@ -1194,16 +1195,36 @@ def model_shootout():
             'message': f'Model Shootout: {count} concepts × {len(models_to_use)} models'
         })
 
-        # STEP 1: Generate concepts with Claude (streaming)
+        # STEP 1: Generate concepts with Claude (thread+queue for Railway keepalive)
+        concepts_queue = queue.Queue()
+
+        def _stream_concepts():
+            try:
+                for event in ideator.generate_concepts_streaming(
+                    titles=titles,
+                    used_ideas=[],
+                    batch_number=1,
+                    script=script,
+                    creative_direction=creative_direction,
+                    count=count
+                ):
+                    concepts_queue.put(event)
+            except Exception as e:
+                concepts_queue.put({'type': 'error', 'error': str(e)})
+            finally:
+                concepts_queue.put(None)
+
+        threading.Thread(target=_stream_concepts, daemon=True).start()
+
         concepts = []
-        for event in ideator.generate_concepts_streaming(
-            titles=titles,
-            used_ideas=[],
-            batch_number=1,
-            script=script,
-            creative_direction=creative_direction,
-            count=count
-        ):
+        while True:
+            try:
+                event = concepts_queue.get(timeout=120)
+            except queue.Empty:
+                yield sse_message({'type': 'error', 'message': 'Concept generation timed out'})
+                return
+            if event is None:
+                break
             if event['type'] == 'prompt':
                 yield sse_message({'type': 'claude_prompt', 'content': event['content']})
             elif event['type'] == 'thinking_delta':
@@ -1212,6 +1233,9 @@ def model_shootout():
                 yield sse_message({'type': 'claude_response', 'content': event['content']})
             elif event['type'] == 'concepts':
                 concepts = event['concepts']
+            elif event['type'] == 'error':
+                yield sse_message({'type': 'error', 'message': event['error']})
+                return
 
         if not concepts:
             yield sse_message({'type': 'error', 'message': 'No concepts generated'})
@@ -1226,8 +1250,42 @@ def model_shootout():
             'message': f'Got {len(concepts)} concepts, generating prompts...'
         })
 
-        # STEP 2: Generate prompts
-        prompts_with_concepts = ideator.generate_prompts_for_concepts(concepts)
+        # STEP 2: Generate prompts (streaming so Railway doesn't timeout)
+        prompts_queue = queue.Queue()
+
+        def _stream_prompts():
+            try:
+                for event in ideator.generate_prompts_for_concepts_streaming(concepts):
+                    prompts_queue.put(event)
+            except Exception as e:
+                prompts_queue.put({'type': 'error', 'error': str(e)})
+            finally:
+                prompts_queue.put(None)
+
+        threading.Thread(target=_stream_prompts, daemon=True).start()
+
+        prompts_with_concepts = []
+        while True:
+            try:
+                event = prompts_queue.get(timeout=120)
+            except queue.Empty:
+                yield sse_message({'type': 'error', 'message': 'Prompt generation timed out'})
+                return
+            if event is None:
+                break
+            if event['type'] == 'prompt':
+                yield sse_message({'type': 'claude_prompt', 'content': event['content']})
+            elif event['type'] == 'thinking_delta':
+                yield sse_message({'type': 'claude_thinking', 'content': event['content']})
+            elif event['type'] == 'response_delta':
+                yield sse_message({'type': 'claude_response', 'content': event['content']})
+            elif event['type'] == 'prompts':
+                prompts_with_concepts = event['prompts']
+            elif event['type'] == 'error':
+                yield sse_message({'type': 'error', 'message': event['error']})
+                return
+            else:
+                yield sse_message({'type': 'keepalive'})
 
         yield sse_message({
             'type': 'prompts_ready',
@@ -2193,7 +2251,7 @@ def agentic_generate():
                                     text_overlay_obj.add_text(
                                         abs_path,
                                         thumbnail_text,
-                                        position='bottom-center',
+                                        position='top-center',
                                         style='impact',
                                         output_path=abs_path
                                     )
