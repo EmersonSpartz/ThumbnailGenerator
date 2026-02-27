@@ -222,6 +222,22 @@ class ClaudeIdeator:
         except json.JSONDecodeError:
             pass
 
+        # Recover individual concept objects from truncated JSON
+        concept_objects = re.findall(
+            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*"category"\s*:\s*"[^"]*"\s*,\s*"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
+            text, re.DOTALL
+        )
+        if concept_objects:
+            recovered = []
+            for obj_str in concept_objects:
+                try:
+                    recovered.append(json.loads(obj_str))
+                except json.JSONDecodeError:
+                    continue
+            if recovered:
+                print(f"[PARSE] Recovered {len(recovered)} concepts from truncated JSON")
+                return recovered
+
         print(f"Failed to parse concepts JSON: {text[:500]}")
         return []
 
@@ -265,8 +281,8 @@ class ClaudeIdeator:
 
         yield {"type": "prompt", "content": prompt}
 
-        # Scale tokens for large concept counts (~300 tokens per prompt)
-        prompt_tokens_needed = max(32000, len(concepts) * 400 + self.budget_tokens + 5000)
+        # Scale tokens for large concept counts (~600 tokens per detailed image prompt)
+        prompt_tokens_needed = max(32000, len(concepts) * 600 + self.budget_tokens + 5000)
         prompt_tokens_needed = min(prompt_tokens_needed, 128000)
 
         with self.client.messages.stream(
@@ -473,28 +489,39 @@ Return as JSON:
                 text = block.text
                 break
 
+        prompts = []
         try:
             json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group(1))
             else:
                 data = json.loads(text)
-
             prompts = data.get('prompts', [])
-
-            # Merge prompts back with concepts
-            result = []
-            for prompt_data in prompts:
-                concept_name = prompt_data.get('concept_name', '')
-                # Find matching concept
-                matching_concept = next(
-                    (c for c in concepts if c.get('concept_name') == concept_name),
-                    {}
-                )
-                merged = {**matching_concept, **prompt_data}
-                result.append(merged)
-
-            return result
         except json.JSONDecodeError:
-            print(f"Failed to parse prompts JSON: {text[:500]}")
-            return []
+            # JSON truncated — recover individual prompt objects from partial JSON
+            prompt_objects = re.findall(
+                r'\{\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"prompt"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
+                text, re.DOTALL
+            )
+            for obj_str in prompt_objects:
+                try:
+                    prompts.append(json.loads(obj_str))
+                except json.JSONDecodeError:
+                    continue
+            if prompts:
+                print(f"[PARSE] Recovered {len(prompts)} prompts from truncated JSON")
+            else:
+                print(f"Failed to parse prompts JSON: {text[:500]}")
+
+        # Merge prompts back with concepts
+        result = []
+        for prompt_data in prompts:
+            concept_name = prompt_data.get('concept_name', '')
+            matching_concept = next(
+                (c for c in concepts if c.get('concept_name') == concept_name),
+                {}
+            )
+            merged = {**matching_concept, **prompt_data}
+            result.append(merged)
+
+        return result
