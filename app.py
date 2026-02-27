@@ -1141,6 +1141,47 @@ def clear_history():
     return jsonify({'status': 'ok'})
 
 
+@app.route('/api/cleanup-output', methods=['POST'])
+def cleanup_output():
+    """Delete old output folders to free disk space. Keeps the N most recent folders."""
+    import shutil
+    keep = request.args.get('keep', 10, type=int)
+
+    output_dir = settings.output_dir
+    if not output_dir.exists():
+        return jsonify({'status': 'ok', 'message': 'No output directory'})
+
+    # Get all subdirectories sorted by modification time (oldest first)
+    folders = sorted(
+        [f for f in output_dir.iterdir() if f.is_dir()],
+        key=lambda f: f.stat().st_mtime
+    )
+
+    if len(folders) <= keep:
+        return jsonify({'status': 'ok', 'message': f'Only {len(folders)} folders, nothing to clean', 'kept': len(folders)})
+
+    to_delete = folders[:-keep] if keep > 0 else folders
+    deleted = 0
+    freed_bytes = 0
+    for folder in to_delete:
+        try:
+            size = sum(f.stat().st_size for f in folder.rglob('*') if f.is_file())
+            shutil.rmtree(folder)
+            deleted += 1
+            freed_bytes += size
+        except Exception as e:
+            print(f"[CLEANUP] Error deleting {folder}: {e}")
+
+    freed_mb = freed_bytes / (1024 * 1024)
+    return jsonify({
+        'status': 'ok',
+        'deleted_folders': deleted,
+        'kept_folders': keep,
+        'freed_mb': round(freed_mb, 1),
+        'message': f'Deleted {deleted} folders, freed ~{freed_mb:.0f} MB'
+    })
+
+
 # ============================================================
 # MODEL SHOOTOUT - Side-by-side comparison for each concept
 # ============================================================
