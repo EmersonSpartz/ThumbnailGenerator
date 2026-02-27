@@ -149,10 +149,15 @@ class ClaudeIdeator:
         # Yield the prompt first so frontend can display it
         yield {"type": "prompt", "content": prompt}
 
+        # Scale max_tokens based on concept count (~200 tokens per concept in JSON)
+        # thinking budget is separate, so we need enough for the full JSON response
+        response_tokens_needed = max(32000, count * 300 + self.budget_tokens + 5000)
+        response_tokens_needed = min(response_tokens_needed, 128000)  # API limit
+
         # Stream the response
         with self.client.messages.stream(
             model=self.model,
-            max_tokens=32000,
+            max_tokens=response_tokens_needed,
             thinking={
                 "type": "enabled",
                 "budget_tokens": self.budget_tokens
@@ -260,9 +265,13 @@ class ClaudeIdeator:
 
         yield {"type": "prompt", "content": prompt}
 
+        # Scale tokens for large concept counts (~300 tokens per prompt)
+        prompt_tokens_needed = max(32000, len(concepts) * 400 + self.budget_tokens + 5000)
+        prompt_tokens_needed = min(prompt_tokens_needed, 128000)
+
         with self.client.messages.stream(
             model=self.model,
-            max_tokens=32000,
+            max_tokens=prompt_tokens_needed,
             thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
             messages=[{"role": "user", "content": prompt}]
         ) as stream:
