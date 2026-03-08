@@ -1141,6 +1141,27 @@ def clear_history():
     return jsonify({'status': 'ok'})
 
 
+def _auto_cleanup_if_needed(max_folders=30):
+    """Automatically clean old output when folder count exceeds threshold."""
+    import shutil
+    output_dir = settings.output_dir
+    if not output_dir.exists():
+        return
+    folders = sorted(
+        [f for f in output_dir.iterdir() if f.is_dir()],
+        key=lambda f: f.stat().st_mtime
+    )
+    if len(folders) <= max_folders:
+        return
+    to_delete = folders[:-max_folders]
+    for folder in to_delete:
+        try:
+            shutil.rmtree(folder)
+        except Exception:
+            pass
+    print(f"[AUTO-CLEANUP] Deleted {len(to_delete)} old output folders, kept {max_folders}")
+
+
 @app.route('/api/cleanup-output', methods=['POST'])
 def cleanup_output():
     """Delete old output folders to free disk space. Keeps the N most recent folders."""
@@ -2033,7 +2054,8 @@ def agentic_generate():
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
     creative_direction = request.args.get('creative_direction', '').strip()
-    count = int(request.args.get('count', 10))
+    _auto_cleanup_if_needed()  # Prevent disk-full crashes
+    count = min(int(request.args.get('count', 10)), 100)  # Cap at 100 to prevent server freeze
     models_str = request.args.get('models', 'gemini,flux,sdxl')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
     max_iterations = int(request.args.get('max_iterations', 2))  # 2 = before/after comparison

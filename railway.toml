@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python app.py"
+startCommand = "gunicorn app:app --bind 0.0.0.0:${PORT:-8080} --worker-class gevent --workers 2 --timeout 600 --keep-alive 120"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"

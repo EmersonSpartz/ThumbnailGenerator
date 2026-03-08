@@ -13,3 +13,7 @@ requests>=2.31.0
 
 # Image processing
 pillow>=10.0.0
+
+# Production server
+gunicorn>=21.2.0
+gevent>=24.2.0
