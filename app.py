@@ -102,7 +102,24 @@ def check_auth_api():
 
 @app.route('/health')
 def health():
-    """Health check endpoint for Railway (no auth required)."""
+    """Health check endpoint for Railway (no auth required).
+    Also runs auto-cleanup to prevent disk-full crashes.
+    Returns 500 if disk is critically full (triggers Railway restart).
+    """
+    import shutil
+
+    # Auto-cleanup on every health check (runs every ~30s on Railway)
+    _auto_cleanup_if_needed()
+
+    # Check disk space - fail health check if critically low
+    try:
+        usage = shutil.disk_usage(str(settings.output_dir))
+        free_mb = usage.free / (1024 * 1024)
+        if free_mb < 50:  # Less than 50MB free = critical
+            return jsonify({'status': 'error', 'message': f'Disk critically low: {free_mb:.0f}MB free'}), 500
+    except Exception:
+        pass
+
     return jsonify({'status': 'ok'})
 
 
