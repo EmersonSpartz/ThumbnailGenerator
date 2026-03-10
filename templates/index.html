@@ -3233,10 +3233,17 @@
 
             eventSource.onerror = (e) => {
                 console.error('SSE connection error:', e);
-                // Check if we have any results - if not, it's a complete failure
                 const results = activeJobs[jobId]?.progress?.current || 0;
                 if (results === 0) {
-                    alert('Generation failed - check console for details. The server may have encountered an error.');
+                    alert('Generation failed - the server may have encountered an error. Please try again.');
+                } else {
+                    // Partial results received — connection dropped mid-generation
+                    // Show a banner and auto-reload after 5s to reconnect
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;padding:12px 24px;text-align:center;z-index:9999;font-size:14px;font-weight:bold;';
+                    banner.innerHTML = `Connection dropped after ${results} thumbnails. The server may still be generating. <button onclick="location.reload()" style="margin-left:12px;padding:4px 12px;border:none;border-radius:4px;background:#000;color:#fff;cursor:pointer;">Reload Now</button>`;
+                    document.body.prepend(banner);
+                    setTimeout(() => location.reload(), 8000);
                 }
                 completeJob(jobId, false);
                 eventSource.close();

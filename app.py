@@ -2282,9 +2282,11 @@ def agentic_generate():
                         'message': f'Iteration {iteration+1}/{max_iterations}: Generating with {len(models_to_use)} models...'
                     })
 
-                    # Generate with all models IN PARALLEL (SPEED BOOST #1)
+                    # Generate with all models IN PARALLEL, using a queue so we can
+                    # send SSE keepalives while waiting (prevents connection drop)
                     results = {}
                     failed_models = []
+                    img_results_queue = queue.Queue()
 
                     def generate_for_model(model_name):
                         try:
@@ -2295,26 +2297,29 @@ def agentic_generate():
                                     current_prompt_data.get('prompt', '') +
                                     f'\n\nIMPORTANT: Leave the bottom 20% of the image as a clean, uncluttered area for text overlay. Do NOT include any text, words, or letters anywhere in the image.'
                                 )
-                            return model_name, generator.generate_with_model(
+                            result = generator.generate_with_model(
                                 model_name,
                                 prompt_data_for_gen,
                                 f"{batch_id}/iter{iteration+1}/{model_name}"
                             )
+                            img_results_queue.put((model_name, result))
                         except Exception as e:
-                            return model_name, {'success': False, 'error': str(e)}
+                            img_results_queue.put((model_name, {'success': False, 'error': str(e)}))
 
-                    # Use executor without context manager to avoid blocking on cleanup
                     executor = ThreadPoolExecutor(max_workers=len(models_to_use))
-                    futures = [executor.submit(generate_for_model, m) for m in models_to_use]
+                    for m in models_to_use:
+                        executor.submit(generate_for_model, m)
+                    executor.shutdown(wait=False)
 
-                    for future in as_completed(futures):
+                    received = 0
+                    while received < len(models_to_use):
                         if _stop_generation:
                             break
-
                         try:
-                            model_name, result = future.result(timeout=120)
-                        except Exception as e:
-                            print(f"[AGENTIC ERROR] Future failed: {e}")
+                            model_name, result = img_results_queue.get(timeout=3)
+                            received += 1
+                        except queue.Empty:
+                            yield sse_keepalive()  # Keep SSE alive while image is generating
                             continue
 
                         if result.get('success'):
@@ -2374,8 +2379,6 @@ def agentic_generate():
                                 'type': 'phase',
                                 'message': f'⚠️ {model_name} failed: {error_msg[:80]}'
                             })
-
-                    executor.shutdown(wait=False)
 
                     if not results:
                         error_details = '; '.join(failed_models) if failed_models else 'No error details'
