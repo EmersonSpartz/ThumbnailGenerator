@@ -14,32 +14,39 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
-# Global log storage for visibility
-_last_prompt = ""
-_last_response = ""
-_last_thinking = ""
-_current_thinking = ""  # For real-time streaming
-_current_response = ""  # For real-time streaming
+# Thread-local storage for per-request visibility (safe for concurrent users)
+import threading
+_thread_local = threading.local()
+
+def _get_tls():
+    """Get thread-local storage, initializing defaults if needed."""
+    if not hasattr(_thread_local, 'last_prompt'):
+        _thread_local.last_prompt = ""
+        _thread_local.last_response = ""
+        _thread_local.last_thinking = ""
+        _thread_local.current_thinking = ""
+        _thread_local.current_response = ""
+    return _thread_local
 
 def get_last_prompt():
-    return _last_prompt
+    return _get_tls().last_prompt
 
 def get_last_response():
-    return _last_response
+    return _get_tls().last_response
 
 def get_last_thinking():
-    return _last_thinking
+    return _get_tls().last_thinking
 
 def get_current_thinking():
-    return _current_thinking
+    return _get_tls().current_thinking
 
 def get_current_response():
-    return _current_response
+    return _get_tls().current_response
 
 def reset_current_stream():
-    global _current_thinking, _current_response
-    _current_thinking = ""
-    _current_response = ""
+    tls = _get_tls()
+    tls.current_thinking = ""
+    tls.current_response = ""
 
 
 class ClaudeIdeator:
@@ -100,7 +107,7 @@ class ClaudeIdeator:
             creative_direction: User's guidance on visual style (e.g., "fungal body horror")
             count: Number of concepts to generate
         """
-        global _last_prompt, _last_response, _last_thinking
+        tls = _get_tls()
 
         prompt = self._build_concepts_prompt(
             titles, used_ideas, batch_number, script,
@@ -108,7 +115,7 @@ class ClaudeIdeator:
         )
 
         # Store the prompt for debugging
-        _last_prompt = prompt
+        tls.last_prompt = prompt
 
         response = self._stream_with_retry(
             model=self.model,
@@ -121,13 +128,13 @@ class ClaudeIdeator:
         )
 
         # Extract and store thinking and response for debugging
-        _last_thinking = ""
-        _last_response = ""
+        tls.last_thinking = ""
+        tls.last_response = ""
         for block in response.content:
             if hasattr(block, 'thinking'):
-                _last_thinking = block.thinking
+                tls.last_thinking = block.thinking
             if hasattr(block, 'text'):
-                _last_response = block.text
+                tls.last_response = block.text
 
         return self._parse_concepts(response)
 
@@ -146,7 +153,7 @@ class ClaudeIdeator:
         STEP 1: Generate thumbnail concepts with streaming for real-time visibility.
         Yields events as Claude thinks and writes.
         """
-        global _last_prompt, _last_response, _last_thinking, _current_thinking, _current_response
+        tls = _get_tls()
 
         prompt = self._build_concepts_prompt(
             titles, used_ideas, batch_number, script,
@@ -154,11 +161,11 @@ class ClaudeIdeator:
         )
 
         # Store and reset
-        _last_prompt = prompt
-        _current_thinking = ""
-        _current_response = ""
-        _last_thinking = ""
-        _last_response = ""
+        tls.last_prompt = prompt
+        tls.current_thinking = ""
+        tls.current_response = ""
+        tls.last_thinking = ""
+        tls.last_response = ""
 
         # Yield the prompt first so frontend can display it
         yield {"type": "prompt", "content": prompt}
@@ -188,22 +195,22 @@ class ClaudeIdeator:
 
                 elif event.type == "content_block_delta":
                     if hasattr(event.delta, 'thinking'):
-                        _current_thinking += event.delta.thinking
+                        tls.current_thinking += event.delta.thinking
                         yield {"type": "thinking_delta", "content": event.delta.thinking}
                     elif hasattr(event.delta, 'text'):
-                        _current_response += event.delta.text
+                        tls.current_response += event.delta.text
                         yield {"type": "response_delta", "content": event.delta.text}
 
                 elif event.type == "content_block_stop":
                     pass
 
                 elif event.type == "message_stop":
-                    _last_thinking = _current_thinking
-                    _last_response = _current_response
+                    tls.last_thinking = tls.current_thinking
+                    tls.last_response = tls.current_response
                     yield {"type": "complete"}
 
         # Parse and return concepts
-        concepts = self._parse_response_text(_current_response)
+        concepts = self._parse_response_text(tls.current_response)
         yield {"type": "concepts", "concepts": concepts}
 
     def _parse_response_text(self, text: str) -> list[dict]:
@@ -282,16 +289,16 @@ class ClaudeIdeator:
         STEP 2: Generate prompts with streaming for real-time visibility.
         Yields events as Claude thinks and writes.
         """
-        global _last_prompt, _last_response, _last_thinking, _current_thinking, _current_response
+        tls = _get_tls()
 
         if not concepts:
             yield {"type": "prompts", "prompts": []}
             return
 
         prompt = self._build_prompts_prompt(concepts)
-        _last_prompt = prompt
-        _current_thinking = ""
-        _current_response = ""
+        tls.last_prompt = prompt
+        tls.current_thinking = ""
+        tls.current_response = ""
 
         yield {"type": "prompt", "content": prompt}
 
@@ -314,21 +321,21 @@ class ClaudeIdeator:
                             yield {"type": "response_start"}
                 elif event.type == "content_block_delta":
                     if hasattr(event.delta, 'thinking'):
-                        _current_thinking += event.delta.thinking
+                        tls.current_thinking += event.delta.thinking
                         yield {"type": "thinking_delta", "content": event.delta.thinking}
                     elif hasattr(event.delta, 'text'):
-                        _current_response += event.delta.text
+                        tls.current_response += event.delta.text
                         yield {"type": "response_delta", "content": event.delta.text}
                 elif event.type == "message_stop":
-                    _last_thinking = _current_thinking
-                    _last_response = _current_response
+                    tls.last_thinking = tls.current_thinking
+                    tls.last_response = tls.current_response
                     yield {"type": "complete"}
 
         # Parse and merge prompts with concepts
         class FakeResponse:
             def __init__(self, text):
                 self.content = [type('Block', (), {'text': text})()]
-        result = self._parse_prompts(FakeResponse(_current_response), concepts)
+        result = self._parse_prompts(FakeResponse(tls.current_response), concepts)
         yield {"type": "prompts", "prompts": result}
 
     def generate_variations(
@@ -408,7 +415,7 @@ class ClaudeIdeator:
 
 CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
 
-AESTHETIC MANDATE: Every prompt should feel like direction for a cinematographer or documentary photographer. Use specific camera/lens references, natural lighting direction, muted color grading, and atmospheric details. The goal is premium, cinematic imagery — NOT typical AI-generated content.
+AESTHETIC MANDATE: Every prompt should be BOLD and scroll-stopping while looking premium. Use high contrast, bold saturated colors (intentional, not random neon), specific camera/lens references, cinematic lighting direction, and atmospheric details. The goal is visually striking AND premium — NOT muted/boring, NOT typical AI-generated content.
 
 ## CONCEPTS:
 
