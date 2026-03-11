@@ -10,6 +10,7 @@ import os
 import tempfile
 from pathlib import Path
 from datetime import datetime
+from threading import Lock
 from typing import Optional
 import difflib
 
@@ -22,6 +23,7 @@ class PromptManager:
         self.prompts_file = data_dir / 'editable_prompts.json'
         self.history_file = data_dir / 'prompt_history.json'
         self.prompting_guide_file = data_dir / 'prompting_guide.md'
+        self._lock = Lock()
         self._load_or_create_defaults()
 
     def _load_or_create_defaults(self):
@@ -81,52 +83,65 @@ class PromptManager:
 
     def _get_default_image_prompt_template(self) -> str:
         """Default template for how Claude writes image prompts."""
-        return """Write cinematic image prompts for each thumbnail concept. These should read like film stills or documentary photography direction.
+        return """Write bold, cinematic image prompts for each thumbnail concept. These should produce images that are visually STRIKING and scroll-stopping while still looking premium and professional.
 
 CRITICAL RULES:
 - ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE
-- Keep prompts focused on ONE clear visual with breathing room
-- Use cinematic language: describe lighting direction, depth of field, color grade, atmosphere
-- Favor natural/practical lighting over dramatic artificial lighting
-- Specify a photographic or cinematic style (e.g. 'shot on ARRI Alexa', 'Kodak Portra 400 film grain', '85mm f/1.4 shallow depth of field')
-- Color grading should be muted and intentional, not oversaturated
-- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, cinematic color grading, film grain
+- Keep prompts focused on ONE clear visual — bold but not cluttered
+- HIGH CONTRAST is essential — dark backgrounds with bright subjects, or vice versa
+- Bold, saturated color palette — but intentional and cohesive, not random neon
+- Include cinematic lighting direction (not just "dramatic lighting")
+- Add atmosphere and texture (fog, grain, depth of field, particles)
+- Specify a visual style when helpful (e.g. "Kurzgesagt aesthetic", "shot on ARRI Alexa", "National Geographic photography")
+- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, cinematic lighting
 
 Follow the prompting guide provided."""
 
     # Version marker — bump this string to force migration of old Railway prompts
-    PROMPT_VERSION = "v3-premium-documentary"
+    PROMPT_VERSION = "v4-bold-premium"
 
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
         return {
             "_version": self.PROMPT_VERSION,
-            "claude_prompt": """You are a world-class visual storyteller and thumbnail art director. Your mission is to generate thumbnail concepts that feel like frames from a premium documentary — cinematic, sophisticated, and compelling without being cheap or clickbaity.
+            "claude_prompt": """You are a world-class visual storyteller and thumbnail art director. Your mission is to generate thumbnail concepts that are visually striking AND sophisticated — they stop the scroll without being cheap or childish.
 
 ---
 
 ## THE AESTHETIC (Global Rules)
 
-### The Vibe
-Think: BBC Earth meets Wired magazine. Cool, confident, visually striking but never desperate for attention. These thumbnails should feel like they belong on a prestige streaming platform, not a children's YouTube channel.
+### The Balance
+Bold AND premium. These thumbnails need to GRAB attention in a sea of content while still feeling like they belong on a quality channel. Think Kurzgesagt, Veritasium, Vox — they use bold colors and strong visuals but never look cheap or AI-generated.
 
-### Visual Vocabulary
-Cinematic wide shots, dramatic natural lighting, striking silhouettes, atmospheric fog/haze, moody color grading, shallow depth of field, aerial/drone perspectives, intimate close-ups with intentional focus, architectural scale, vast landscapes with a single human figure, chiaroscuro lighting, golden hour warmth, cold blue moonlight, film grain texture.
+### What Gets Clicked (Keep These)
+- HIGH CONTRAST between foreground and background — this is non-negotiable for CTR
+- Bold, saturated color — but INTENTIONAL, not random neon. Pick a strong palette and commit
+- ONE clear focal point that reads instantly at thumbnail size
+- Visual tension, mystery, or scale that creates an "info gap"
+- Human faces with REAL emotion (curiosity, awe, concern — NOT fake shock/surprise)
+- Dynamic composition with energy — diagonals, leading lines, asymmetry
 
-### Tone References
-Planet Earth, Cosmos, The Social Dilemma, Ex Machina, Blade Runner 2049, Arrival, Interstellar, National Geographic covers, Wired magazine photography, Apple product photography — clean, premium, intentional.
+### What Makes It Premium (Add These)
+- Cinematic lighting with clear direction (not flat, not generic)
+- Intentional color palette — bold but cohesive (not rainbow vomit)
+- Clean composition with breathing room — bold ≠ cluttered
+- Film-quality textures and atmosphere (fog, grain, depth of field)
+- Specific visual references: Planet Earth, Cosmos, Ex Machina, Blade Runner 2049, Kurzgesagt, National Geographic
 
-### Forbidden
-- Cartoonish or childish imagery (bright primary colors, exaggerated proportions, silly expressions)
-- Stock photo aesthetic (posed people, fake smiles, generic office settings)
-- Overly busy compositions (too many elements competing for attention)
-- Cliché AI imagery (glowing brains, circuit boards, robot hands, blue matrix rain)
-- Clickbait shock faces (open mouths, pointing at nothing, fake surprise)
-- Over-saturated neon colors that scream "AI generated"
-- Generic sci-fi tropes (laser beams, floating holograms)
+### Forbidden (The Cringe List)
+- Cartoonish or childish imagery (this is NOT for kids)
+- Stock photo aesthetic (posed people, fake smiles, generic offices)
+- Clickbait shock faces (open mouths, pointing at nothing)
+- Cliché AI imagery (glowing brains, circuit boards, matrix rain, robot hands)
+- Over-busy compositions with too many competing elements
+- That specific "AI-generated" look: perfect symmetry, plastic skin, neon everything
 
 ### Color Philosophy
-Muted, graded, intentional. Think film color grading, not Photoshop saturation slider. Desaturated earth tones with one accent color. Teal and orange cinema grade. Deep shadows with selective highlights. Monochromatic with texture.
+BOLD but INTENTIONAL. Strong saturated colors that pop, but chosen with purpose — not the random neon palette that screams AI. Think:
+- Deep rich reds, electric blues, vibrant oranges — but graded, not raw
+- Complementary color combos for maximum pop (teal/orange, blue/gold, red/cyan)
+- Dark moody backgrounds with one or two punchy accent colors
+- High contrast is king — dark darks, bright brights
 
 ---
 
@@ -139,11 +154,11 @@ Muted, graded, intentional. Think film color grading, not Photoshop saturation s
 
 ## GENERATE {{COUNT}} THUMBNAIL CONCEPTS
 
-For each concept, apply the **Premium Test**:
-- Would this look at home as a poster for a prestige documentary?
-- Is it visually striking without being loud or desperate?
-- Does it create genuine intrigue, not cheap curiosity?
-- Is the composition clean and intentional, with breathing room?
+For each concept, apply the **Scroll-Stop Test**:
+- Would you actually STOP scrolling to look at this?
+- Is it instantly readable at 320x180px thumbnail size?
+- Does it create genuine intrigue without being cheap?
+- Does it look premium, not AI-generated or childish?
 
 ---
 
@@ -157,7 +172,7 @@ Return ALL {{COUNT}} concepts as JSON:
     {
       "title_ref": "The video title this is for",
       "concept_name": "Short memorable name (2-4 words)",
-      "category": "Which angle (Cinematic Scale, Intimate Portrait, Atmospheric Mood, Conceptual Metaphor, etc.)",
+      "category": "Which angle (Cinematic Scale, Intimate Portrait, Bold Metaphor, Dramatic Contrast, etc.)",
       "description": "Vivid 2-3 sentence description of the visual"
     }
   ]
@@ -171,7 +186,7 @@ Return ALL {{COUNT}} concepts as JSON:
         current_version = self.prompts.get('_version', '')
         if current_version == self.PROMPT_VERSION:
             return  # Already up to date
-        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current:
+        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current or 'Muted, graded, intentional' in current:
             print("[PROMPT MANAGER] Migrating stale prompt template to current version")
             defaults = self._get_default_prompts()
             self.prompts['claude_prompt'] = defaults['claude_prompt']
@@ -232,46 +247,49 @@ Return ALL {{COUNT}} concepts as JSON:
 
     def get_prompt(self, key: str) -> str:
         """Get a prompt by key."""
-        return self.prompts.get(key, "")
+        with self._lock:
+            return self.prompts.get(key, "")
 
     def get_all_prompts(self) -> dict:
         """Get all prompts."""
-        return self.prompts.copy()
+        with self._lock:
+            return self.prompts.copy()
 
     def update_prompt(self, key: str, new_value: str, note: str = "") -> dict:
         """
         Update a prompt and record the change.
         Returns the diff/change record.
         """
-        old_value = self.prompts.get(key, "")
+        with self._lock:
+            old_value = self.prompts.get(key, "")
 
-        # Generate diff
-        if isinstance(old_value, str) and isinstance(new_value, str):
-            diff = self._generate_diff(old_value, new_value)
-        else:
-            diff = {"old": old_value, "new": new_value}
+            # Generate diff
+            if isinstance(old_value, str) and isinstance(new_value, str):
+                diff = self._generate_diff(old_value, new_value)
+            else:
+                diff = {"old": old_value, "new": new_value}
 
-        # Record history
-        change_record = {
-            "timestamp": datetime.now().isoformat(),
-            "key": key,
-            "old_value": old_value,
-            "new_value": new_value,
-            "diff": diff,
-            "note": note
-        }
-        self.history.append(change_record)
+            # Record history
+            change_record = {
+                "timestamp": datetime.now().isoformat(),
+                "key": key,
+                "old_value": old_value,
+                "new_value": new_value,
+                "diff": diff,
+                "note": note
+            }
+            self.history.append(change_record)
 
-        # Keep only last 100 changes
-        if len(self.history) > 100:
-            self.history = self.history[-100:]
+            # Keep only last 100 changes
+            if len(self.history) > 100:
+                self.history = self.history[-100:]
 
-        # Update and save
-        self.prompts[key] = new_value
-        self._save_prompts()
-        self._save_history()
+            # Update and save
+            self.prompts[key] = new_value
+            self._save_prompts()
+            self._save_history()
 
-        return change_record
+            return change_record
 
     def _generate_diff(self, old: str, new: str) -> dict:
         """Generate a human-readable diff."""
@@ -300,30 +318,35 @@ Return ALL {{COUNT}} concepts as JSON:
 
     def get_history(self, limit: int = 20) -> list:
         """Get recent change history."""
-        return self.history[-limit:][::-1]  # Most recent first
+        with self._lock:
+            return self.history[-limit:][::-1]  # Most recent first
 
     def rollback(self, timestamp: str) -> bool:
         """Rollback to a previous version by timestamp."""
-        for record in reversed(self.history):
-            if record["timestamp"] == timestamp:
-                self.prompts[record["key"]] = record["old_value"]
-                self._save_prompts()
+        with self._lock:
+            for record in reversed(self.history):
+                if record["timestamp"] == timestamp:
+                    self.prompts[record["key"]] = record["old_value"]
+                    self._save_prompts()
 
-                # Add rollback record
-                self.history.append({
-                    "timestamp": datetime.now().isoformat(),
-                    "key": record["key"],
-                    "old_value": record["new_value"],
-                    "new_value": record["old_value"],
-                    "note": f"Rollback to {timestamp}",
-                    "is_rollback": True
-                })
-                self._save_history()
-                return True
-        return False
+                    # Add rollback record
+                    self.history.append({
+                        "timestamp": datetime.now().isoformat(),
+                        "key": record["key"],
+                        "old_value": record["new_value"],
+                        "new_value": record["old_value"],
+                        "note": f"Rollback to {timestamp}",
+                        "is_rollback": True
+                    })
+                    self._save_history()
+                    return True
+            return False
 
     def build_full_prompt(self, titles: list[str], script: str = "", creative_direction: str = "", count: int = 20) -> str:
         """Build the full Claude prompt by filling in the template."""
+        with self._lock:
+            template = self.prompts.get('claude_prompt', '')
+
         titles_formatted = "\n".join([f"{i+1}. {t}" for i, t in enumerate(titles)])
 
         # Build script section
@@ -344,9 +367,7 @@ Incorporate this creative direction into ALL concepts. This is the user's vision
 
 """
 
-        # Get the template and fill in placeholders
-        template = self.prompts.get('claude_prompt', '')
-
+        # Fill in placeholders
         prompt = template.replace('{{TITLES}}', titles_formatted)
         prompt = prompt.replace('{{SCRIPT_SECTION}}', script_section)
         prompt = prompt.replace('{{CREATIVE_DIRECTION_SECTION}}', cd_section)

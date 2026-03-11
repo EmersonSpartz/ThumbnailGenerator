@@ -1,48 +1,48 @@
-**Quality criteria** (Premium documentary thumbnail aesthetic):
+**Quality criteria** (Bold + Premium thumbnail aesthetic):
 
-**1. CINEMATIC QUALITY (0-3 points)** 🎯 MOST IMPORTANT
-- Does it look like a frame from a prestige documentary or film?
-- Intentional lighting with clear direction (not flat, not generic "dramatic")
-- Film-like color grading — muted, graded, not oversaturated
-- Organic texture (film grain, atmosphere) vs. sterile digital smoothness
-Score: 3=could be a movie poster, 2=feels professional, 1=looks AI-generated, 0=obviously AI
+**1. SCROLL-STOPPING POWER (0-3 points)** 🎯 MOST IMPORTANT
+- Bold, high-contrast colors that POP — this is non-negotiable
+- Clear visual hierarchy — one obvious focal point readable at 320x180
+- "Info gap" — creates genuine curiosity or visual tension
+- Reads INSTANTLY — no squinting, no confusion
+Score: 3=would stop YOUR scroll, 2=noticeable, 1=blends in, 0=invisible
 
-**2. VISUAL INTRIGUE (0-2 points)** - What makes someone stop scrolling
-- Creates genuine curiosity through composition, subject, or mood
-- NOT through shock, exaggeration, or clickbait tactics
-- Veritasium framework: High info gap + low misleading = ideal
-- The image raises a question the viewer wants answered
-Score: 2=genuinely compelling, 1=mildly interesting, 0=generic or try-hard
+**2. EMOTIONAL HOOK (0-2 points)** - Proven CTR driver
+- Visible emotion/expression if face present (curiosity, awe, concern — NOT fake shock)
+- OR mysterious/dramatic scene that raises questions
+- Scale contrast (tiny human vs. something massive) = instant drama
+- Creates "I need to know" feeling in 1 second
+Score: 2=strong curiosity, 1=mild interest, 0=no hook
 
-**3. COMPOSITION & RESTRAINT (0-2 points)**
-- Clean, intentional composition with breathing room (negative space)
+**3. VISUAL QUALITY (0-2 points)** - Premium, not AI-looking
+- Cinematic lighting with clear direction (not flat or generic)
+- Cohesive color palette (2-3 bold colors, not rainbow neon)
+- Atmosphere and texture (grain, fog, depth of field — not sterile digital)
+- Avoids AI tells: no perfect symmetry, no plastic skin, no floating objects
+Score: 2=could be real photography/cinema, 1=decent, 0=obviously AI-generated
+
+**4. COMPOSITION (0-2 points)**
 - ONE clear focal point — not cluttered with competing elements
-- Sophisticated use of depth (foreground/background separation, bokeh)
-- Feels composed by a cinematographer, not assembled by AI
-Score: 2=masterful restraint, 1=acceptable, 0=cluttered or generic
-
-**4. PREMIUM FEEL (0-2 points)**
-- Would this fit on BBC Earth, Wired, National Geographic, or Apple's website?
-- Avoids childish, cartoonish, or over-the-top imagery
-- Color palette is cohesive and intentional
-- Specific, not generic — has a distinct mood and identity
-Score: 2=premium/sophisticated, 1=decent, 0=cheap or cringe
+- High contrast between subject and background — separation is everything
+- Dynamic composition (rule of thirds, diagonals, asymmetry)
+- Subject fills enough of frame to read at thumbnail size
+Score: 2=masterful, 1=acceptable, 0=cluttered or generic
 
 **5. THUMBNAIL-SPECIFIC (0-1 point)**
-- Readable at YouTube thumbnail size (320x180px)
+- Works at actual YouTube size (320x180px), not just full-screen
 - Distinct from similar videos (not generic stock)
 - Clear visual story without needing the title
-Score: 1=works perfectly at small size, 0=loses impact when small
+Score: 1=works perfectly small, 0=loses impact
 
 **SCORE 0-10**.
-- 3-5: Typical AI output (oversaturated, busy, generic)
-- 6-7: Decent but still feels "generated"
-- 8-9: Premium — could pass for real photography/cinematography
-- 10: Exceptional — genuinely compelling, zero AI tells
+- 3-5: Typical AI output (cluttered, neon, generic)
+- 6-7: Decent but could be bolder or more refined
+- 8-9: Excellent — bold AND premium
+- 10: Would genuinely outperform on YouTube
 
 **RED FLAGS (auto-deduct 2 points each):**
-- Oversaturated neon colors
-- Multiple competing focal points
-- Clickbait-style shock faces or exaggerated expressions
-- Perfect digital symmetry (AI tell)
-- Cliché imagery (glowing brains, matrix rain, floating holograms)
+- Low contrast / muted colors that disappear at thumbnail size
+- Multiple competing focal points (cluttered)
+- Clickbait shock faces or childish imagery
+- Perfect digital symmetry or plastic skin (AI tells)
+- Random neon rainbow palette (AI tell)
