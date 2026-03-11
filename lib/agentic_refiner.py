@@ -44,7 +44,7 @@ class AgenticImageRefiner:
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not set")
 
-        self.client = anthropic.Anthropic(api_key=self.api_key)
+        self.client = anthropic.Anthropic(api_key=self.api_key, max_retries=3)
 
         # Load rubric from file for easy editing
         rubric_path = Path(__file__).parent.parent / 'rubric.txt'
@@ -130,12 +130,13 @@ Respond with JSON array:
 
         try:
             print(f"[AGENTIC] Evaluating {len(images_data)} images with Claude Opus 4.6...")
-            response = self.client.messages.create(
+            with self.client.messages.stream(
                 model=self.model,
                 max_tokens=4000,
-                timeout=120.0,  # 120 second timeout for Opus 4.6
+                timeout=120.0,
                 messages=[{"role": "user", "content": content}]
-            )
+            ) as stream:
+                response = stream.get_final_message()
             print(f"[AGENTIC] Evaluation complete, parsing response...")
 
             response_text = response.content[0].text
@@ -229,10 +230,10 @@ Provide your response as JSON:
 
         try:
             print(f"[AGENTIC] Evaluating single thumbnail: {concept_name}")
-            response = self.client.messages.create(
+            with self.client.messages.stream(
                 model=self.model,
                 max_tokens=2000,
-                timeout=120.0,  # 120 second timeout for Opus 4.6
+                timeout=120.0,
                 messages=[{
                     "role": "user",
                     "content": [
@@ -250,7 +251,8 @@ Provide your response as JSON:
                         }
                     ]
                 }]
-            )
+            ) as stream:
+                response = stream.get_final_message()
 
             # Parse Claude's response
             response_text = response.content[0].text
@@ -325,15 +327,16 @@ Based on these evaluations, create ONE dramatically improved prompt that address
 Return ONLY the dramatically improved prompt text, no JSON, no explanation."""
 
         try:
-            response = self.client.messages.create(
+            with self.client.messages.stream(
                 model=self.model,
                 max_tokens=1000,
-                timeout=90.0,  # 90 second timeout for refinement
+                timeout=90.0,
                 messages=[{
                     "role": "user",
                     "content": synthesis_prompt
                 }]
-            )
+            ) as stream:
+                response = stream.get_final_message()
 
             refined_prompt = response.content[0].text.strip()
 

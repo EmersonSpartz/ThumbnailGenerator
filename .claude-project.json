@@ -1,0 +1,16 @@
+{
+    "type": "python",
+    "verify_command": "./verify.sh",
+    "deep_verify_command": "./deep-verify.sh",
+    "test_after_edit": "",
+    "deploy_url": "",
+    "critical_files": ["app.py", "rubric.txt", "lib/image_generator.py", "lib/claude_client.py", "lib/agentic_refiner.py"],
+    "review_checklist": [
+        "Run: curl -s -X POST localhost:5050/api/quick-generate -H 'Content-Type: application/json' -d '{\"prompt\":\"dramatic tiger\",\"model\":\"gemini\"}' — does it return success?",
+        "Run a model-shootout with 2+ models — do ALL models produce images, or do some silently fail?",
+        "Run agentic-generate with max_iterations=2 — does it complete both iterations without freezing?",
+        "Open localhost:5050 in browser — does the UI load and can you click Generate?",
+        "Would Drew be able to use this for 10 minutes without hitting an error?"
+    ],
+    "notes": ["Drew is the primary user", "Quality > cost", "Must handle full iteration cycles without freezing", "Server: python app.py on localhost:5050"]
+}

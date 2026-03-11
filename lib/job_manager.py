@@ -27,27 +27,49 @@ class JobManager:
         self.history = self._load_history()
 
     def _load_history(self):
-        """Load generation history from disk."""
+        """Load generation history from disk. Auto-backs up corrupted files."""
         if self.history_file.exists():
             try:
                 with open(self.history_file, 'r') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                # Validate expected structure
+                if not isinstance(data, dict) or "sessions" not in data or "thumbnails" not in data:
+                    raise ValueError("Invalid history structure - missing required keys")
+                return data
             except Exception as e:
                 print(f"[JOB MANAGER] Error loading history: {e}")
+                # Auto-backup corrupted file before resetting
+                bak_path = self.history_file.with_suffix('.json.bak')
+                try:
+                    import shutil
+                    shutil.copy2(str(self.history_file), str(bak_path))
+                    print(f"[JOB MANAGER] Corrupted history backed up to {bak_path}")
+                except Exception:
+                    pass
                 return {"sessions": [], "thumbnails": []}
         return {"sessions": [], "thumbnails": []}
 
     def _save_history(self):
-        """Save history to disk atomically (write to temp then rename)."""
+        """Save history to disk atomically (write to temp, fsync, then rename)."""
         import tempfile
-        tmp_path = self.history_file.with_suffix('.tmp')
+        fd = None
+        tmp_path = None
         try:
-            with open(tmp_path, 'w') as f:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(self.data_dir), suffix='.tmp', prefix='history_'
+            )
+            tmp_path = Path(tmp_path_str)
+            with os.fdopen(fd, 'w') as f:
+                fd = None  # os.fdopen takes ownership of fd
                 json.dump(self.history, f, indent=2, default=str)
+                f.flush()
+                os.fsync(f.fileno())
             tmp_path.replace(self.history_file)
         except Exception as e:
             print(f"[JOB MANAGER] Error saving history: {e}")
-            if tmp_path.exists():
+            if fd is not None:
+                os.close(fd)
+            if tmp_path and tmp_path.exists():
                 tmp_path.unlink()
 
     def create_job(self, job_type, params):

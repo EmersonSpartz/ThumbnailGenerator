@@ -9,6 +9,7 @@ Enhanced with:
 import anthropic
 import json
 import re
+import time
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -45,11 +46,24 @@ class ClaudeIdeator:
     """Generate thumbnail concepts using Claude with extended thinking."""
 
     def __init__(self, settings, prompt_manager=None):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key, max_retries=3)
         self.model = settings.claude_model
         self.budget_tokens = settings.thinking_budget_tokens
         self.prompt_manager = prompt_manager
         self.data_dir = settings.data_dir
+
+    def _stream_with_retry(self, max_retries=3, **kwargs):
+        """Stream a Claude message with retry on connection/rate limit errors."""
+        for attempt in range(max_retries):
+            try:
+                with self.client.messages.stream(**kwargs) as stream:
+                    return stream.get_final_message()
+            except (anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.APITimeoutError) as e:
+                if attempt == max_retries - 1:
+                    raise
+                wait = 2 ** attempt * 5  # 5s, 10s, 20s
+                print(f"[Claude] Retry {attempt + 1}/{max_retries} after {type(e).__name__}: waiting {wait}s")
+                time.sleep(wait)
 
     def _get_prompting_guide(self) -> str:
         """Get prompting guide from prompt manager or file."""
@@ -96,7 +110,7 @@ class ClaudeIdeator:
         # Store the prompt for debugging
         _last_prompt = prompt
 
-        response = self.client.messages.create(
+        response = self._stream_with_retry(
             model=self.model,
             max_tokens=32000,
             thinking={
@@ -251,7 +265,7 @@ class ClaudeIdeator:
 
         prompt = self._build_prompts_prompt(concepts)
 
-        response = self.client.messages.create(
+        response = self._stream_with_retry(
             model=self.model,
             max_tokens=32000,
             thinking={
@@ -334,7 +348,7 @@ class ClaudeIdeator:
         """
         prompt = self._build_variations_prompt(base_concept, num_variations, variation_style)
 
-        response = self.client.messages.create(
+        response = self._stream_with_retry(
             model=self.model,
             max_tokens=32000,
             thinking={
@@ -394,13 +408,15 @@ class ClaudeIdeator:
 
 CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
 
+AESTHETIC MANDATE: Every prompt should feel like direction for a cinematographer or documentary photographer. Use specific camera/lens references, natural lighting direction, muted color grading, and atmospheric details. The goal is premium, cinematic imagery — NOT typical AI-generated content.
+
 ## CONCEPTS:
 
 {concepts_formatted}
 
 ---
 
-## NANOBANANA PRO PROMPTING GUIDE
+## CINEMATIC PROMPTING GUIDE
 
 {prompting_guide}
 
@@ -413,7 +429,7 @@ Return as JSON:
     {{
       "concept_name": "The concept name from above",
       "title_ref": "The video title",
-      "prompt": "The complete NanoBanana Pro prompt (NO TEXT IN IMAGE)"
+      "prompt": "The complete cinematic image prompt (NO TEXT IN IMAGE)"
     }}
   ]
 }}

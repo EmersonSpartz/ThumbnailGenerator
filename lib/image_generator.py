@@ -156,6 +156,10 @@ class GeminiImageGenerator(ImageGeneratorBase):
                     if self._rotate_key():
                         continue
                     return {"success": False, "error": "All API keys exhausted", "quota_exhausted": True}
+                # Retry once on transient network errors
+                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "503", "502", "500"]):
+                    time.sleep(2)
+                    continue
                 return {"success": False, "error": error_str}
 
         return {"success": False, "error": "All retries failed"}
@@ -232,65 +236,70 @@ class ReplicateImageGenerator(ImageGeneratorBase):
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            # Run the model
-            model_id = self.models.get(self.model_name, self.models["flux-schnell"])
+        for attempt in range(2):
+            try:
+                # Run the model
+                model_id = self.models.get(self.model_name, self.models["flux-schnell"])
 
-            # Add trigger word if this is a fine-tuned model
-            actual_prompt = prompt
-            if self.model_name in self.trigger_words:
-                trigger = self.trigger_words[self.model_name]
-                if trigger not in prompt:
-                    # Prepend trigger word for thumbnail style
-                    actual_prompt = f"a youtube thumbnail in the style of {trigger}, {prompt}"
+                # Add trigger word if this is a fine-tuned model
+                actual_prompt = prompt
+                if self.model_name in self.trigger_words:
+                    trigger = self.trigger_words[self.model_name]
+                    if trigger not in prompt:
+                        # Prepend trigger word for thumbnail style
+                        actual_prompt = f"a youtube thumbnail in the style of {trigger}, {prompt}"
 
-            # Flux thumbnail LoRA model - optimized settings
-            if self.model_name == "flux-thumbnails":
-                input_params = {
-                    "prompt": actual_prompt,
-                    "num_outputs": 1,
-                    "aspect_ratio": "16:9",  # YouTube thumbnail ratio
-                    "output_format": "png",
-                    "guidance_scale": 3,  # Recommended: 2-3.5
-                    "num_inference_steps": 28,  # Recommended for dev mode
-                }
-            # Standard Flux models
-            elif "flux" in self.model_name:
-                input_params = {
-                    "prompt": actual_prompt,
-                    "num_outputs": 1,
-                    "aspect_ratio": "16:9",  # YouTube thumbnail ratio
-                    "output_format": "png",
-                }
-            else:
-                # SDXL-style models
-                input_params = {
-                    "prompt": actual_prompt,
-                    "width": 1280,
-                    "height": 720,
-                    "num_outputs": 1,
-                }
-
-            output = replicate.run(model_id, input=input_params)
-
-            # Download the image
-            if output:
-                image_url = output[0] if isinstance(output, list) else output
-                response = requests.get(image_url)
-                if response.status_code == 200:
-                    output_path.write_bytes(response.content)
-                    return {
-                        "success": True,
-                        "file_path": str(output_path),
-                        "prompt_used": prompt,
-                        "concept": prompt_data,
-                        "model": self.model_name
+                # Flux thumbnail LoRA model - optimized settings
+                if self.model_name == "flux-thumbnails":
+                    input_params = {
+                        "prompt": actual_prompt,
+                        "num_outputs": 1,
+                        "aspect_ratio": "16:9",  # YouTube thumbnail ratio
+                        "output_format": "png",
+                        "guidance_scale": 3,  # Recommended: 2-3.5
+                        "num_inference_steps": 28,  # Recommended for dev mode
+                    }
+                # Standard Flux models
+                elif "flux" in self.model_name:
+                    input_params = {
+                        "prompt": actual_prompt,
+                        "num_outputs": 1,
+                        "aspect_ratio": "16:9",  # YouTube thumbnail ratio
+                        "output_format": "png",
+                    }
+                else:
+                    # SDXL-style models
+                    input_params = {
+                        "prompt": actual_prompt,
+                        "width": 1280,
+                        "height": 720,
+                        "num_outputs": 1,
                     }
 
-            return {"success": False, "error": "No output from model"}
+                output = replicate.run(model_id, input=input_params)
 
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+                # Download the image
+                if output:
+                    image_url = output[0] if isinstance(output, list) else output
+                    response = requests.get(image_url)
+                    if response.status_code == 200:
+                        output_path.write_bytes(response.content)
+                        return {
+                            "success": True,
+                            "file_path": str(output_path),
+                            "prompt_used": prompt,
+                            "concept": prompt_data,
+                            "model": self.model_name
+                        }
+
+                return {"success": False, "error": "No output from model"}
+
+            except Exception as e:
+                error_str = str(e)
+                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "503", "502", "500"]):
+                    time.sleep(2)
+                    continue
+                return {"success": False, "error": error_str}
 
 
 class MidjourneyGenerator(ImageGeneratorBase):

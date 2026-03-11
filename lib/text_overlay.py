@@ -66,9 +66,9 @@ class TextOverlay:
 
     # Text positions
     POSITIONS = {
-        "top-left": (0.05, 0.08),
-        "top-center": (0.5, 0.08),
-        "top-right": (0.95, 0.08),
+        "top-left": (0.05, 0.12),
+        "top-center": (0.5, 0.12),
+        "top-right": (0.95, 0.12),
         "center": (0.5, 0.5),
         "bottom-left": (0.05, 0.80),
         "bottom-center": (0.5, 0.80),
@@ -80,45 +80,46 @@ class TextOverlay:
         self.fonts = self._find_fonts()
 
     def _find_fonts(self) -> dict:
-        """Find available fonts, prioritizing Lemon Milk."""
-        fonts = {"bold": None, "regular": None, "lemonmilk": None}
+        """Find available fonts, prioritizing Degular."""
+        fonts = {"bold": None, "regular": None}
 
         # Get the project fonts directory
         project_dir = Path(__file__).parent.parent
         fonts_dir = project_dir / "fonts"
 
-        # Priority 1: Lemon Milk (preferred for thumbnails)
-        lemon_milk_paths = [
-            fonts_dir / "LEMONMILK-Bold.otf",
-            fonts_dir / "LEMONMILK-Medium.otf",
-            fonts_dir / "LEMONMILK-Regular.otf",
+        # Priority 1: Degular (preferred for thumbnails)
+        degular_bold_paths = [
+            fonts_dir / "DegularDemo-Black.otf",
+            fonts_dir / "DegularDemo-Bold.otf",
         ]
-        for font_path in lemon_milk_paths:
+        for font_path in degular_bold_paths:
             if font_path.exists():
-                fonts["lemonmilk"] = str(font_path)
-                fonts["bold"] = str(font_path)  # Use as default bold
+                fonts["bold"] = str(font_path)
                 break
 
-        # Priority 2: System bold fonts (fallback)
+        # Priority 2: Lemon Milk (legacy fallback)
         if fonts["bold"] is None:
-            mac_bold_fonts = [
+            for font_path in [fonts_dir / "LEMONMILK-Bold.otf", fonts_dir / "LEMONMILK-Medium.otf"]:
+                if font_path.exists():
+                    fonts["bold"] = str(font_path)
+                    break
+
+        # Priority 3: System bold fonts
+        if fonts["bold"] is None:
+            for font_path in [
                 "/System/Library/Fonts/Supplemental/Impact.ttf",
                 "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-                "/System/Library/Fonts/Supplemental/Arial Black.ttf",
-                "/Library/Fonts/Arial.ttf",
-            ]
-            for font_path in mac_bold_fonts:
+            ]:
                 if os.path.exists(font_path):
                     fonts["bold"] = font_path
                     break
 
         # Regular fonts
-        regular_fonts = [
+        for font_path in [
+            fonts_dir / "DegularDemo-Regular.otf",
             fonts_dir / "LEMONMILK-Regular.otf",
             "/System/Library/Fonts/Helvetica.ttc",
-            "/System/Library/Fonts/SFNS.ttf",
-        ]
-        for font_path in regular_fonts:
+        ]:
             path_str = str(font_path) if isinstance(font_path, Path) else font_path
             if os.path.exists(path_str):
                 fonts["regular"] = path_str
@@ -160,26 +161,41 @@ class TextOverlay:
         # Get style settings
         style_config = self.STYLES.get(style, self.STYLES["impact"])
 
-        # Calculate font size
-        font_size = int(height * style_config["font_size_ratio"])
-
         # Load font
         font_weight = style_config.get("font_weight", "bold")
         font_path = self.fonts.get(font_weight) or self.fonts.get("bold")
-
-        try:
-            if font_path:
-                font = ImageFont.truetype(font_path, font_size)
-            else:
-                font = ImageFont.load_default()
-        except Exception:
-            font = ImageFont.load_default()
 
         # Process text
         if style_config.get("uppercase", False):
             text = text.upper()
 
-        # Get text size
+        # Calculate font size, then shrink until text fits within 90% of image width
+        max_text_width = int(width * 0.90)
+        font_size = int(height * style_config["font_size_ratio"])
+        min_font_size = int(height * 0.06)
+
+        font = ImageFont.load_default()
+        while font_size >= min_font_size:
+            try:
+                if font_path:
+                    candidate = ImageFont.truetype(font_path, font_size)
+                else:
+                    candidate = ImageFont.load_default()
+            except Exception:
+                candidate = ImageFont.load_default()
+            bbox_test = draw.textbbox((0, 0), text, font=candidate)
+            if (bbox_test[2] - bbox_test[0]) <= max_text_width:
+                font = candidate
+                break
+            font_size = int(font_size * 0.88)
+        else:
+            # Fallback: use minimum size
+            try:
+                font = ImageFont.truetype(font_path, min_font_size) if font_path else ImageFont.load_default()
+            except Exception:
+                font = ImageFont.load_default()
+
+        # Get final text size
         bbox = draw.textbbox((0, 0), text, font=font)
         text_width = bbox[2] - bbox[0]
         text_height = bbox[3] - bbox[1]

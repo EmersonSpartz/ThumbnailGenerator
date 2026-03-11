@@ -6,6 +6,8 @@ with full change tracking and rollback capability.
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -79,35 +81,52 @@ class PromptManager:
 
     def _get_default_image_prompt_template(self) -> str:
         """Default template for how Claude writes image prompts."""
-        return """Write NanoBanana Pro prompts for each thumbnail concept.
+        return """Write cinematic image prompts for each thumbnail concept. These should read like film stills or documentary photography direction.
 
 CRITICAL RULES:
-- NO TEXT IN THE IMAGE - never include text, words, letters, or numbers in the prompt
-- Keep prompts focused on ONE clear visual
-- Describe the scene cinematically
-- Include lighting and composition details
-- End with: 16:9 YouTube thumbnail, high contrast
+- ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE
+- Keep prompts focused on ONE clear visual with breathing room
+- Use cinematic language: describe lighting direction, depth of field, color grade, atmosphere
+- Favor natural/practical lighting over dramatic artificial lighting
+- Specify a photographic or cinematic style (e.g. 'shot on ARRI Alexa', 'Kodak Portra 400 film grain', '85mm f/1.4 shallow depth of field')
+- Color grading should be muted and intentional, not oversaturated
+- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, cinematic color grading, film grain
 
 Follow the prompting guide provided."""
 
     # Version marker — bump this string to force migration of old Railway prompts
-    PROMPT_VERSION = "v2-count-controlled"
+    PROMPT_VERSION = "v3-premium-documentary"
 
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
         return {
             "_version": self.PROMPT_VERSION,
-            "claude_prompt": """You are The Assembly Line, a master AI Art Director and high-volume production engine. Your mission is to generate a massive, diverse portfolio of high-CTR thumbnail concepts.
+            "claude_prompt": """You are a world-class visual storyteller and thumbnail art director. Your mission is to generate thumbnail concepts that feel like frames from a premium documentary — cinematic, sophisticated, and compelling without being cheap or clickbaity.
 
 ---
 
-## THE ARTISTIC MANDATE (Global Rules)
+## THE AESTHETIC (Global Rules)
+
+### The Vibe
+Think: BBC Earth meets Wired magazine. Cool, confident, visually striking but never desperate for attention. These thumbnails should feel like they belong on a prestige streaming platform, not a children's YouTube channel.
 
 ### Visual Vocabulary
-You are encouraged to build concepts using visually powerful nouns, e.g.: Massive Robots, Uncanny Humanoids, Terrifying Monsters, Alien Invasion, Shoggoths, Skulls, Chains, Cages, Explosions, Swarms, Alarm-Bell Red, Danger, viral outbreak, Orwellian surveillance
+Cinematic wide shots, dramatic natural lighting, striking silhouettes, atmospheric fog/haze, moody color grading, shallow depth of field, aerial/drone perspectives, intimate close-ups with intentional focus, architectural scale, vast landscapes with a single human figure, chiaroscuro lighting, golden hour warmth, cold blue moonlight, film grain texture.
 
-### Forbidden Tropes
-You are forbidden from using visually boring or ambiguous imagery: circuit boards, wires, abstract data streams, glowing brains, server racks, generic office supplies, flowcharts, diagrams, infographics, scientists in lab coats, social media logos, stock photo aesthetics.
+### Tone References
+Planet Earth, Cosmos, The Social Dilemma, Ex Machina, Blade Runner 2049, Arrival, Interstellar, National Geographic covers, Wired magazine photography, Apple product photography — clean, premium, intentional.
+
+### Forbidden
+- Cartoonish or childish imagery (bright primary colors, exaggerated proportions, silly expressions)
+- Stock photo aesthetic (posed people, fake smiles, generic office settings)
+- Overly busy compositions (too many elements competing for attention)
+- Cliché AI imagery (glowing brains, circuit boards, robot hands, blue matrix rain)
+- Clickbait shock faces (open mouths, pointing at nothing, fake surprise)
+- Over-saturated neon colors that scream "AI generated"
+- Generic sci-fi tropes (laser beams, floating holograms)
+
+### Color Philosophy
+Muted, graded, intentional. Think film color grading, not Photoshop saturation slider. Desaturated earth tones with one accent color. Teal and orange cinema grade. Deep shadows with selective highlights. Monochromatic with texture.
 
 ---
 
@@ -120,10 +139,11 @@ You are forbidden from using visually boring or ambiguous imagery: circuit board
 
 ## GENERATE {{COUNT}} THUMBNAIL CONCEPTS
 
-For each concept, apply the **Squint Test**:
-- Is it instantly understandable in under 1 second?
-- Does it have a strong, clear silhouette? Is it SIMPLE?
-- Does it evoke a powerful, primal emotion?
+For each concept, apply the **Premium Test**:
+- Would this look at home as a poster for a prestige documentary?
+- Is it visually striking without being loud or desperate?
+- Does it create genuine intrigue, not cheap curiosity?
+- Is the composition clean and intentional, with breathing room?
 
 ---
 
@@ -137,7 +157,7 @@ Return ALL {{COUNT}} concepts as JSON:
     {
       "title_ref": "The video title this is for",
       "concept_name": "Short memorable name (2-4 words)",
-      "category": "Which angle (Human Reaction, Power Dynamic, etc.)",
+      "category": "Which angle (Cinematic Scale, Intimate Portrait, Atmospheric Mood, Conceptual Metaphor, etc.)",
       "description": "Vivid 2-3 sentence description of the visual"
     }
   ]
@@ -151,7 +171,7 @@ Return ALL {{COUNT}} concepts as JSON:
         current_version = self.prompts.get('_version', '')
         if current_version == self.PROMPT_VERSION:
             return  # Already up to date
-        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current:
+        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current:
             print("[PROMPT MANAGER] Migrating stale prompt template to current version")
             defaults = self._get_default_prompts()
             self.prompts['claude_prompt'] = defaults['claude_prompt']
@@ -159,20 +179,54 @@ Return ALL {{COUNT}} concepts as JSON:
             self._save_prompts()
 
     def _save_prompts(self):
-        """Save current prompts to file."""
+        """Save current prompts to file atomically."""
         # Separate prompting guide (save as markdown) from other prompts (save as JSON)
         prompts_to_save = {k: v for k, v in self.prompts.items() if k != 'prompting_guide'}
-        with open(self.prompts_file, 'w') as f:
-            json.dump(prompts_to_save, f, indent=2)
+        fd = None
+        tmp_path = None
+        try:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(self.prompts_file.parent), suffix='.tmp', prefix='prompts_'
+            )
+            tmp_path = Path(tmp_path_str)
+            with os.fdopen(fd, 'w') as f:
+                fd = None
+                json.dump(prompts_to_save, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            tmp_path.replace(self.prompts_file)
+        except Exception as e:
+            print(f"[PROMPT MANAGER] Error saving prompts: {e}")
+            if fd is not None:
+                os.close(fd)
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink()
 
         # Save prompting guide as markdown if it exists
         if 'prompting_guide' in self.prompts:
             self.prompting_guide_file.write_text(self.prompts['prompting_guide'])
 
     def _save_history(self):
-        """Save history to file."""
-        with open(self.history_file, 'w') as f:
-            json.dump(self.history, f, indent=2)
+        """Save history to file atomically (write to temp, fsync, then rename)."""
+        fd = None
+        tmp_path = None
+        try:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(self.history_file.parent), suffix='.tmp', prefix='prompt_history_'
+            )
+            tmp_path = Path(tmp_path_str)
+            with os.fdopen(fd, 'w') as f:
+                fd = None
+                json.dump(self.history, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            tmp_path.replace(self.history_file)
+        except Exception as e:
+            print(f"[PROMPT MANAGER] Error saving history: {e}")
+            if fd is not None:
+                os.close(fd)
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink()
 
     def get_prompt(self, key: str) -> str:
         """Get a prompt by key."""

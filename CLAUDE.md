@@ -87,6 +87,35 @@ To add a model:
 6. Add API key to `.env`
 7. Restart server
 
+## Export to Tester (2026-03-11)
+
+**What**: One-click export of favorites to the Thumbnail Tester app for ELO voting
+**How**: Firebase JS SDK added to `templates/index.html` (module script at bottom)
+**Flow**: Favorites tab → "Export to Tester" button → enter video title → uploads to Firebase → returns voting link
+**Firebase project**: `thumbnail-tester-b1746` (same as all tester apps)
+**Tester URL**: `https://thumbnail-tester-b1746.web.app/thumbnail-tester/?v={videoId}`
+
+## Stress Testing
+
+**Script**: `./stress-test.sh [batches] [concepts_per_batch] [models]`
+**Example**: `./stress-test.sh 20 10 gemini,flux` — 200 images across 20 batches
+**Proven**: 10 batches × 5 concepts × gemini = 50/50 images, 0 failures (2026-03-11)
+
+## Retry & Resilience (2026-03-11)
+
+- All Claude API calls use `max_retries=3` (SDK built-in) + manual `_stream_with_retry()` with exponential backoff
+- Non-streaming calls (generate_concepts, generate_prompts, generate_variations) retry on connection/rate limit errors
+- Streaming calls use SDK retry only
+- `multi_ideator.py`: each LLM future wrapped in try/catch (one failure doesn't crash batch)
+- `job_manager.py`, `prompt_manager.py`: atomic file writes (tempfile + fsync + rename)
+- `app.py`: `executor.shutdown(wait=True)` in agentic endpoint
+
+## Verify Before Done
+
+**Run `./verify.sh` after every code change.** Do not tell Emerson something is done until verify passes. It checks imports, lib modules, server startup, and key endpoints. Takes ~5 seconds.
+
+**For scale testing**: Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
+
 ## Important Rules
 
 - **Quality > cost**: Cost irrelevant, optimize for thumbnail quality

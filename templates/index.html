@@ -1233,7 +1233,7 @@
                         <div class="form-group">
                             <label>Image Model</label>
                             <select id="model" onchange="updateCostEstimate()">
-                                <option value="gemini" data-cost="0" data-limit="750/day">Gemini NanoBanana Pro (FREE)</option>
+                                <option value="gemini" data-cost="0" data-limit="750/day">Gemini NanoBanana 2 Pro (FREE)</option>
                                 <option value="aispecies" data-cost="0.02" data-limit="none">AI Species - $0.02</option>
                                 <option value="flux" data-cost="0.003" data-limit="none">Flux - $0.003</option>
                                 <option value="sdxl" data-cost="0.002" data-limit="none">SDXL - $0.002</option>
@@ -1592,7 +1592,7 @@
                 <h3 style="margin-bottom: 15px;">Image Generation Models</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                     <div style="background: #1a2a1a; padding: 15px; border-radius: 8px; border: 1px solid #4a9eff;">
-                        <h4 style="color: #4a9eff; margin-bottom: 10px;">🎨 Gemini NanoBanana Pro ⭐ RECOMMENDED</h4>
+                        <h4 style="color: #4a9eff; margin-bottom: 10px;">🎨 Gemini NanoBanana 2 Pro ⭐ RECOMMENDED</h4>
                         <p style="color: #888; font-size: 13px;">Model: <code style="background:#333;padding:2px 6px;border-radius:4px;">gemini-3-pro-image-preview</code></p>
                         <p style="color: #666; font-size: 12px; margin-top: 8px;">Google's best image model. Advanced reasoning, excellent at following complex instructions. FREE with generous limits.</p>
                     </div>
@@ -1619,7 +1619,7 @@
                 </div>
                 <div style="margin-top: 20px; padding: 15px; background: #1a2a2a; border-radius: 8px; border-left: 3px solid #4a9eff;">
                     <h4 style="color: #4a9eff; margin-bottom: 8px;">💡 Model Update</h4>
-                    <p style="color: #888; font-size: 13px;">Gemini now uses <strong>gemini-3-pro-image-preview</strong> (NanoBanana Pro) - Google's most advanced image model with reasoning capabilities. This should produce significantly better results than before.</p>
+                    <p style="color: #888; font-size: 13px;">Gemini now uses <strong>gemini-3-pro-image-preview</strong> (NanoBanana 2 Pro) - Google's most advanced image model with reasoning capabilities. This should produce significantly better results than before.</p>
                 </div>
             </div>
         </div>
@@ -1628,7 +1628,10 @@
         <div id="favorites" class="panel">
             <div class="favorites-header">
                 <h2>Your Favorites</h2>
-                <button class="btn btn-secondary" id="clear-favorites">Clear All</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" id="export-to-tester" style="background:#4ade80; color:#000; font-weight:600;">Export to Tester</button>
+                    <button class="btn btn-secondary" id="clear-favorites">Clear All</button>
+                </div>
             </div>
 
             <div class="patterns-summary" id="patterns-summary">
@@ -1994,6 +1997,7 @@
         // =====================================================
         let currentThumbnail = null;
         let favorites = [];
+        window.favorites = favorites; // Expose for Firebase module
         let generationMode = 'single';
         let variationsMode = 'single';
         let activeJobs = {};  // job_id -> job data
@@ -3560,6 +3564,7 @@
             const response = await fetch('/api/favorites');
             const data = await response.json();
             favorites = data.favorites;
+            window.favorites = favorites;
 
             const grid = document.getElementById('favorites-grid');
             grid.innerHTML = '';
@@ -4701,6 +4706,150 @@
         if (pipelineBtn) {
             pipelineBtn.addEventListener('click', loadPipelineDebug);
         }
+    </script>
+
+    <!-- Firebase SDK for Export to Tester -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlxzdAUzSWwBLYSdkkGrJz_70oGJmv94o",
+            authDomain: "thumbnail-tester-b1746.firebaseapp.com",
+            projectId: "thumbnail-tester-b1746",
+            storageBucket: "thumbnail-tester-b1746.firebasestorage.app",
+            messagingSenderId: "310329953022",
+            appId: "1:310329953022:web:8c626451eb761aa7b7f3af"
+        };
+
+        const fbApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fbApp);
+        const storage = getStorage(fbApp);
+
+        document.getElementById('export-to-tester').addEventListener('click', async () => {
+            const btn = document.getElementById('export-to-tester');
+            const origText = btn.textContent;
+
+            if (!window.favorites || window.favorites.length === 0) {
+                alert('No favorites to export. Star some thumbnails first!');
+                return;
+            }
+
+            // Ask for video title
+            const videoTitle = prompt('Video title for this test batch:', '');
+            if (!videoTitle) return;
+
+            btn.textContent = 'Exporting...';
+            btn.disabled = true;
+
+            try {
+                // Create or get the video document
+                const videoId = videoTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const videoRef = doc(db, 'thumbnail_test', 'videos', 'list', videoId);
+
+                // Check if video exists
+                const videoSnap = await getDoc(videoRef);
+                if (!videoSnap.exists()) {
+                    // Get current video count for ordering
+                    const videosSnap = await getDocs(collection(db, 'thumbnail_test', 'videos', 'list'));
+                    await setDoc(videoRef, {
+                        title: videoTitle,
+                        votes: 0,
+                        batchId: 'batch-1',
+                        order: videosSnap.size + 1
+                    });
+                }
+
+                let exported = 0;
+                const total = window.favorites.length;
+
+                for (const fav of window.favorites) {
+                    btn.textContent = `Exporting ${exported + 1}/${total}...`;
+
+                    try {
+                        // Fetch the image from the generator server
+                        const imgResponse = await fetch(`/output/${fav.thumbnail_path}`);
+                        if (!imgResponse.ok) {
+                            console.error(`Failed to fetch image: ${fav.thumbnail_path}`);
+                            continue;
+                        }
+                        const imgBlob = await imgResponse.blob();
+
+                        // Compress to 640px width JPEG (matching tester format)
+                        const compressedBlob = await compressImage(imgBlob, 640, 0.8);
+
+                        // Upload to Firebase Storage
+                        const thumbId = `gen_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                        const storageRef = ref(storage, `thumbnails/${thumbId}`);
+                        await uploadBytes(storageRef, compressedBlob, { contentType: 'image/jpeg' });
+
+                        // Create thumbnail document in Firestore
+                        const thumbRef = doc(db, 'thumbnail_test', 'videos', 'list', videoId, 'thumbnails', thumbId);
+                        await setDoc(thumbRef, {
+                            id: thumbId,
+                            name: fav.concept_name || fav.thumbnail_path.split('/').pop(),
+                            titleText: '',
+                            elo: 1500,
+                            matches: 0,
+                            wins: 0,
+                            eliminated: false
+                        });
+
+                        exported++;
+                    } catch (err) {
+                        console.error(`Failed to export favorite: ${fav.concept_name}`, err);
+                    }
+                }
+
+                const testerUrl = `https://thumbnail-tester-b1746.web.app/thumbnail-tester/?v=${videoId}`;
+                btn.textContent = `Exported ${exported}/${total}!`;
+                btn.style.background = '#22c55e';
+
+                // Show success with link
+                const linkDiv = document.createElement('div');
+                linkDiv.style.cssText = 'margin-top:15px; padding:15px; background:#1a2e1a; border:1px solid #4ade80; border-radius:8px; text-align:center;';
+                linkDiv.innerHTML = `
+                    <p style="margin-bottom:10px; color:#4ade80; font-weight:600;">✓ ${exported} thumbnails exported to Tester!</p>
+                    <a href="${testerUrl}" target="_blank" style="color:#60a5fa; font-size:14px;">${testerUrl}</a>
+                    <br><br>
+                    <button onclick="navigator.clipboard.writeText('${testerUrl}'); this.textContent='Copied!'" class="btn btn-secondary" style="font-size:12px;">Copy voting link</button>
+                `;
+                const favPanel = document.getElementById('favorites');
+                favPanel.querySelector('.favorites-header').after(linkDiv);
+
+                // Reset button after 5s
+                setTimeout(() => {
+                    btn.textContent = origText;
+                    btn.style.background = '#4ade80';
+                    btn.disabled = false;
+                }, 5000);
+
+            } catch (err) {
+                console.error('Export failed:', err);
+                alert('Export failed: ' + err.message);
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
+        });
+
+        // Compress image to target width and JPEG quality
+        function compressImage(blob, maxWidth, quality) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = Math.min(1, maxWidth / img.width);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(resolve, 'image/jpeg', quality);
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
     </script>
 </body>
 </html>

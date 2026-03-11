@@ -156,6 +156,12 @@ def serve_output(filename):
     return send_from_directory(settings.output_dir, filename)
 
 
+@app.route('/api/health')
+def health_check():
+    """Basic health check endpoint."""
+    return jsonify({"status": "ok"})
+
+
 @app.route('/api/models')
 def get_available_models():
     """Get list of available image generation models."""
@@ -685,7 +691,11 @@ def quick_variations():
                     yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
                     return
 
-                model_name, prompt_data, result, var_num = future.result()
+                try:
+                    model_name, prompt_data, result, var_num = future.result()
+                except Exception as e:
+                    print(f"[VARIATIONS] Future failed: {e}")
+                    continue
                 completed_per_model[model_name] += 1
                 total_completed += 1
 
@@ -856,7 +866,11 @@ def parallel_variations_get():
                     yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
                     return
 
-                model_name, prompt_data, result, idx = future.result()
+                try:
+                    model_name, prompt_data, result, idx = future.result()
+                except Exception as e:
+                    print(f"[QUICK-VAR] Future failed: {e}")
+                    continue
                 completed_per_model[model_name] += 1
                 total_completed += 1
 
@@ -1413,7 +1427,11 @@ def model_shootout():
                 futures = [executor.submit(generate_for_model, m) for m in models_to_use]
 
                 for future in as_completed(futures):
-                    model_name, result = future.result()
+                    try:
+                        model_name, result = future.result()
+                    except Exception as e:
+                        print(f"[PARALLEL-GEN] Future failed: {e}")
+                        continue
 
                     if result.get('success'):
                         file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
@@ -1994,7 +2012,11 @@ def parallel_generate():
                     yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
                     return
 
-                model_name, prompt_data, result, idx = future.result()
+                try:
+                    model_name, prompt_data, result, idx = future.result()
+                except Exception as e:
+                    print(f"[PARALLEL-VAR] Future failed: {e}")
+                    continue
                 completed_per_model[model_name] += 1
                 total_completed += 1
 
@@ -2309,7 +2331,7 @@ def agentic_generate():
                     executor = ThreadPoolExecutor(max_workers=len(models_to_use))
                     for m in models_to_use:
                         executor.submit(generate_for_model, m)
-                    executor.shutdown(wait=False)
+                    # Don't shutdown yet - let queue.get() collect results first
 
                     received = 0
                     while received < len(models_to_use):
@@ -2380,6 +2402,8 @@ def agentic_generate():
                                 'message': f'⚠️ {model_name} failed: {error_msg[:80]}'
                             })
 
+                    executor.shutdown(wait=True)  # Safe: all tasks already finished (collected via queue above)
+
                     if not results:
                         error_details = '; '.join(failed_models) if failed_models else 'No error details'
                         yield sse_message({
@@ -2426,6 +2450,7 @@ def agentic_generate():
                             t_eval.join(timeout=5)
                         if eval_err[0]:
                             print(f"[AGENTIC] Evaluation error: {eval_err[0]}")
+                            yield sse_message({'type': 'warning', 'message': f'Evaluation failed: {str(eval_err[0])[:100]}'})
                             evaluations = []
                         else:
                             evaluations = eval_box[0] or []
@@ -2492,8 +2517,8 @@ def agentic_generate():
                     def _run_refine():
                         try:
                             refine_box[0] = refiner.refine_prompt_batch(evaluations, current_prompt_data)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"[AGENTIC] Prompt refinement failed: {e}")
                     t_refine = threading.Thread(target=_run_refine)
                     t_refine.start()
                     while t_refine.is_alive():
@@ -2756,7 +2781,11 @@ def parallel_variations():
                     yield sse_message({'type': 'stopped', 'message': 'Generation stopped'})
                     return
 
-                model_name, prompt_data, result, idx = future.result()
+                try:
+                    model_name, prompt_data, result, idx = future.result()
+                except Exception as e:
+                    print(f"[FULL-PARALLEL] Future failed: {e}")
+                    continue
                 completed_per_model[model_name] += 1
                 total_completed += 1
 
@@ -3046,7 +3075,11 @@ def full_parallel_generate():
                     yield sse_message({'type': 'stopped', 'message': 'Stopped during generation'})
                     return
 
-                model_name, prompt_data, result, idx = future.result()
+                try:
+                    model_name, prompt_data, result, idx = future.result()
+                except Exception as e:
+                    print(f"[FULL-PARALLEL-GEN] Future failed: {e}")
+                    continue
                 completed_per_model[model_name] += 1
                 total_completed += 1
 

@@ -158,7 +158,7 @@ class ClaudeIdeatorV2(IdeatorBase):
 
         # Ensure max_tokens > budget_tokens for extended thinking
         max_tokens = max(16000, self.budget_tokens + 4000)
-        response = self.client.messages.create(
+        with self.client.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
             thinking={
@@ -166,7 +166,8 @@ class ClaudeIdeatorV2(IdeatorBase):
                 "budget_tokens": self.budget_tokens
             },
             messages=[{"role": "user", "content": prompt}]
-        )
+        ) as stream:
+            response = stream.get_final_message()
 
         text = ""
         for block in response.content:
@@ -363,7 +364,11 @@ class MultiLLMIdeator:
             futures = [executor.submit(generate_with_llm, llm) for llm in llms_to_use]
 
             for future in as_completed(futures):
-                llm_name, concepts = future.result()
+                try:
+                    llm_name, concepts = future.result()
+                except Exception as e:
+                    print(f"[MULTI-IDEATION] Future failed: {e}")
+                    continue
                 results[llm_name] = concepts
                 all_concepts.extend(concepts)
 

@@ -89,14 +89,15 @@ Return as JSON:
 }}
 ```"""
 
-        response = self.client.messages.create(
+        with self.client.messages.stream(
             model=self.model,
             max_tokens=4000,
             messages=[
                 {"role": "user", "content": user_message}
             ],
             system=system_prompt
-        )
+        ) as stream:
+            response = stream.get_final_message()
 
         # Parse response
         text = response.content[0].text
