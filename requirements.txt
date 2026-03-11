@@ -11,6 +11,9 @@ openai>=1.30.0
 # HTTP requests (for image downloads and direct API calls)
 requests>=2.31.0
 
+# Production server
+gunicorn>=21.2.0
+
 # Image processing
 pillow>=10.0.0
 

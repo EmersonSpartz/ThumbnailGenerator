@@ -8,8 +8,11 @@ This module allows you to:
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from datetime import datetime
+from threading import Lock
 from typing import Optional
 
 
@@ -19,6 +22,7 @@ class FavoritesManager:
     def __init__(self, settings):
         self.settings = settings
         self.favorites_path = settings.favorites_db_path
+        self._lock = Lock()
         self.favorites = self._load_favorites()
 
     def _load_favorites(self) -> dict:
@@ -31,9 +35,27 @@ class FavoritesManager:
         return {"favorites": [], "patterns": {}}
 
     def _save_favorites(self):
-        """Save favorites to disk."""
+        """Save favorites to disk atomically (write to temp, fsync, then rename)."""
         self.favorites_path.parent.mkdir(parents=True, exist_ok=True)
-        self.favorites_path.write_text(json.dumps(self.favorites, indent=2))
+        fd = None
+        tmp_path = None
+        try:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(self.favorites_path.parent), suffix='.tmp', prefix='favorites_'
+            )
+            tmp_path = Path(tmp_path_str)
+            with os.fdopen(fd, 'w') as f:
+                fd = None  # os.fdopen takes ownership of fd
+                json.dump(self.favorites, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            tmp_path.replace(self.favorites_path)
+        except Exception as e:
+            print(f"[FAVORITES] Error saving favorites: {e}")
+            if fd is not None:
+                os.close(fd)
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink()
 
     def add_favorite(
         self,
@@ -62,46 +84,50 @@ class FavoritesManager:
         Returns:
             The created favorite entry
         """
-        favorite = {
-            "id": len(self.favorites["favorites"]) + 1,
-            "thumbnail_path": thumbnail_path,
-            "concept_name": concept_name,
-            "prompt": prompt,
-            "title_ref": title_ref,
-            "category": category,
-            "description": description,
-            "notes": notes,
-            "performance_data": performance_data or {},
-            "added_at": datetime.now().isoformat(),
-        }
+        with self._lock:
+            favorite = {
+                "id": len(self.favorites["favorites"]) + 1,
+                "thumbnail_path": thumbnail_path,
+                "concept_name": concept_name,
+                "prompt": prompt,
+                "title_ref": title_ref,
+                "category": category,
+                "description": description,
+                "notes": notes,
+                "performance_data": performance_data or {},
+                "added_at": datetime.now().isoformat(),
+            }
 
-        self.favorites["favorites"].append(favorite)
-        self._update_patterns(favorite)
-        self._save_favorites()
+            self.favorites["favorites"].append(favorite)
+            self._update_patterns(favorite)
+            self._save_favorites()
 
-        return favorite
+            return favorite
 
     def remove_favorite(self, favorite_id: int) -> bool:
         """Remove a favorite by ID."""
-        original_len = len(self.favorites["favorites"])
-        self.favorites["favorites"] = [
-            f for f in self.favorites["favorites"] if f["id"] != favorite_id
-        ]
-        if len(self.favorites["favorites"]) < original_len:
-            self._save_favorites()
-            return True
-        return False
+        with self._lock:
+            original_len = len(self.favorites["favorites"])
+            self.favorites["favorites"] = [
+                f for f in self.favorites["favorites"] if f["id"] != favorite_id
+            ]
+            if len(self.favorites["favorites"]) < original_len:
+                self._save_favorites()
+                return True
+            return False
 
     def get_all_favorites(self) -> list:
         """Get all favorites."""
-        return self.favorites["favorites"]
+        with self._lock:
+            return list(self.favorites["favorites"])
 
     def get_favorites_by_category(self, category: str) -> list:
         """Get favorites filtered by category."""
-        return [
-            f for f in self.favorites["favorites"]
-            if f.get("category", "").lower() == category.lower()
-        ]
+        with self._lock:
+            return [
+                f for f in self.favorites["favorites"]
+                if f.get("category", "").lower() == category.lower()
+            ]
 
     def _update_patterns(self, favorite: dict):
         """
@@ -124,14 +150,17 @@ class FavoritesManager:
         Get analyzed patterns from successful thumbnails.
         Returns insights about what categories/concepts work well.
         """
-        return self.favorites.get("patterns", {})
+        with self._lock:
+            return dict(self.favorites.get("patterns", {}))
 
     def get_favorites_summary_for_prompt(self, limit: int = 5) -> str:
         """
         Generate a summary of favorites to include in Claude's prompt.
         This helps Claude understand what kinds of thumbnails have worked.
         """
-        favorites = self.favorites["favorites"][-limit:]  # Get most recent
+        with self._lock:
+            favorites = list(self.favorites["favorites"][-limit:])  # Get most recent
+            patterns = dict(self.favorites.get("patterns", {}))
 
         if not favorites:
             return ""
@@ -147,8 +176,7 @@ class FavoritesManager:
 - Why it worked: {fav.get('notes', 'Not specified')}
 """)
 
-        # Add pattern insights
-        patterns = self.get_success_patterns()
+        # Add pattern insights (patterns already captured under lock above)
         if patterns:
             summary_parts.append("\n### Success Patterns:")
             top_categories = sorted(
@@ -163,10 +191,11 @@ class FavoritesManager:
 
     def get_favorite_for_variation(self, favorite_id: int) -> Optional[dict]:
         """Get a specific favorite to use as basis for variations."""
-        for fav in self.favorites["favorites"]:
-            if fav["id"] == favorite_id:
-                return fav
-        return None
+        with self._lock:
+            for fav in self.favorites["favorites"]:
+                if fav["id"] == favorite_id:
+                    return dict(fav)
+            return None
 
 
 class PerformanceTracker:
@@ -178,6 +207,7 @@ class PerformanceTracker:
     def __init__(self, settings):
         self.settings = settings
         self.performance_path = settings.data_dir / 'performance.json'
+        self._lock = Lock()
         self.performance_data = self._load_performance()
 
     def _load_performance(self) -> dict:
@@ -190,8 +220,27 @@ class PerformanceTracker:
         return {"thumbnails": {}}
 
     def _save_performance(self):
-        """Save performance data."""
-        self.performance_path.write_text(json.dumps(self.performance_data, indent=2))
+        """Save performance data atomically (write to temp, fsync, then rename)."""
+        self.performance_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = None
+        tmp_path = None
+        try:
+            fd, tmp_path_str = tempfile.mkstemp(
+                dir=str(self.performance_path.parent), suffix='.tmp', prefix='performance_'
+            )
+            tmp_path = Path(tmp_path_str)
+            with os.fdopen(fd, 'w') as f:
+                fd = None
+                json.dump(self.performance_data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            tmp_path.replace(self.performance_path)
+        except Exception as e:
+            print(f"[PERFORMANCE] Error saving performance: {e}")
+            if fd is not None:
+                os.close(fd)
+            if tmp_path and tmp_path.exists():
+                tmp_path.unlink()
 
     def record_performance(
         self,
@@ -202,18 +251,20 @@ class PerformanceTracker:
         video_id: str = ""
     ):
         """Record performance metrics for a thumbnail."""
-        self.performance_data["thumbnails"][thumbnail_path] = {
-            "ctr": ctr,
-            "impressions": impressions,
-            "clicks": clicks,
-            "video_id": video_id,
-            "recorded_at": datetime.now().isoformat()
-        }
-        self._save_performance()
+        with self._lock:
+            self.performance_data["thumbnails"][thumbnail_path] = {
+                "ctr": ctr,
+                "impressions": impressions,
+                "clicks": clicks,
+                "video_id": video_id,
+                "recorded_at": datetime.now().isoformat()
+            }
+            self._save_performance()
 
     def get_top_performers(self, metric: str = "ctr", limit: int = 10) -> list:
         """Get top performing thumbnails by a metric."""
-        thumbnails = self.performance_data.get("thumbnails", {})
+        with self._lock:
+            thumbnails = dict(self.performance_data.get("thumbnails", {}))
         sorted_thumbs = sorted(
             thumbnails.items(),
             key=lambda x: x[1].get(metric, 0),
