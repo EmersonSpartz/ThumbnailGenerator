@@ -2076,6 +2076,237 @@ def parallel_generate():
     return sse_response(generate_stream())
 
 
+@app.route('/api/template-generate')
+def template_generate():
+    """
+    Generate a composite template thumbnail.
+
+    Query params:
+    - template: Template type (levels, pyramid, grid, vs_split)
+    - topic: The topic/theme
+    - slots: Number of slots
+    - model: Image model to use
+    """
+    from lib.template_engine import TEMPLATES, get_claude_instruction, TemplateCompositor
+
+    template_key = request.args.get('template', 'levels')
+    topic = request.args.get('topic', '')
+    slots = int(request.args.get('slots', TEMPLATES.get(template_key, {}).get('default_slots', 7)))
+    model_name = request.args.get('model', 'nanobanana2')
+
+    if not topic:
+        return Response(
+            sse_message({'type': 'error', 'message': 'No topic provided'}),
+            mimetype='text/event-stream'
+        )
+
+    if template_key not in TEMPLATES:
+        return Response(
+            sse_message({'type': 'error', 'message': f'Unknown template: {template_key}'}),
+            mimetype='text/event-stream'
+        )
+
+    def generate_stream():
+        global _stop_generation
+        _stop_generation = False
+
+        ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
+        generator = MultiModelGenerator(settings)
+
+        available_models = generator.get_available_models()
+        if model_name not in available_models:
+            yield sse_message({'type': 'error', 'message': f'Model {model_name} not available'})
+            return
+
+        # PHASE 1: Generate slot concepts with Claude
+        yield sse_message({
+            'type': 'progress',
+            'message': f'Claude is planning {slots} slots for "{topic}"...',
+            'phase': 'concepts'
+        })
+
+        template_instruction = get_claude_instruction(template_key, topic, slots)
+        prompt = f"""{template_instruction}
+
+Return as JSON:
+```json
+{{
+  "slots": [
+    {{
+      "slot_number": 1,
+      "label": "Short label (2-4 words)",
+      "description": "Vivid 1-2 sentence visual description for image generation"
+    }}
+  ]
+}}
+```
+
+Generate exactly {slots} slots. Each description should be a SINGLE clear visual scene."""
+
+        try:
+            response = ideator._stream_with_retry(
+                model=ideator.model,
+                max_tokens=16000,
+                thinking={"type": "enabled", "budget_tokens": ideator.budget_tokens},
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            response_text = ""
+            for block in response.content:
+                if hasattr(block, 'text'):
+                    response_text = block.text
+
+            # Parse slots from response
+            import re
+            json_match = re.search(r'\{[\s\S]*"slots"[\s\S]*\}', response_text)
+            if not json_match:
+                yield sse_message({'type': 'error', 'message': 'Failed to parse slot concepts'})
+                return
+
+            slot_data = json.loads(json_match.group())
+            slot_concepts = slot_data.get('slots', [])[:slots]
+
+        except Exception as e:
+            yield sse_message({'type': 'error', 'message': f'Claude error: {str(e)}'})
+            return
+
+        if not slot_concepts:
+            yield sse_message({'type': 'error', 'message': 'No slot concepts generated'})
+            return
+
+        yield sse_message({
+            'type': 'progress',
+            'message': f'Got {len(slot_concepts)} slot concepts, generating image prompts...',
+            'phase': 'prompts',
+            'slots': [s.get('label', f'Slot {s.get("slot_number", i+1)}') for i, s in enumerate(slot_concepts)]
+        })
+
+        # PHASE 2: Generate image prompts for each slot
+        concepts_for_prompts = [
+            {
+                'concept_name': s.get('label', f'Slot {i+1}'),
+                'description': s.get('description', ''),
+                'category': template_key,
+            }
+            for i, s in enumerate(slot_concepts)
+        ]
+
+        try:
+            prompts_with_concepts = ideator.generate_prompts_for_concepts(concepts_for_prompts)
+        except Exception as e:
+            yield sse_message({'type': 'error', 'message': f'Prompt generation error: {str(e)}'})
+            return
+
+        # PHASE 3: Generate images in parallel
+        yield sse_message({
+            'type': 'progress',
+            'message': f'Generating {len(prompts_with_concepts)} images with {model_name}...',
+            'phase': 'images',
+            'total': len(prompts_with_concepts)
+        })
+
+        batch_id = f"template_{template_key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        image_paths = [None] * len(prompts_with_concepts)
+        completed = 0
+
+        def generate_one(idx, prompt_data):
+            result = generator.generate_with_model(model_name, prompt_data, f"{batch_id}/{model_name}")
+            return idx, result
+
+        with ThreadPoolExecutor(max_workers=min(4, len(prompts_with_concepts))) as executor:
+            futures = [executor.submit(generate_one, i, p) for i, p in enumerate(prompts_with_concepts)]
+
+            for future in as_completed(futures):
+                if _stop_generation:
+                    yield sse_message({'type': 'stopped', 'message': 'Stopped'})
+                    return
+
+                try:
+                    idx, result = future.result()
+                except Exception as e:
+                    print(f"[TEMPLATE] Image generation failed: {e}")
+                    continue
+
+                completed += 1
+
+                if result.get('success'):
+                    image_paths[idx] = result['file_path']
+                    yield sse_message({
+                        'type': 'slot_complete',
+                        'slot': idx,
+                        'label': slot_concepts[idx].get('label', f'Slot {idx+1}') if idx < len(slot_concepts) else f'Slot {idx+1}',
+                        'file_path': result['file_path'].replace(str(settings.output_dir) + '/', ''),
+                        'current': completed,
+                        'total': len(prompts_with_concepts)
+                    })
+                else:
+                    yield sse_message({
+                        'type': 'slot_error',
+                        'slot': idx,
+                        'error': result.get('error', 'Unknown')[:100],
+                        'current': completed,
+                        'total': len(prompts_with_concepts)
+                    })
+
+        # PHASE 4: Composite into template
+        valid_paths = [p for p in image_paths if p is not None]
+        if len(valid_paths) < 2:
+            yield sse_message({'type': 'error', 'message': f'Only {len(valid_paths)} images succeeded, need at least 2'})
+            return
+
+        yield sse_message({
+            'type': 'progress',
+            'message': 'Compositing into template layout...',
+            'phase': 'composite'
+        })
+
+        try:
+            compositor = TemplateCompositor()
+            labels = [s.get('label', f'Slot {i+1}') for i, s in enumerate(slot_concepts)]
+
+            # Use valid paths only, fill gaps with first valid image
+            final_paths = []
+            for p in image_paths:
+                if p is not None:
+                    final_paths.append(p)
+                else:
+                    final_paths.append(valid_paths[0])
+
+            output_dir = settings.output_dir / batch_id
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(output_dir / f"template_{template_key}.png")
+
+            result_path = compositor.composite(
+                template_key=template_key,
+                images=final_paths,
+                labels=labels,
+                output_path=output_path,
+            )
+
+            rel_path = str(Path(result_path).relative_to(settings.output_dir))
+
+            yield sse_message({
+                'type': 'template_complete',
+                'file_path': rel_path,
+                'template': template_key,
+                'topic': topic,
+                'slots': len(final_paths),
+                'message': f'Template thumbnail generated!'
+            })
+
+        except Exception as e:
+            yield sse_message({'type': 'error', 'message': f'Compositing error: {str(e)}'})
+
+    return sse_response(generate_stream())
+
+
+@app.route('/api/templates')
+def get_templates():
+    """Return available template definitions."""
+    from lib.template_engine import get_template_info
+    return jsonify({'success': True, 'templates': get_template_info()})
+
+
 @app.route('/api/agentic-generate')
 def agentic_generate():
     """

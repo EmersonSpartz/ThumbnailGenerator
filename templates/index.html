@@ -155,6 +155,39 @@
             cursor: not-allowed;
         }
 
+        /* Quick Favorite Heart Overlay */
+        .quick-fav {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: #888;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+            line-height: 1;
+        }
+        .quick-fav:hover {
+            background: rgba(0,0,0,0.8);
+            color: #ff4444;
+            transform: scale(1.15);
+        }
+        .quick-fav.favorited {
+            color: #ff0000;
+            background: rgba(0,0,0,0.8);
+        }
+        .thumbnail-card, .model-card {
+            position: relative;
+        }
+
         /* Thumbnail Grid */
         .thumbnail-grid {
             display: grid;
@@ -1160,6 +1193,7 @@
                 <button class="tab active" data-tab="text-tab">✏️ Text Thumbnails</button>
                 <button class="tab" data-tab="generate">Generate <span id="tab-job-count" style="display:none; background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:5px;">0</span></button>
                 <button class="tab" data-tab="favorites">Favorites <span id="tab-fav-count" style="background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:3px; display:none;">0</span></button>
+                <button class="tab" data-tab="templates">🧩 Templates</button>
                 <button class="tab" data-tab="shootout">🎯 Model Shootout</button>
                 <button class="tab" data-tab="prompts" id="advanced-tab" style="color:#555; font-size:12px;">⚙️ Advanced</button>
             </div>
@@ -1186,10 +1220,13 @@
                     <h3>Settings</h3>
                     <div class="form-group">
                         <label>Number of Thumbnails</label>
-                        <input type="number" id="count" value="5" min="1" max="100">
-                        <p style="font-size: 10px; color: #666; margin-top: 4px;">⚡ Start with 5 for fast rubric iteration</p>
+                        <input type="number" id="count" value="10" min="1" max="100">
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">How many different concepts to generate</p>
                     </div>
-                    <div class="form-group">
+
+                    <details style="margin-bottom: 15px;">
+                        <summary style="cursor: pointer; color: #666; font-size: 12px; padding: 8px 0;">Advanced Options</summary>
+                    <div class="form-group" style="margin-top: 10px;">
                         <label>Generation Mode</label>
                         <div class="mode-toggle">
                             <label class="selected" onclick="setMode('single')">
@@ -1320,7 +1357,6 @@
                             Learn from favorites
                         </label>
                     </div>
-                    <button class="btn btn-primary" id="generate-btn">Generate Thumbnails</button>
 
                     <div class="quick-section">
                         <label>Quick Generate (no Claude)</label>
@@ -1332,6 +1368,9 @@
                         <button class="btn btn-secondary" id="view-debug-btn" style="width: 100%;">🔍 View Debug Log</button>
                         <p style="font-size: 11px; color: #666; margin-top: 5px;">See exactly what Claude received and how it responded</p>
                     </div>
+                    </details>
+
+                    <button class="btn btn-primary" id="generate-btn" style="margin-top: 10px;">Generate Thumbnails</button>
                 </div>
             </div>
 
@@ -1642,7 +1681,11 @@
         </div>
 
         <!-- Text Thumbnails Panel -->
-        <div id="text-tab" class="panel">
+        <div id="text-tab" class="panel active">
+            <div style="background: linear-gradient(135deg, #1a2a1a 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #333;">
+                <h2 style="margin-bottom: 8px; font-size: 20px;">Generate Text Thumbnails</h2>
+                <p style="color: #888; font-size: 14px; margin: 0;">Enter your video title + the text you want on the thumbnail. AI generates multiple concepts with text baked in. Click the heart on any thumbnail to save it to Favorites.</p>
+            </div>
             <div class="generate-form">
                 <div>
                     <div class="form-group">
@@ -1662,7 +1705,7 @@
                     <h3>Settings</h3>
                     <div class="form-group">
                         <label>Number of Concepts</label>
-                        <input type="number" id="text-count" value="5" min="1" max="30">
+                        <input type="number" id="text-count" value="10" min="1" max="30">
                     </div>
                     <div class="form-group">
                         <label>Image Models</label>
@@ -1727,6 +1770,100 @@
             <div class="claude-section response">
                 <div class="claude-section-header"><span class="icon">📥</span> Response</div>
                 <pre id="live-response">Waiting...</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates Panel -->
+    <div id="templates" class="panel">
+        <div style="background: linear-gradient(135deg, #2a1a2e 0%, #1a2a1a 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #333;">
+            <h2 style="margin-bottom: 8px; font-size: 20px;">Template Thumbnails</h2>
+            <p style="color: #888; font-size: 14px; margin: 0;">Generate proven YouTube thumbnail layouts — levels, pyramids, grids, and comparisons. AI generates individual images for each slot, then composites them into the template.</p>
+        </div>
+
+        <div class="generate-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Left: Template Selection -->
+            <div>
+                <div class="form-group">
+                    <label>Template Type</label>
+                    <div id="template-cards" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="template-card selected" data-template="levels" style="background: #1a1a2e; border: 2px solid #6366f1; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 24px; margin-bottom: 6px;">📊</div>
+                            <div style="font-weight: 600; font-size: 14px;">X Levels of Y</div>
+                            <div style="font-size: 11px; color: #888; margin-top: 4px;">Horizontal strip showing progression</div>
+                        </div>
+                        <div class="template-card" data-template="pyramid" style="background: #1a1a1a; border: 2px solid #333; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 24px; margin-bottom: 6px;">🔺</div>
+                            <div style="font-weight: 600; font-size: 14px;">Pyramid Ranking</div>
+                            <div style="font-size: 11px; color: #888; margin-top: 4px;">Tiers from broad base to elite top</div>
+                        </div>
+                        <div class="template-card" data-template="grid" style="background: #1a1a1a; border: 2px solid #333; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 24px; margin-bottom: 6px;">🔲</div>
+                            <div style="font-weight: 600; font-size: 14px;">Collection Grid</div>
+                            <div style="font-size: 11px; color: #888; margin-top: 4px;">Grid of items showing a set</div>
+                        </div>
+                        <div class="template-card" data-template="vs_split" style="background: #1a1a1a; border: 2px solid #333; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-size: 24px; margin-bottom: 6px;">⚔️</div>
+                            <div style="font-weight: 600; font-size: 14px;">VS / Comparison</div>
+                            <div style="font-size: 11px; color: #888; margin-top: 4px;">Side-by-side dramatic contrast</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Topic</label>
+                    <input type="text" id="template-topic" placeholder="e.g. 7 Levels of AI, Cooking Skills, Programming Languages..." style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px;">
+                </div>
+
+                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label>Number of Slots</label>
+                        <input type="number" id="template-slots" value="7" min="2" max="16" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff;">
+                    </div>
+                    <div>
+                        <label>Image Model</label>
+                        <select id="template-model" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff;">
+                            <option value="nanobanana2">NanoBanana 2 (FREE)</option>
+                            <option value="flux">Flux</option>
+                            <option value="aispecies">AI Species</option>
+                            <option value="recraft">Recraft</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="generate-template-btn" style="width: 100%; padding: 14px; font-size: 16px;">
+                    Generate Template Thumbnail
+                </button>
+            </div>
+
+            <!-- Right: Preview / Results -->
+            <div>
+                <div id="template-progress" style="display: none; padding: 20px; background: #1a1a1a; border-radius: 10px; border: 1px solid #333;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <span class="spinner"></span>
+                        <span id="template-progress-text" style="color: #aaa;">Generating...</span>
+                    </div>
+                    <div style="background: #333; border-radius: 4px; height: 6px; overflow: hidden;">
+                        <div id="template-progress-bar" style="background: #6366f1; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="template-slot-status" style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px;"></div>
+                </div>
+
+                <div id="template-result" style="display: none;">
+                    <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 14px; font-weight: 600;">Result</span>
+                        <div style="display: flex; gap: 8px;">
+                            <a id="template-download-link" href="#" download class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;">📥 Download</a>
+                            <button id="template-fav-btn" class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;">❤️ Favorite</button>
+                        </div>
+                    </div>
+                    <img id="template-result-img" src="" alt="" style="width: 100%; border-radius: 10px; cursor: pointer; aspect-ratio: 16/9; object-fit: cover; background: #111;" onclick="window.open(this.src, '_blank')">
+                </div>
+
+                <div id="template-slot-images" style="margin-top: 15px; display: none;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">Individual slot images:</div>
+                    <div id="template-slot-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -2374,6 +2511,139 @@
                 openTextOverlayModal(currentThumbnail.file_path);
             } else {
                 alert('No image selected');
+            }
+        });
+
+        // =====================================================
+        // TEMPLATE GENERATION
+        // =====================================================
+        let selectedTemplate = 'levels';
+        const templateSlotDefaults = { levels: 7, pyramid: 5, grid: 9, vs_split: 2 };
+        const templateSlotRanges = { levels: [3, 10], pyramid: [3, 7], grid: [4, 16], vs_split: [2, 2] };
+
+        // Template card selection
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.template-card').forEach(c => {
+                    c.style.borderColor = '#333';
+                    c.style.background = '#1a1a1a';
+                    c.classList.remove('selected');
+                });
+                card.style.borderColor = '#6366f1';
+                card.style.background = '#1a1a2e';
+                card.classList.add('selected');
+                selectedTemplate = card.dataset.template;
+
+                // Update slots default
+                const slotsInput = document.getElementById('template-slots');
+                slotsInput.value = templateSlotDefaults[selectedTemplate];
+                slotsInput.min = templateSlotRanges[selectedTemplate][0];
+                slotsInput.max = templateSlotRanges[selectedTemplate][1];
+            });
+        });
+
+        // Generate template
+        document.getElementById('generate-template-btn').addEventListener('click', async () => {
+            const topic = document.getElementById('template-topic').value.trim();
+            if (!topic) { alert('Please enter a topic'); return; }
+
+            const slots = document.getElementById('template-slots').value;
+            const model = document.getElementById('template-model').value;
+            const btn = document.getElementById('generate-template-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            const progressDiv = document.getElementById('template-progress');
+            const resultDiv = document.getElementById('template-result');
+            const slotImagesDiv = document.getElementById('template-slot-images');
+            progressDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            slotImagesDiv.style.display = 'none';
+            document.getElementById('template-slot-status').innerHTML = '';
+            document.getElementById('template-slot-grid').innerHTML = '';
+            document.getElementById('template-progress-bar').style.width = '0%';
+
+            const params = new URLSearchParams({
+                template: selectedTemplate,
+                topic: topic,
+                slots: slots,
+                model: model
+            });
+
+            try {
+                const eventSource = new EventSource(`/api/template-generate?${params}`);
+                let totalSlots = parseInt(slots);
+                let completedSlots = 0;
+
+                eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'progress') {
+                        document.getElementById('template-progress-text').textContent = data.message;
+                        if (data.phase === 'prompts' && data.slots) {
+                            const statusDiv = document.getElementById('template-slot-status');
+                            statusDiv.innerHTML = data.slots.map((label, i) =>
+                                `<div id="slot-badge-${i}" style="padding: 4px 8px; background: #333; border-radius: 6px; font-size: 11px; text-align: center; color: #888;">${label}</div>`
+                            ).join('');
+                        }
+                        if (data.phase === 'images') {
+                            totalSlots = data.total || totalSlots;
+                        }
+                    } else if (data.type === 'slot_complete') {
+                        completedSlots++;
+                        document.getElementById('template-progress-bar').style.width = `${(completedSlots / totalSlots * 80) + 10}%`;
+                        // Update slot badge
+                        const badge = document.getElementById(`slot-badge-${data.slot}`);
+                        if (badge) { badge.style.background = '#1a3a1a'; badge.style.color = '#4ade80'; }
+                        // Add to slot grid
+                        const grid = document.getElementById('template-slot-grid');
+                        const img = document.createElement('img');
+                        img.src = `/output/${data.file_path}?t=${Date.now()}`;
+                        img.alt = data.label;
+                        img.title = data.label;
+                        img.style.cssText = 'width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 6px; cursor: pointer;';
+                        img.onclick = () => window.open(img.src, '_blank');
+                        grid.appendChild(img);
+                        slotImagesDiv.style.display = 'block';
+                    } else if (data.type === 'slot_error') {
+                        completedSlots++;
+                        const badge = document.getElementById(`slot-badge-${data.slot}`);
+                        if (badge) { badge.style.background = '#3a1a1a'; badge.style.color = '#f87171'; }
+                    } else if (data.type === 'template_complete') {
+                        document.getElementById('template-progress-bar').style.width = '100%';
+                        document.getElementById('template-progress-text').textContent = 'Done!';
+                        resultDiv.style.display = 'block';
+                        const resultImg = document.getElementById('template-result-img');
+                        resultImg.src = `/output/${data.file_path}?t=${Date.now()}`;
+                        document.getElementById('template-download-link').href = `/output/${data.file_path}`;
+                        setTimeout(() => { progressDiv.style.display = 'none'; }, 1500);
+                        eventSource.close();
+                        btn.disabled = false;
+                        btn.textContent = 'Generate Template Thumbnail';
+                    } else if (data.type === 'error') {
+                        document.getElementById('template-progress-text').textContent = `Error: ${data.message}`;
+                        document.getElementById('template-progress-text').style.color = '#f87171';
+                        eventSource.close();
+                        btn.disabled = false;
+                        btn.textContent = 'Generate Template Thumbnail';
+                    } else if (data.type === 'stopped') {
+                        eventSource.close();
+                        btn.disabled = false;
+                        btn.textContent = 'Generate Template Thumbnail';
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Template Thumbnail';
+                };
+
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+                btn.disabled = false;
+                btn.textContent = 'Generate Template Thumbnail';
             }
         });
 
@@ -3527,17 +3797,15 @@
             const card = document.createElement('div');
             card.className = 'thumbnail-card';
             card.innerHTML = `
+                <button class="quick-fav" title="Favorite (one click)">♡</button>
                 <img src="/output/${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
                      onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
                 <div class="thumbnail-info">
                     <h4>${data.concept_name || 'Untitled'}</h4>
                     <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${data.concept_summary || data.title_ref || ''}</p>
-                    ${data.prompt ? `<details style="margin-top:4px;"><summary style="font-size:10px;color:#666;cursor:pointer;">View prompt</summary><p style="font-size:10px;color:#555;margin-top:4px;line-height:1.4;">${escapeHtml(data.prompt)}</p></details>` : ''}
-                    ${data.category ? `<span class="category-badge">${data.category}</span>` : ''}
                     ${data.model ? `<span class="category-badge">${data.model}</span>` : ''}
                 </div>
                 <div class="thumbnail-actions">
-                    <button class="btn btn-secondary favorite-btn" title="Add to favorites">Fav</button>
                     <button class="btn btn-primary more-btn" title="Generate 5 more like this instantly">+5 More</button>
                     <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
                 </div>
@@ -3551,10 +3819,15 @@
                 openLightbox(data, card);
             });
 
-            card.querySelector('.favorite-btn').addEventListener('click', (e) => {
+            // One-click favorite (no modal)
+            card.querySelector('.quick-fav').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                currentThumbnail = data;
-                document.getElementById('favorite-modal').classList.add('active');
+                const btn = e.currentTarget;
+                if (btn.classList.contains('favorited')) return; // already favorited
+                btn.classList.add('favorited');
+                btn.textContent = '♥';
+                card.classList.add('favorited');
+                await quickFavorite(data);
             });
 
             // One-click "More" - instantly generates 5 more with same prompt
@@ -3582,6 +3855,57 @@
 
             // Insert at beginning so newest are first
             grid.insertBefore(card, grid.firstChild);
+        }
+
+        // =====================================================
+        // QUICK FAVORITE (one-click, no modal)
+        // =====================================================
+        // Global helpers for inline onclick on model cards
+        async function quickFavFromBtn(btn, data) {
+            if (btn.classList.contains('favorited')) return;
+            btn.classList.add('favorited');
+            btn.textContent = '♥';
+            await quickFavorite(data);
+        }
+
+        function quickFavFromCard(btn) {
+            const card = btn.closest('.model-card');
+            if (!card || !card.dataset.thumbnail) return;
+            try {
+                const data = JSON.parse(card.dataset.thumbnail.replace(/&quot;/g, '"'));
+                quickFavFromBtn(btn, data);
+            } catch(e) { console.error('Failed to parse thumbnail data for fav:', e); }
+        }
+
+        async function quickFavorite(data) {
+            const response = await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    thumbnail_path: data.file_path,
+                    concept_name: data.concept_name || '',
+                    prompt: data.prompt || '',
+                    title_ref: data.title_ref || '',
+                    category: data.category || '',
+                    description: data.concept_summary || '',
+                    notes: ''
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                updateFavBadge(1);
+            }
+        }
+
+        function updateFavBadge(delta) {
+            const badge = document.getElementById('tab-fav-count');
+            let count = parseInt(badge.textContent || '0') + (delta || 0);
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
         }
 
         // =====================================================
@@ -3630,11 +3954,20 @@
             favorites = data.favorites;
             window.favorites = favorites;
 
+            // Update favorites badge
+            const badge = document.getElementById('tab-fav-count');
+            if (favorites.length > 0) {
+                badge.textContent = favorites.length;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+
             const grid = document.getElementById('favorites-grid');
             grid.innerHTML = '';
 
             if (favorites.length === 0) {
-                grid.innerHTML = '<div class="empty-state"><h3>No favorites yet</h3><p>Generate thumbnails and mark your favorites.</p></div>';
+                grid.innerHTML = '<div class="empty-state"><h3>No favorites yet</h3><p>Generate thumbnails and click the heart icon to save your picks.</p></div>';
                 return;
             }
 
@@ -4089,7 +4422,9 @@
                     case 'model_result':
                         const modelCard = document.getElementById(`model-card-${data.concept_index}-${data.model}`);
                         if (modelCard) {
+                            const thumbJson = JSON.stringify(data).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                             modelCard.innerHTML = `
+                                <button class="quick-fav" title="Favorite" onclick="event.stopPropagation(); quickFavFromBtn(this, ${thumbJson})">♡</button>
                                 <img src="/output/${data.file_path}" alt="${data.concept_name}">
                                 <div class="model-card-footer">
                                     <span class="model-name">${data.model}</span>
@@ -4302,6 +4637,7 @@
 
                             html += `
                                 <div class="model-card" data-thumbnail="${thumbData}">
+                                    <button class="quick-fav" title="Favorite" onclick="event.stopPropagation(); quickFavFromCard(this)">♡</button>
                                     <img src="/output/${modelData.file_path}" alt="${escapeHtml(concept.concept_name)}" onclick="openLightboxFromHistory(this)" style="cursor:zoom-in;" onerror="this.parentElement.innerHTML='<div style=\\'aspect-ratio:16/9;background:#1a0000;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px;\\'>Image not found</div><div class=\\'model-card-footer\\'><span class=\\'model-name\\'>${modelName}</span></div>'">
                                     <div class="model-card-footer">
                                         <span class="model-name">${modelName}</span>

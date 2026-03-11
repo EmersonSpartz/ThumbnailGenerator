@@ -20,6 +20,7 @@ from .multi_ideator import MultiLLMIdeator, ClaudeIdeatorV2, ChatGPTIdeator, Gem
 from .job_manager import JobManager, job_manager
 from .prompt_manager import PromptManager
 from .agentic_refiner import AgenticImageRefiner
+from .template_engine import TemplateCompositor, get_template_info, get_claude_instruction
 
 __all__ = [
     'Settings',
