@@ -1731,6 +1731,8 @@ def add_text_to_image():
     position = data.get('position', 'bottom-center')
     style = data.get('style', 'impact')
     color = data.get('color')
+    y_ratio = data.get('y_ratio')
+    font_size_ratio = data.get('font_size_ratio')
 
     if not image_path or not text:
         return jsonify({'success': False, 'error': 'Missing image_path or text'})
@@ -1748,7 +1750,9 @@ def add_text_to_image():
             text=text,
             position=position,
             style=style,
-            custom_color=color
+            custom_color=color,
+            y_ratio=float(y_ratio) if y_ratio is not None else None,
+            font_size_ratio=float(font_size_ratio) if font_size_ratio is not None else None,
         )
 
         # Return relative path

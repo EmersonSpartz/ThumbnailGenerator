@@ -1157,11 +1157,11 @@
         <header>
             <h1>Thumbnail Generator v2</h1>
             <div class="tabs">
-                <button class="tab active" data-tab="shootout">🎯 Model Shootout</button>
+                <button class="tab active" data-tab="text-tab">✏️ Text Thumbnails</button>
                 <button class="tab" data-tab="generate">Generate <span id="tab-job-count" style="display:none; background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:5px;">0</span></button>
-                <button class="tab" data-tab="prompts">🧠 System Logic</button>
-                <button class="tab" data-tab="favorites">Favorites</button>
-                <button class="tab" data-tab="text-tab">✏️ Text</button>
+                <button class="tab" data-tab="favorites">Favorites <span id="tab-fav-count" style="background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:3px; display:none;">0</span></button>
+                <button class="tab" data-tab="shootout">🎯 Model Shootout</button>
+                <button class="tab" data-tab="prompts" id="advanced-tab" style="color:#555; font-size:12px;">⚙️ Advanced</button>
             </div>
         </header>
 
@@ -1411,7 +1411,7 @@
         </div>
 
         <!-- Model Shootout Panel -->
-        <div id="shootout" class="panel active">
+        <div id="shootout" class="panel">
             <div class="generate-form">
                 <div>
                     <h2 style="margin-bottom: 20px;">🎯 Model Shootout</h2>
@@ -2242,24 +2242,91 @@
 
                 data.variations.forEach((variation, idx) => {
                     if (variation.success && variation.file_path) {
+                        // Determine initial y_ratio from position
+                        const posYMap = {'top-left':0.12,'top-center':0.12,'top-right':0.12,'center':0.5,'bottom-left':0.80,'bottom-center':0.80,'bottom-right':0.80};
+                        const initY = posYMap[variation.position] || 0.5;
+                        const defaultSizeRatio = 0.20; // impact style default
+
                         const card = document.createElement('div');
-                        card.style.cssText = 'background: #1a1a1a; border-radius: 8px; overflow: hidden; transition: transform 0.2s; cursor: pointer;';
+                        card.style.cssText = 'background: #1a1a1a; border-radius: 8px; overflow: hidden;';
+                        card.dataset.text = variation.text;
+                        card.dataset.originalImage = textOverlaySourcePath;
+                        card.dataset.position = variation.position || 'bottom-center';
+                        card.dataset.yRatio = initY;
+                        card.dataset.fontSizeRatio = defaultSizeRatio;
+                        card.dataset.style = document.getElementById('text-style').value;
+
                         card.innerHTML = `
                             <img src="/output/${variation.file_path}?t=${Date.now()}" alt="${variation.text}"
-                                 style="width: 100%; aspect-ratio: 16/9; object-fit: cover;">
-                            <div style="padding: 10px;">
-                                <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${variation.text}">${variation.text}</div>
+                                 style="width: 100%; aspect-ratio: 16/9; object-fit: cover; cursor: pointer;">
+                            <div style="padding: 8px;">
+                                <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${variation.text}">${variation.text}</div>
+                                <div style="display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap;">
+                                    <button class="btn btn-secondary text-adj-btn" data-action="move-up" style="padding: 3px 8px; font-size: 11px; flex: 1;" title="Move text up">↑ Up</button>
+                                    <button class="btn btn-secondary text-adj-btn" data-action="move-down" style="padding: 3px 8px; font-size: 11px; flex: 1;" title="Move text down">↓ Down</button>
+                                    <button class="btn btn-secondary text-adj-btn" data-action="size-up" style="padding: 3px 8px; font-size: 11px; flex: 1;" title="Bigger text">A+</button>
+                                    <button class="btn btn-secondary text-adj-btn" data-action="size-down" style="padding: 3px 8px; font-size: 11px; flex: 1;" title="Smaller text">A-</button>
+                                </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-size: 10px; color: #666;">${variation.position}</span>
-                                    <a href="/output/${variation.file_path}" download style="font-size: 10px; color: #4ade80; text-decoration: none;">📥 Save</a>
+                                    <span class="card-pos-label" style="font-size: 10px; color: #666;">y: ${(initY * 100).toFixed(0)}% · size: ${(defaultSizeRatio * 100).toFixed(0)}%</span>
+                                    <a href="/output/${variation.file_path}" download class="card-download-link" style="font-size: 10px; color: #4ade80; text-decoration: none;">📥 Save</a>
                                 </div>
                             </div>
                         `;
-                        card.addEventListener('mouseenter', () => card.style.transform = 'scale(1.02)');
-                        card.addEventListener('mouseleave', () => card.style.transform = 'scale(1)');
+
                         card.querySelector('img').addEventListener('click', () => {
-                            window.open(`/output/${variation.file_path}`, '_blank');
+                            window.open(card.querySelector('img').src.split('?')[0], '_blank');
                         });
+
+                        // Adjust buttons
+                        card.querySelectorAll('.text-adj-btn').forEach(btn => {
+                            btn.addEventListener('click', async (e) => {
+                                e.stopPropagation();
+                                const action = btn.dataset.action;
+                                let yR = parseFloat(card.dataset.yRatio);
+                                let sR = parseFloat(card.dataset.fontSizeRatio);
+
+                                if (action === 'move-up') yR = Math.max(0.05, yR - 0.10);
+                                else if (action === 'move-down') yR = Math.min(0.95, yR + 0.10);
+                                else if (action === 'size-up') sR = Math.min(0.40, sR + 0.03);
+                                else if (action === 'size-down') sR = Math.max(0.04, sR - 0.03);
+
+                                card.dataset.yRatio = yR;
+                                card.dataset.fontSizeRatio = sR;
+
+                                // Disable buttons while loading
+                                card.querySelectorAll('.text-adj-btn').forEach(b => b.disabled = true);
+                                card.querySelector('.card-pos-label').textContent = '⏳ updating...';
+
+                                try {
+                                    const resp = await fetch('/api/add-text', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            image_path: card.dataset.originalImage,
+                                            text: card.dataset.text,
+                                            position: card.dataset.position,
+                                            style: card.dataset.style,
+                                            y_ratio: yR,
+                                            font_size_ratio: sR
+                                        })
+                                    });
+                                    const result = await resp.json();
+                                    if (result.success) {
+                                        card.querySelector('img').src = `/output/${result.file_path}?t=${Date.now()}`;
+                                        card.querySelector('.card-download-link').href = `/output/${result.file_path}`;
+                                        card.querySelector('.card-pos-label').textContent = `y: ${(yR * 100).toFixed(0)}% · size: ${(sR * 100).toFixed(0)}%`;
+                                    } else {
+                                        card.querySelector('.card-pos-label').textContent = `Error: ${result.error}`;
+                                    }
+                                } catch (err) {
+                                    card.querySelector('.card-pos-label').textContent = `Error: ${err.message}`;
+                                } finally {
+                                    card.querySelectorAll('.text-adj-btn').forEach(b => b.disabled = false);
+                                }
+                            });
+                        });
+
                         resultsGrid.appendChild(card);
                     } else {
                         const card = document.createElement('div');

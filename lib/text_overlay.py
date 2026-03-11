@@ -135,6 +135,8 @@ class TextOverlay:
         style: str = "impact",
         custom_color: str = None,
         output_path: str = None,
+        y_ratio: float = None,
+        font_size_ratio: float = None,
     ) -> str:
         """
         Add text to an image.
@@ -146,6 +148,8 @@ class TextOverlay:
             style: Text style (impact, subtitle, number, label)
             custom_color: Override the style's default color
             output_path: Where to save (defaults to same location with _text suffix)
+            y_ratio: Custom vertical position (0.0=top, 1.0=bottom), overrides position's y
+            font_size_ratio: Custom font size as ratio of image height, overrides style default
 
         Returns:
             Path to the new image with text
@@ -171,7 +175,8 @@ class TextOverlay:
 
         # Calculate font size, then shrink until text fits within 90% of image width
         max_text_width = int(width * 0.90)
-        font_size = int(height * style_config["font_size_ratio"])
+        effective_size_ratio = font_size_ratio if font_size_ratio is not None else style_config["font_size_ratio"]
+        font_size = int(height * effective_size_ratio)
         min_font_size = int(height * 0.06)
 
         font = ImageFont.load_default()
@@ -203,7 +208,8 @@ class TextOverlay:
         # Calculate position
         pos_ratios = self.POSITIONS.get(position, (0.5, 0.5))
         x = int(width * pos_ratios[0])
-        y = int(height * pos_ratios[1])
+        effective_y_ratio = y_ratio if y_ratio is not None else pos_ratios[1]
+        y = int(height * effective_y_ratio)
 
         # Adjust for text alignment
         if "center" in position or position == "center":
