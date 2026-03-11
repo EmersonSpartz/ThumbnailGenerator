@@ -170,7 +170,6 @@ def get_available_models():
 
     # Add model info
     model_info = {
-        "gemini": {"name": "Gemini NanoBanana", "description": "Google's image model, good general quality"},
         "nanobanana2": {"name": "NanoBanana 2 Pro", "description": "Pro quality at Flash speed - Google's best image model"},
         "flux": {"name": "Flux Schnell", "description": "Fast, high-quality images with good composition"},
         "sdxl": {"name": "SDXL Lightning", "description": "Stability AI model, very fast"},

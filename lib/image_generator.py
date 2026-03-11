@@ -875,7 +875,6 @@ class MultiModelGenerator:
 
         # Initialize available generators (auto-registered based on API keys)
         if GENAI_AVAILABLE and settings.google_api_keys:
-            self.generators["gemini"] = GeminiImageGenerator(settings)
             self.generators["nanobanana2"] = GeminiImageGenerator(settings, model_key="nanobanana2")
 
         if REPLICATE_AVAILABLE and os.getenv('REPLICATE_API_TOKEN'):
