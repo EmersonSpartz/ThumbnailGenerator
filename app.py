@@ -2585,9 +2585,17 @@ def agentic_generate():
                             file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
 
                             # Apply text overlay if thumbnail_text provided
+                            original_file_path = None
                             if thumbnail_text:
                                 try:
                                     abs_path = str(settings.output_dir / file_path)
+                                    # Save original (no-text) copy
+                                    orig_path = Path(abs_path)
+                                    original_abs = str(orig_path.parent / f"{orig_path.stem}_original{orig_path.suffix}")
+                                    import shutil
+                                    shutil.copy2(abs_path, original_abs)
+                                    original_file_path = str(Path(original_abs).relative_to(settings.output_dir))
+
                                     text_overlay_obj = TextOverlay()
                                     text_overlay_obj.add_text(
                                         abs_path,
@@ -2614,9 +2622,11 @@ def agentic_generate():
                             }
                             if thumbnail_text:
                                 result_record['thumbnail_text'] = thumbnail_text
+                                if original_file_path:
+                                    result_record['original_file_path'] = original_file_path
                             job_manager.add_result(job_id, result_record)
 
-                            yield sse_message({
+                            sse_data = {
                                 'type': 'image_generated',
                                 'model': model_name,
                                 'file_path': file_path,
@@ -2626,7 +2636,12 @@ def agentic_generate():
                                 'title_ref': current_prompt_data.get('title_ref', ''),
                                 'category': current_prompt_data.get('category', ''),
                                 'iteration': iteration + 1
-                            })
+                            }
+                            if thumbnail_text:
+                                sse_data['thumbnail_text'] = thumbnail_text
+                                if original_file_path:
+                                    sse_data['original_file_path'] = original_file_path
+                            yield sse_message(sse_data)
                         else:
                             error_msg = result.get('error', 'Unknown error')
                             failed_models.append(f"{model_name}: {error_msg}")

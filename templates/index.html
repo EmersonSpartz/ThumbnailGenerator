@@ -3796,10 +3796,24 @@
         function addThumbnailCard(grid, data) {
             const card = document.createElement('div');
             card.className = 'thumbnail-card';
+
+            // Build text controls HTML if this thumbnail has text
+            const hasText = data.thumbnail_text && data.original_file_path;
+            const textControlsHtml = hasText ? `
+                <div class="text-adjust-controls" style="display:flex;gap:3px;padding:4px 8px 0;flex-wrap:wrap;">
+                    <button class="btn btn-secondary txt-adj" data-action="move-up" style="padding:2px 6px;font-size:10px;flex:1;" title="Move text up">↑ Up</button>
+                    <button class="btn btn-secondary txt-adj" data-action="move-down" style="padding:2px 6px;font-size:10px;flex:1;" title="Move text down">↓ Down</button>
+                    <button class="btn btn-secondary txt-adj" data-action="size-up" style="padding:2px 6px;font-size:10px;flex:1;" title="Bigger text">A+</button>
+                    <button class="btn btn-secondary txt-adj" data-action="size-down" style="padding:2px 6px;font-size:10px;flex:1;" title="Smaller text">A-</button>
+                </div>
+                <div class="text-adj-status" style="padding:0 8px 4px;font-size:9px;color:#666;text-align:center;">y: 12% · size: 20%</div>
+            ` : '';
+
             card.innerHTML = `
                 <button class="quick-fav" title="Favorite (one click)">♡</button>
                 <img src="/output/${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
                      onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
+                ${textControlsHtml}
                 <div class="thumbnail-info">
                     <h4>${data.concept_name || 'Untitled'}</h4>
                     <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${data.concept_summary || data.title_ref || ''}</p>
@@ -3810,6 +3824,55 @@
                     <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
                 </div>
             `;
+
+            // Wire up text adjustment buttons
+            if (hasText) {
+                let yRatio = 0.12; // top-center default
+                let fontSizeRatio = 0.20; // impact default
+                card.querySelectorAll('.txt-adj').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const action = btn.dataset.action;
+                        if (action === 'move-up') yRatio = Math.max(0.05, yRatio - 0.10);
+                        else if (action === 'move-down') yRatio = Math.min(0.95, yRatio + 0.10);
+                        else if (action === 'size-up') fontSizeRatio = Math.min(0.40, fontSizeRatio + 0.03);
+                        else if (action === 'size-down') fontSizeRatio = Math.max(0.04, fontSizeRatio - 0.03);
+
+                        card.querySelectorAll('.txt-adj').forEach(b => b.disabled = true);
+                        card.querySelector('.text-adj-status').textContent = 'updating...';
+
+                        try {
+                            const resp = await fetch('/api/add-text', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    image_path: data.original_file_path,
+                                    text: data.thumbnail_text,
+                                    position: 'top-center',
+                                    style: 'impact',
+                                    y_ratio: yRatio,
+                                    font_size_ratio: fontSizeRatio
+                                })
+                            });
+                            const result = await resp.json();
+                            if (result.success) {
+                                const img = card.querySelector('img');
+                                if (img) img.src = `/output/${result.file_path}?t=${Date.now()}`;
+                                // Update data for favorites/download
+                                data.file_path = result.file_path;
+                                card.dataset.thumbnail = JSON.stringify(data);
+                                card.querySelector('.text-adj-status').textContent = `y: ${(yRatio * 100).toFixed(0)}% · size: ${(fontSizeRatio * 100).toFixed(0)}%`;
+                            } else {
+                                card.querySelector('.text-adj-status').textContent = `Error: ${result.error}`;
+                            }
+                        } catch (err) {
+                            card.querySelector('.text-adj-status').textContent = `Error: ${err.message}`;
+                        } finally {
+                            card.querySelectorAll('.txt-adj').forEach(b => b.disabled = false);
+                        }
+                    });
+                });
+            }
 
             card.dataset.thumbnail = JSON.stringify(data);
 
