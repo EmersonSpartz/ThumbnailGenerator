@@ -98,7 +98,7 @@ CRITICAL RULES:
 Follow the prompting guide provided."""
 
     # Version marker — bump this string to force migration of old Railway prompts
-    PROMPT_VERSION = "v4-bold-premium"
+    PROMPT_VERSION = "v5-conflict-diversity"
 
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
@@ -152,6 +152,21 @@ BOLD but INTENTIONAL. Strong saturated colors that pop, but chosen with purpose 
 
 {{SCRIPT_SECTION}}{{CREATIVE_DIRECTION_SECTION}}---
 
+## CRITICAL RULES
+
+### Show the CONFLICT, not just the setting
+The thumbnail must visualize the video's THEME, TENSION, or CONFLICT — not just a pretty backdrop. If the title is about "AIs competing for control," don't just show a planet — show a planet being PULLED APART, CRACKED, TRANSFORMED, or caught between opposing forces. The subject should be DOING something or BEING AFFECTED by the topic. Static beauty shots fail.
+
+### Every concept must be VISUALLY DISTINCT
+If you generate 8 concepts and they all look similar (same subject, same angle, same composition), that's a failure. Vary these dimensions:
+- **Subject**: Different focal objects/characters (not 8 versions of the same thing)
+- **Scale**: Mix extreme close-ups with vast wide shots
+- **Composition**: Some centered, some rule-of-thirds, some asymmetric
+- **Color palette**: Different dominant colors across concepts
+- **Metaphor type**: Literal vs. abstract vs. symbolic vs. human-focused
+
+---
+
 ## GENERATE {{COUNT}} THUMBNAIL CONCEPTS
 
 For each concept, apply the **Scroll-Stop Test**:
@@ -186,7 +201,7 @@ Return ALL {{COUNT}} concepts as JSON:
         current_version = self.prompts.get('_version', '')
         if current_version == self.PROMPT_VERSION:
             return  # Already up to date
-        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current or 'Muted, graded, intentional' in current:
+        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current or 'Muted, graded, intentional' in current or '## CRITICAL RULES' not in current:
             print("[PROMPT MANAGER] Migrating stale prompt template to current version")
             defaults = self._get_default_prompts()
             self.prompts['claude_prompt'] = defaults['claude_prompt']
@@ -360,10 +375,10 @@ Return ALL {{COUNT}} concepts as JSON:
         # Build creative direction section
         cd_section = ""
         if creative_direction and creative_direction.strip():
-            cd_section = f"""**CREATIVE DIRECTION (IMPORTANT - follow this guidance):**
+            cd_section = f"""**CREATIVE DIRECTION (use as an ingredient, not the whole concept):**
 {creative_direction}
 
-Incorporate this creative direction into ALL concepts. This is the user's vision for the visual style.
+Use this as a VISUAL ELEMENT or SETTING — but the concept must still tell a story about the video topic. The creative direction is ONE ingredient, not the entire thumbnail. If the user says "show earth," don't just show earth — show earth BEING AFFECTED by the topic (cracked, transformed, surrounded by competing forces, etc.). The video's theme/conflict must be VISIBLE in the image.
 
 """
 
