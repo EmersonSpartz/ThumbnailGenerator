@@ -176,6 +176,8 @@ Return ALL {{COUNT}} concepts as JSON:
             defaults = self._get_default_prompts()
             self.prompts['claude_prompt'] = defaults['claude_prompt']
             self.prompts['_version'] = self.PROMPT_VERSION
+            # Also update image_prompt_template if stale
+            self.prompts['image_prompt_template'] = self._get_default_image_prompt_template()
             self._save_prompts()
 
     def _save_prompts(self):
