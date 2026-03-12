@@ -1291,14 +1291,14 @@
                                 <label class="model-checkbox">
                                     <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="aispecies" checked> AI Species
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="aispecies"> AI Species
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="flux" checked> Flux
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="flux"> Flux
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="sdxl" checked> SDXL
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="sdxl"> SDXL
                                 </label>
                                 <label class="model-checkbox">
                                     <input type="checkbox" value="recraft"> Recraft V3
@@ -1331,14 +1331,14 @@
                                 <label class="model-checkbox">
                                     <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="aispecies" checked> AI Species
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="aispecies"> AI Species
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="flux" checked> Flux
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="flux"> Flux
                                 </label>
-                                <label class="model-checkbox selected">
-                                    <input type="checkbox" value="sdxl" checked> SDXL
+                                <label class="model-checkbox">
+                                    <input type="checkbox" value="sdxl"> SDXL
                                 </label>
                                 <label class="model-checkbox">
                                     <input type="checkbox" value="recraft"> Recraft V3
@@ -1482,14 +1482,14 @@
                             <label class="model-checkbox selected">
                                 <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                             </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="aispecies" checked> AI Species
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="aispecies"> AI Species
                             </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="flux" checked> Flux
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="flux"> Flux
                             </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="sdxl" checked> SDXL
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="sdxl"> SDXL
                             </label>
                             <label class="model-checkbox" title="Requires LEGNEXT_API_KEY in .env">
                                 <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
@@ -1696,15 +1696,35 @@
                         <label style="color: #fbbf24;">✏️ Thumbnail Copy <span style="color: #888; font-weight: normal; font-size: 11px;">(text that gets baked into each image)</span></label>
                         <input type="text" id="text-thumbnail-copy" placeholder="e.g. AI IS TAKING OVER" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #fbbf24; border-radius: 6px; color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 1px;">
                     </div>
+                    <!-- Batch Queue -->
                     <div class="form-group">
-                        <label>Creative Direction (optional)</label>
-                        <textarea id="text-creative-direction" placeholder="e.g. 'dark surreal imagery', 'epic scale', 'body horror'..." style="min-height: 80px;"></textarea>
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Batch Queue <span style="color:#888; font-size:11px;">(one creative direction per line = one batch)</span></span>
+                            <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Batch</button>
+                        </label>
+                        <div id="batch-queue-container">
+                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
+                                <span style="color:#555; font-size:12px; min-width:20px;">1.</span>
+                                <input type="text" class="batch-direction" placeholder="e.g. war tropes, OpenAI vs Claude icons" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                            </div>
+                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
+                                <span style="color:#555; font-size:12px; min-width:20px;">2.</span>
+                                <input type="text" class="batch-direction" placeholder="e.g. use earth splitting apart" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                            </div>
+                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
+                                <span style="color:#555; font-size:12px; min-width:20px;">3.</span>
+                                <input type="text" class="batch-direction" placeholder="e.g. human face showing fear/awe" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="settings-panel">
                     <h3>Settings</h3>
                     <div class="form-group">
-                        <label>Number of Concepts</label>
+                        <label>Concepts per Batch</label>
                         <input type="number" id="text-count" value="10" min="1" max="30">
                     </div>
                     <div class="form-group">
@@ -1725,20 +1745,25 @@
                             <label class="model-checkbox">
                                 <input type="checkbox" value="aispecies"> AI Species
                             </label>
-                            <label class="model-checkbox selected">
-                                <input type="checkbox" value="recraft" checked> Recraft V3
+                            <label class="model-checkbox">
+                                <input type="checkbox" value="recraft"> Recraft V3
                             </label>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Max Iterations</label>
                         <input type="number" id="text-max-iterations" value="1" min="1" max="5">
-                        <p style="font-size: 10px; color: #666; margin-top: 4px;">⚡ 2 = Before/After comparison</p>
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">2 = Before/After comparison</p>
                     </div>
 
                     <div style="display: flex; gap: 10px; flex-direction: column;">
-                        <button class="btn btn-primary" onclick="startTextGeneration()" id="text-generate-btn">✏️ Generate with Text</button>
-                        <button class="btn btn-secondary" onclick="stopGeneration()" style="display:none" id="text-stop-btn">⏹ Stop</button>
+                        <button class="btn btn-primary" onclick="startBatchQueue()" id="text-generate-btn">Launch All Batches</button>
+                        <button class="btn btn-secondary" onclick="stopAllBatches()" style="display:none" id="text-stop-btn">Stop All</button>
+                    </div>
+                    <!-- Batch progress -->
+                    <div id="batch-progress" style="display:none; margin-top:12px; padding:10px; background:#111; border-radius:8px; font-size:12px;">
+                        <div style="color:#888; margin-bottom:6px;">Batch Progress</div>
+                        <div id="batch-progress-items"></div>
                     </div>
                 </div>
             </div>
@@ -1960,14 +1985,14 @@
                         <label class="model-checkbox">
                             <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                         </label>
-                        <label class="model-checkbox selected">
-                            <input type="checkbox" value="aispecies" checked> AI Species
+                        <label class="model-checkbox">
+                            <input type="checkbox" value="aispecies"> AI Species
                         </label>
-                        <label class="model-checkbox selected">
-                            <input type="checkbox" value="flux" checked> Flux
+                        <label class="model-checkbox">
+                            <input type="checkbox" value="flux"> Flux
                         </label>
-                        <label class="model-checkbox selected">
-                            <input type="checkbox" value="sdxl" checked> SDXL
+                        <label class="model-checkbox">
+                            <input type="checkbox" value="sdxl"> SDXL
                         </label>
                         <label class="model-checkbox">
                             <input type="checkbox" value="recraft"> Recraft V3
@@ -2289,15 +2314,16 @@
         // =====================================================
         let textOverlaySourcePath = '';
 
-        function openTextOverlayModal(imagePath) {
-            textOverlaySourcePath = imagePath;
+        function openTextOverlayModal(imagePath, originalPath) {
+            // Use the original (no-text) image if available, so text replaces rather than stacks
+            textOverlaySourcePath = originalPath || imagePath;
             const modal = document.getElementById('text-overlay-modal');
             const sourceImg = document.getElementById('text-overlay-source');
             const resultsGrid = document.getElementById('text-variations-grid');
             const analysisResult = document.getElementById('text-analysis-result');
 
-            // Set source image
-            sourceImg.src = `/output/${imagePath}`;
+            // Set source image (show clean original if available)
+            sourceImg.src = `/output/${textOverlaySourcePath}`;
 
             // Reset UI
             resultsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #666; padding: 40px;">Enter text variations above and click Generate</div>';
@@ -2508,7 +2534,7 @@
             e.stopPropagation();
             if (currentThumbnail && currentThumbnail.file_path) {
                 closeLightbox();
-                openTextOverlayModal(currentThumbnail.file_path);
+                openTextOverlayModal(currentThumbnail.file_path, currentThumbnail.original_file_path);
             } else {
                 alert('No image selected');
             }
@@ -3005,6 +3031,25 @@
         });
 
         // =====================================================
+        // LOCALSTORAGE PERSISTENCE FOR FORM INPUTS
+        // =====================================================
+        const persistedFields = [
+            'titles', 'script', 'creative-direction',
+            'text-titles', 'text-thumbnail-copy', 'text-creative-direction'
+        ];
+        // Restore saved values on page load
+        persistedFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const saved = localStorage.getItem('form_' + id);
+            if (saved) el.value = saved;
+            // Save on every input change
+            el.addEventListener('input', () => {
+                localStorage.setItem('form_' + id, el.value);
+            });
+        });
+
+        // =====================================================
         // GENERATION
         // =====================================================
         document.getElementById('generate-btn').addEventListener('click', () => {
@@ -3040,7 +3085,7 @@
                 const maxIterations = document.getElementById('agentic-max-iterations').value;
                 const qualityThreshold = document.getElementById('agentic-quality-threshold').value;
 
-                url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&max_iterations=${maxIterations}&quality_threshold=${qualityThreshold}`;
+                url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&max_iterations=${maxIterations}&quality_threshold=${qualityThreshold}`;
                 jobType = '🤖 Agentic';
             }
             // NORMAL MODE
@@ -3072,7 +3117,7 @@
                 models = [model];
             }
 
-            startGeneration(url, 'thumbnail-grid', jobType, models, llms);
+            startGeneration(url, 'thumbnail-grid', jobType, models, llms, { titles, creativeDirection });
         });
 
         // Quick generate
@@ -3144,6 +3189,8 @@
                             <img src="/output/${escapeHtml(thumb.file_path)}" alt="${escapeHtml(thumb.concept_name || '')}"
                                  onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image not found</div>'">
                             <div class="thumbnail-info">
+                                ${thumb.gen_title ? `<p style="color:#fbbf24;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(thumb.gen_title)}">📹 ${escapeHtml(thumb.gen_title)}</p>` : ''}
+                                ${thumb.gen_cd ? `<p style="color:#818cf8;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(thumb.gen_cd)}">🎨 ${escapeHtml(thumb.gen_cd)}</p>` : ''}
                                 <h4>${escapeHtml(thumb.concept_name || '')}</h4>
                                 ${thumb.thumbnail_text ? `<p style="color:#fbbf24;font-size:11px;font-weight:bold;">"${escapeHtml(thumb.thumbnail_text)}"</p>` : ''}
                                 <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${escapeHtml(thumb.description || '')}</p>
@@ -3177,10 +3224,37 @@
                 .catch(() => {});
         }
 
-        function startTextGeneration() {
+        // === BATCH QUEUE SYSTEM ===
+        let batchQueue = [];
+        let batchRunning = false;
+        let batchStopped = false;
+        let activeBatchSources = []; // EventSource refs for stopping
+
+        function addBatchLine() {
+            const container = document.getElementById('batch-queue-container');
+            const count = container.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'batch-line';
+            div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+            div.innerHTML = `
+                <span style="color:#555; font-size:12px; min-width:20px;">${count}.</span>
+                <input type="text" class="batch-direction" placeholder="creative direction for batch ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+            `;
+            container.appendChild(div);
+            div.querySelector('input').focus();
+        }
+
+        function updateBatchNumbers() {
+            const lines = document.querySelectorAll('#batch-queue-container .batch-line');
+            lines.forEach((line, i) => {
+                line.querySelector('span').textContent = `${i + 1}.`;
+            });
+        }
+
+        function startBatchQueue() {
             const titles = document.getElementById('text-titles').value.trim();
             const thumbnailText = document.getElementById('text-thumbnail-copy').value.trim();
-            const creativeDirection = document.getElementById('text-creative-direction').value.trim();
             const count = document.getElementById('text-count').value;
             const maxIterations = document.getElementById('text-max-iterations').value;
 
@@ -3191,25 +3265,212 @@
             const models = Array.from(modelCheckboxes).map(cb => cb.value);
             if (models.length === 0) { alert('Please select at least one model'); return; }
 
-            const url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=true&max_iterations=${maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(thumbnailText)}`;
+            // Collect batch directions
+            const directions = Array.from(document.querySelectorAll('.batch-direction'))
+                .map(input => input.value.trim())
+                .filter(d => d.length > 0);
 
+            if (directions.length === 0) {
+                // No directions = single batch with no creative direction
+                directions.push('');
+            }
+
+            batchQueue = directions.map((dir, i) => ({
+                index: i,
+                direction: dir,
+                status: 'queued', // queued | running | done | error
+                titles, thumbnailText, count, maxIterations, models
+            }));
+
+            batchStopped = false;
+            activeBatchSources = [];
+
+            // Show progress panel
             document.getElementById('text-generate-btn').style.display = 'none';
             document.getElementById('text-stop-btn').style.display = 'block';
+            document.getElementById('batch-progress').style.display = 'block';
+            updateBatchProgress();
 
-            startGeneration(url, 'text-thumbnail-grid', '✏️ Text', models);
+            // Launch all batches simultaneously
+            batchRunning = true;
+            batchQueue.forEach((batch) => {
+                launchBatch(batch);
+            });
 
-            // Re-show generate button when done (poll for idle state)
+            // Monitor completion
             const check = setInterval(() => {
-                const activeCount = Object.values(activeJobs || {}).filter(j => j.status === 'running').length;
-                if (activeCount === 0) {
+                const pending = batchQueue.filter(b => b.status === 'queued' || b.status === 'running').length;
+                if (pending === 0 || batchStopped) {
                     clearInterval(check);
+                    batchRunning = false;
                     document.getElementById('text-generate-btn').style.display = 'block';
                     document.getElementById('text-stop-btn').style.display = 'none';
                 }
             }, 2000);
         }
 
-        function startGeneration(url, gridId, jobType, models = [], llms = []) {
+        function launchBatch(batch) {
+            batch.status = 'running';
+            updateBatchProgress();
+
+            const grid = document.getElementById('text-thumbnail-grid');
+
+            // Add batch header to grid
+            const header = document.createElement('div');
+            header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #4ade80; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #4ade80;';
+            header.id = `batch-header-${batch.index}`;
+            header.innerHTML = `Batch ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no direction)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
+            grid.appendChild(header);
+
+            const url = `/api/agentic-generate?titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}`;
+
+            const jobId = Date.now().toString(36) + batch.index;
+            createJob(jobId, `Batch ${batch.index + 1}`, { models: batch.models, llms: [] });
+            batch.jobId = jobId;
+
+            batch.models.forEach(m => {
+                activeJobs[jobId].progress.models[m] = { status: 'waiting', current: 0, total: 0, complete: false };
+            });
+            updateJobsPanel();
+
+            const eventSource = new EventSource(url);
+            activeBatchSources.push(eventSource);
+            let imageCount = 0;
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                data._gen_title = batch.titles;
+                data._gen_cd = batch.direction;
+
+                switch (data.type) {
+                    case 'thumbnail':
+                    case 'model_thumbnail':
+                    case 'image_generated':
+                        addThumbnailCard(grid, data);
+                        imageCount++;
+                        const countEl = document.getElementById(`batch-count-${batch.index}`);
+                        if (countEl) countEl.textContent = `${imageCount} images`;
+                        const current = (activeJobs[jobId]?.progress?.current || 0) + 1;
+                        updateJob(jobId, {
+                            progress: { ...activeJobs[jobId].progress, current }
+                        });
+                        if (data.model && activeJobs[jobId]?.progress?.models[data.model]) {
+                            activeJobs[jobId].progress.models[data.model].current = data.current || (activeJobs[jobId].progress.models[data.model].current + 1);
+                        }
+                        updateJobsPanel();
+                        break;
+
+                    case 'progress':
+                    case 'phase':
+                    case 'concept_start':
+                    case 'iteration_start':
+                        updateJob(jobId, {
+                            progress: { ...activeJobs[jobId].progress, phase: data.message }
+                        });
+                        updateBatchProgress();
+                        break;
+
+                    case 'parallel_start':
+                        updateJob(jobId, {
+                            progress: { ...activeJobs[jobId].progress, total: data.total || 0, phase: data.message }
+                        });
+                        break;
+
+                    case 'model_status':
+                    case 'model_progress':
+                    case 'model_complete':
+                    case 'model_error':
+                        if (activeJobs[jobId]?.progress?.models[data.model]) {
+                            if (data.type === 'model_complete') {
+                                activeJobs[jobId].progress.models[data.model].complete = true;
+                            } else if (data.type === 'model_error') {
+                                activeJobs[jobId].progress.models[data.model].status = 'error';
+                            } else {
+                                activeJobs[jobId].progress.models[data.model].current = data.current || activeJobs[jobId].progress.models[data.model].current;
+                            }
+                        }
+                        updateJobsPanel();
+                        break;
+
+                    case 'claude_prompt':
+                    case 'claude_thinking_start':
+                    case 'claude_thinking':
+                    case 'claude_response_start':
+                    case 'claude_response':
+                    case 'claude_complete':
+                        // Don't show Claude panel for batch mode — too noisy
+                        break;
+
+                    case 'agentic_start':
+                        break; // Silently handle
+
+                    case 'error':
+                        console.error(`Batch ${batch.index + 1} error:`, data.message);
+                        break;
+
+                    case 'done':
+                    case 'parallel_complete':
+                    case 'agentic_complete':
+                        batch.status = 'done';
+                        completeJob(jobId, true);
+                        updateBatchProgress();
+                        eventSource.close();
+                        const hdr = document.getElementById(`batch-header-${batch.index}`);
+                        if (hdr) hdr.style.borderLeftColor = '#888';
+                        break;
+                }
+            };
+
+            eventSource.onerror = () => {
+                if (batch.status === 'running') {
+                    batch.status = 'done';
+                    completeJob(jobId, true);
+                    updateBatchProgress();
+                }
+                eventSource.close();
+            };
+        }
+
+        function stopAllBatches() {
+            batchStopped = true;
+            activeBatchSources.forEach(es => es.close());
+            activeBatchSources = [];
+            batchQueue.forEach(b => {
+                if (b.status === 'running' || b.status === 'queued') b.status = 'stopped';
+            });
+            // Also hit the server stop endpoint
+            fetch('/stop', { method: 'POST' }).catch(() => {});
+            updateBatchProgress();
+            document.getElementById('text-generate-btn').style.display = 'block';
+            document.getElementById('text-stop-btn').style.display = 'none';
+        }
+
+        function updateBatchProgress() {
+            const container = document.getElementById('batch-progress-items');
+            if (!container) return;
+            container.innerHTML = batchQueue.map((b, i) => {
+                const colors = { queued: '#555', running: '#fbbf24', done: '#4ade80', error: '#ef4444', stopped: '#888' };
+                const icons = { queued: '⏳', running: '🔄', done: '✅', error: '❌', stopped: '⏹' };
+                const phase = b.jobId && activeJobs[b.jobId] ? activeJobs[b.jobId].progress.phase : '';
+                return `<div style="display:flex; align-items:center; gap:8px; padding:4px 0; color:${colors[b.status] || '#888'}">
+                    <span>${icons[b.status] || '?'}</span>
+                    <span style="min-width:50px;">Batch ${i + 1}</span>
+                    <span style="color:#666; font-size:11px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.direction || '(none)'}</span>
+                    <span style="font-size:10px; color:#555;">${phase ? phase.substring(0, 40) : b.status}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Keep legacy function for backward compat (Generate tab still uses it)
+        function startTextGeneration() {
+            // Single batch mode - collect direction from first batch line
+            const directions = Array.from(document.querySelectorAll('.batch-direction'))
+                .map(input => input.value.trim())
+                .filter(d => d.length > 0);
+            startBatchQueue();
+        }
+
+        function startGeneration(url, gridId, jobType, models = [], llms = [], meta = {}) {
             const grid = document.getElementById(gridId);
             // DON'T clear the grid - allow multiple jobs to add to it
             // grid.innerHTML = '';
@@ -3230,6 +3491,9 @@
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                // Attach generation context to image events
+                if (!data._gen_title && meta.titles) data._gen_title = meta.titles;
+                if (!data._gen_cd && meta.creativeDirection) data._gen_cd = meta.creativeDirection;
 
                 switch (data.type) {
                     case 'thumbnail':
@@ -3815,6 +4079,8 @@
                      onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
                 ${textControlsHtml}
                 <div class="thumbnail-info">
+                    ${data._gen_title ? `<p style="color:#fbbf24;font-size:10px;margin-bottom:2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${data._gen_title.replace(/"/g, '&quot;')}">📹 ${data._gen_title}</p>` : ''}
+                    ${data._gen_cd ? `<p style="color:#818cf8;font-size:9px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${data._gen_cd.replace(/"/g, '&quot;')}">🎨 ${data._gen_cd}</p>` : ''}
                     <h4>${data.concept_name || 'Untitled'}</h4>
                     <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${data.concept_summary || data.title_ref || ''}</p>
                     ${data.model ? `<span class="category-badge">${data.model}</span>` : ''}
@@ -4932,6 +5198,7 @@
                         const typeLabel = session.type === 'agentic' ? '🤖 Agentic' : '🎨 Generate';
                         const timestamp = new Date(session.created_at).toLocaleString();
                         const titles = Array.isArray(session.params?.titles) ? session.params.titles.join(' • ') : session.params?.titles || 'Untitled';
+                        const cd = session.params?.creative_direction || '';
 
                         html += `
                             <div style="margin-bottom: 30px; padding: 20px; background: #1a1a1a; border-radius: 12px;">
@@ -4941,6 +5208,7 @@
                                 </div>
                                 <div style="font-size: 13px; color: #aaa; margin-bottom: 15px;">
                                     <strong>Titles:</strong> ${escapeHtml(titles.substring(0, 150))}${titles.length > 150 ? '...' : ''}
+                                    ${cd ? `<br><strong style="color: #818cf8;">Direction:</strong> <span style="color: #999;">${escapeHtml(cd.substring(0, 100))}${cd.length > 100 ? '...' : ''}</span>` : ''}
                                 </div>
                         `;
 
@@ -4963,6 +5231,8 @@
                                         <img src="/output/${escapeHtml(thumb.file_path)}"
                                              style="width: 100%; aspect-ratio: 16/9; object-fit: cover;">
                                         <div style="padding: 8px;">
+                                            ${thumb.gen_title ? `<div style="font-size: 10px; color: #fbbf24; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(thumb.gen_title)}">📹 ${escapeHtml(thumb.gen_title)}</div>` : ''}
+                                            ${thumb.gen_cd ? `<div style="font-size: 9px; color: #818cf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(thumb.gen_cd)}">🎨 ${escapeHtml(thumb.gen_cd)}</div>` : ''}
                                             <div style="font-size: 11px; color: #888;">${escapeHtml(thumb.model)}</div>
                                             <div style="font-size: 12px; color: #ccc; margin-top: 3px;">${escapeHtml(thumb.concept_name || 'Concept')}</div>
                                         </div>
@@ -4998,6 +5268,7 @@
         // Load history on page load
         loadAndMergeHistory();
         loadGenerateHistory();
+        loadTextTabHistory();
 
         // =====================================================
         // SYSTEM LOGIC EDITOR (Prompts, Guide, etc.)
