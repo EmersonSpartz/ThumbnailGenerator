@@ -1391,6 +1391,7 @@ def model_shootout():
         # Create a job for history tracking
         job_id = job_manager.create_job('shootout', {
             'titles': titles,
+            'creative_direction': creative_direction,
             'models': models_to_use,
             'count': count
         })
@@ -1713,6 +1714,18 @@ def get_suggestions():
     return jsonify({'suggestions': suggestions})
 
 
+def _find_original_image(image_path):
+    """Find the _original (no-text) version of an image if it exists, otherwise return the image itself."""
+    p = Path(image_path)
+    # Check for _original sibling (saved before text was applied)
+    for ext in [p.suffix, '.png', '.jpg', '.jpeg']:
+        original = p.parent / f"{p.stem}_original{ext}"
+        if original.exists():
+            return original
+    # Also check if this IS the _original already
+    return p
+
+
 @app.route('/api/add-text', methods=['POST'])
 def add_text_to_image():
     """
@@ -1737,8 +1750,8 @@ def add_text_to_image():
     if not image_path or not text:
         return jsonify({'success': False, 'error': 'Missing image_path or text'})
 
-    # Build full path
-    full_path = settings.output_dir / image_path
+    # Build full path - prefer _original (no-text) version for clean overlays
+    full_path = _find_original_image(settings.output_dir / image_path)
 
     if not full_path.exists():
         return jsonify({'success': False, 'error': 'Image not found'})
@@ -1832,8 +1845,8 @@ def generate_text_variations():
     if not text_copies:
         return jsonify({'success': False, 'error': 'No text_copies provided'})
 
-    # Build full path
-    full_path = settings.output_dir / image_path
+    # Build full path - prefer _original (no-text) version for clean overlays
+    full_path = _find_original_image(settings.output_dir / image_path)
 
     if not full_path.exists():
         return jsonify({'success': False, 'error': 'Image not found'})
@@ -1931,14 +1944,14 @@ def parallel_generate():
         if use_favorites:
             favorites_context = favorites_mgr.get_favorites_summary_for_prompt(limit=5)
 
-        # PHASE 1: Generate concepts with Claude
+        # PHASE 1+2 COMBINED: Generate concepts AND prompts in one Claude call
         yield sse_message({
             'type': 'progress',
-            'message': 'Claude is generating thumbnail concepts...'
+            'message': 'Claude is generating concepts + prompts (single call)...'
         })
 
         try:
-            concepts = ideator.generate_concepts(
+            prompts_with_concepts = ideator.generate_concepts_and_prompts(
                 titles=titles,
                 used_ideas=freshness.get_summary_list(),
                 batch_number=1,
@@ -1950,24 +1963,17 @@ def parallel_generate():
             yield sse_message({'type': 'error', 'message': f'Claude error: {str(e)}'})
             return
 
-        if not concepts:
+        if not prompts_with_concepts:
             yield sse_message({'type': 'error', 'message': 'No concepts generated'})
             return
 
         # Limit to requested count
-        concepts = concepts[:count]
+        prompts_with_concepts = prompts_with_concepts[:count]
 
         yield sse_message({
             'type': 'progress',
-            'message': f'Got {len(concepts)} concepts, generating prompts...'
+            'message': f'Got {len(prompts_with_concepts)} concepts with prompts, generating images...'
         })
-
-        # PHASE 2: Generate prompts
-        try:
-            prompts_with_concepts = ideator.generate_prompts_for_concepts(concepts)
-        except Exception as e:
-            yield sse_message({'type': 'error', 'message': f'Prompt error: {str(e)}'})
-            return
 
         # PHASE 3: Parallel generation with all models
         total_images = len(prompts_with_concepts) * len(models_to_use)
@@ -2375,19 +2381,19 @@ def agentic_generate():
             'message': f'Starting agentic generation with {len(models_to_use)} models (up to {max_iterations} refinement iterations)'
         })
 
-        # PHASE 1: Generate initial concepts with Claude (streaming)
+        # PHASE 1+2 COMBINED: Generate concepts AND prompts in one Claude call
         yield sse_message({
             'type': 'progress',
             'phase': 'ideation',
-            'message': 'Claude is generating thumbnail concepts...'
+            'message': 'Claude is generating concepts + prompts (single fast call)...'
         })
-        yield sse_message({'type': 'claude_prompt', 'content': 'Generating thumbnail concepts...'})
+        yield sse_message({'type': 'claude_prompt', 'content': 'Generating concepts and prompts in one call...'})
         yield sse_message({'type': 'claude_thinking_start'})
 
-        concepts_queue = queue.Queue()
-        def _stream_concepts():
+        combined_queue = queue.Queue()
+        def _stream_combined():
             try:
-                for event in ideator.generate_concepts_streaming(
+                for event in ideator.generate_concepts_and_prompts_streaming(
                     titles=titles,
                     used_ideas=freshness.get_summary_list(),
                     batch_number=1,
@@ -2396,18 +2402,18 @@ def agentic_generate():
                     creative_direction=creative_direction,
                     count=count
                 ):
-                    concepts_queue.put(event)
+                    combined_queue.put(event)
             except Exception as e:
-                concepts_queue.put({'type': 'error', 'error': str(e)})
+                combined_queue.put({'type': 'error', 'error': str(e)})
             finally:
-                concepts_queue.put(None)  # sentinel
+                combined_queue.put(None)  # sentinel
 
-        threading.Thread(target=_stream_concepts, daemon=True).start()
+        threading.Thread(target=_stream_combined, daemon=True).start()
 
-        concepts = None
+        prompts_with_concepts = None
         while True:
             try:
-                event = concepts_queue.get(timeout=5)
+                event = combined_queue.get(timeout=5)
             except queue.Empty:
                 yield sse_keepalive()
                 continue
@@ -2429,67 +2435,14 @@ def agentic_generate():
                 yield sse_message({'type': 'claude_response', 'content': event['content']})
             elif etype == 'complete':
                 yield sse_message({'type': 'claude_complete'})
-            elif etype == 'concepts':
-                concepts = event['concepts']
-
-        if not concepts:
-            yield sse_message({'type': 'error', 'message': 'No concepts generated'})
-            return
-
-        concepts = concepts[:count]
-
-        yield sse_message({
-            'type': 'progress',
-            'phase': 'prompting',
-            'message': f'Got {len(concepts)} concepts, generating prompts...'
-        })
-        yield sse_message({'type': 'claude_prompt', 'content': 'Writing image generation prompts...'})
-        yield sse_message({'type': 'claude_thinking_start'})
-
-        # PHASE 2: Generate prompts (streaming)
-        prompts_queue = queue.Queue()
-        def _stream_prompts():
-            try:
-                for event in ideator.generate_prompts_for_concepts_streaming(concepts):
-                    prompts_queue.put(event)
-            except Exception as e:
-                prompts_queue.put({'type': 'error', 'error': str(e)})
-            finally:
-                prompts_queue.put(None)
-
-        threading.Thread(target=_stream_prompts, daemon=True).start()
-
-        prompts_with_concepts = None
-        while True:
-            try:
-                event = prompts_queue.get(timeout=5)
-            except queue.Empty:
-                yield sse_keepalive()
-                continue
-            if event is None:
-                break
-            etype = event.get('type')
-            if etype == 'error':
-                yield sse_message({'type': 'error', 'message': f'Prompt error: {event["error"]}'})
-                return
-            elif etype == 'prompt':
-                yield sse_message({'type': 'claude_prompt', 'content': event['content']})
-            elif etype == 'thinking_start':
-                yield sse_message({'type': 'claude_thinking_start'})
-            elif etype == 'thinking_delta':
-                yield sse_message({'type': 'claude_thinking', 'content': event['content']})
-            elif etype == 'response_start':
-                yield sse_message({'type': 'claude_response_start'})
-            elif etype == 'response_delta':
-                yield sse_message({'type': 'claude_response', 'content': event['content']})
-            elif etype == 'complete':
-                yield sse_message({'type': 'claude_complete'})
-            elif etype == 'prompts':
+            elif etype == 'prompts_ready':
                 prompts_with_concepts = event['prompts']
 
         if not prompts_with_concepts:
-            yield sse_message({'type': 'error', 'message': 'Failed to generate prompts'})
+            yield sse_message({'type': 'error', 'message': 'No concepts generated'})
             return
+
+        prompts_with_concepts = prompts_with_concepts[:count]
 
         # PHASE 3: Agentic refinement loop
         batch_id = f"agentic_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -2499,6 +2452,7 @@ def agentic_generate():
         try:
             job_id = job_manager.create_job('agentic', {
                 'titles': titles,
+                'creative_direction': creative_direction,
                 'models': models_to_use,
                 'count': count,
                 'max_iterations': max_iterations,

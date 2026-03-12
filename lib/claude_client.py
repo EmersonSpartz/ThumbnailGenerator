@@ -82,6 +82,114 @@ class ClaudeIdeator:
             return guide_path.read_text()
         return ""
 
+    def generate_concepts_and_prompts_streaming(
+        self,
+        titles: list[str],
+        used_ideas: list[str],
+        batch_number: int,
+        script: str = None,
+        favorites_context: str = "",
+        category_hint: str = "",
+        creative_direction: str = "",
+        count: int = 20
+    ):
+        """
+        COMBINED: Generate concepts AND image prompts in a single Claude call.
+        Saves ~35 seconds by eliminating the second API call.
+        Yields streaming events, then final {"type": "prompts_ready", "prompts": [...]}.
+        """
+        tls = _get_tls()
+
+        prompt = self._build_combined_prompt(
+            titles, used_ideas, batch_number, script,
+            favorites_context, category_hint, creative_direction, count
+        )
+
+        tls.last_prompt = prompt
+        tls.current_thinking = ""
+        tls.current_response = ""
+        tls.last_thinking = ""
+        tls.last_response = ""
+
+        yield {"type": "prompt", "content": prompt}
+
+        # More tokens needed since we're generating both concepts + prompts
+        tokens_needed = max(48000, count * 900 + self.budget_tokens + 8000)
+        tokens_needed = min(tokens_needed, 128000)
+
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=tokens_needed,
+            thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
+            messages=[{"role": "user", "content": prompt}]
+        ) as stream:
+            for event in stream:
+                if event.type == "content_block_start":
+                    if hasattr(event.content_block, 'type'):
+                        if event.content_block.type == "thinking":
+                            yield {"type": "thinking_start"}
+                        elif event.content_block.type == "text":
+                            yield {"type": "response_start"}
+                elif event.type == "content_block_delta":
+                    if hasattr(event.delta, 'thinking'):
+                        tls.current_thinking += event.delta.thinking
+                        yield {"type": "thinking_delta", "content": event.delta.thinking}
+                    elif hasattr(event.delta, 'text'):
+                        tls.current_response += event.delta.text
+                        yield {"type": "response_delta", "content": event.delta.text}
+                elif event.type == "message_stop":
+                    tls.last_thinking = tls.current_thinking
+                    tls.last_response = tls.current_response
+                    yield {"type": "complete"}
+
+        # Parse combined response
+        result = self._parse_combined_response(tls.current_response)
+        yield {"type": "prompts_ready", "prompts": result}
+
+    def generate_concepts_and_prompts(
+        self,
+        titles: list[str],
+        used_ideas: list[str],
+        batch_number: int,
+        script: str = None,
+        favorites_context: str = "",
+        category_hint: str = "",
+        creative_direction: str = "",
+        count: int = 20
+    ) -> list[dict]:
+        """
+        COMBINED (non-streaming): Generate concepts AND image prompts in a single Claude call.
+        Returns list of dicts with concept_name, category, description, title_ref, and prompt.
+        """
+        tls = _get_tls()
+
+        prompt = self._build_combined_prompt(
+            titles, used_ideas, batch_number, script,
+            favorites_context, category_hint, creative_direction, count
+        )
+
+        tls.last_prompt = prompt
+
+        tokens_needed = max(48000, count * 900 + self.budget_tokens + 8000)
+        tokens_needed = min(tokens_needed, 128000)
+
+        response = self._stream_with_retry(
+            model=self.model,
+            max_tokens=tokens_needed,
+            thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        tls.last_thinking = ""
+        tls.last_response = ""
+        for block in response.content:
+            if hasattr(block, 'thinking'):
+                tls.last_thinking = block.thinking
+            if hasattr(block, 'text'):
+                tls.last_response = block.text
+
+        return self._parse_combined_response(tls.last_response)
+
     def generate_concepts(
         self,
         titles: list[str],
@@ -441,6 +549,121 @@ Return as JSON:
   ]
 }}
 ```"""
+
+    def _build_combined_prompt(
+        self,
+        titles: list[str],
+        used_ideas: list[str],
+        batch_number: int,
+        script: str = None,
+        favorites_context: str = "",
+        category_hint: str = "",
+        creative_direction: str = "",
+        count: int = 20
+    ) -> str:
+        """Build a single prompt that generates BOTH concepts AND image prompts."""
+        if self.prompt_manager is None:
+            from .prompt_manager import PromptManager
+            self.prompt_manager = PromptManager(self.data_dir)
+
+        # Get the concept generation template
+        base_prompt = self.prompt_manager.build_full_prompt(
+            titles=titles,
+            script=script or "",
+            creative_direction=creative_direction or "",
+            count=count
+        )
+
+        # Get prompting guide for image prompts
+        prompting_guide = self._get_prompting_guide()
+        image_template = self.prompt_manager.get_prompt('image_prompt_template') if self.prompt_manager else ""
+        template_instruction = image_template if image_template else "Write detailed cinematic image prompts."
+
+        return f"""{base_prompt}
+
+---
+
+## ALSO: Write Image Prompts For Each Concept
+
+After generating the concepts, ALSO write a detailed image generation prompt for each one.
+
+{template_instruction}
+
+CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
+
+AESTHETIC MANDATE: Every prompt should be BOLD and scroll-stopping while looking premium. Use high contrast, bold saturated colors (intentional, not random neon), specific camera/lens references, cinematic lighting direction, and atmospheric details.
+
+## CINEMATIC PROMPTING GUIDE
+
+{prompting_guide}
+
+---
+
+## COMBINED OUTPUT FORMAT
+
+Return ALL {count} concepts with their image prompts as JSON:
+
+```json
+{{
+  "concepts": [
+    {{
+      "title_ref": "The video title this is for",
+      "concept_name": "Short memorable name (2-4 words)",
+      "category": "Which angle (Cinematic Scale, Intimate Portrait, Bold Metaphor, etc.)",
+      "description": "Vivid 2-3 sentence description of the visual",
+      "prompt": "The complete cinematic image prompt for this concept (NO TEXT IN IMAGE). End with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, cinematic lighting"
+    }}
+  ]
+}}
+```"""
+
+    def _parse_combined_response(self, text: str) -> list[dict]:
+        """Parse the combined concepts+prompts response."""
+        # Try JSON code blocks first
+        json_blocks = re.findall(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+        for json_str in json_blocks:
+            try:
+                data = json.loads(json_str)
+                concepts = data.get('concepts', [])
+                if concepts and concepts[0].get('prompt'):
+                    return concepts
+            except json.JSONDecodeError:
+                continue
+
+        # Fallback: try entire text as JSON
+        try:
+            data = json.loads(text)
+            return data.get('concepts', [])
+        except json.JSONDecodeError:
+            pass
+
+        # Last resort: find JSON object in text
+        try:
+            json_match = re.search(r'\{\s*"concepts"\s*:\s*\[.*?\]\s*\}', text, re.DOTALL)
+            if json_match:
+                data = json.loads(json_match.group(0))
+                return data.get('concepts', [])
+        except json.JSONDecodeError:
+            pass
+
+        # Recover individual objects from truncated JSON
+        concept_objects = re.findall(
+            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*"category"\s*:\s*"[^"]*"\s*,\s*"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"prompt"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
+            text, re.DOTALL
+        )
+        if concept_objects:
+            recovered = []
+            for obj_str in concept_objects:
+                try:
+                    recovered.append(json.loads(obj_str))
+                except json.JSONDecodeError:
+                    continue
+            if recovered:
+                print(f"[PARSE] Recovered {len(recovered)} combined concepts from truncated JSON")
+                return recovered
+
+        print(f"Failed to parse combined response: {text[:500]}")
+        return []
 
     def _build_variations_prompt(
         self,
