@@ -1189,13 +1189,25 @@
     <div class="container">
         <header>
             <h1>Thumbnail Generator v2</h1>
+            <div id="video-selector-bar" style="display:flex; align-items:center; gap:10px; padding:8px 0; margin-bottom:8px; border-bottom:1px solid #333;">
+                <label style="color:#888; font-size:13px; white-space:nowrap;">Current Video:</label>
+                <select id="video-select" style="flex:1; max-width:350px; padding:6px 10px; background:#1a1a1a; color:#fff; border:1px solid #fbbf24; border-radius:6px; font-size:13px;">
+                    <option value="">-- Select a Video --</option>
+                </select>
+                <input type="text" id="video-new-name" placeholder="New video name..." style="flex:1; max-width:250px; padding:6px 10px; background:#1a1a1a; color:#fff; border:1px solid #444; border-radius:6px; font-size:13px; display:none;">
+                <button id="video-new-btn" style="padding:6px 12px; background:#333; color:#ccc; border:1px solid #555; border-radius:6px; cursor:pointer; font-size:12px;">+ New Video</button>
+                <span id="no-video-warning" style="color:#f87171; font-size:11px; display:none;">Select or create a video first</span>
+            </div>
             <div class="tabs">
                 <button class="tab active" data-tab="text-tab">✏️ Text Thumbnails</button>
-                <button class="tab" data-tab="generate">Generate <span id="tab-job-count" style="display:none; background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:5px;">0</span></button>
                 <button class="tab" data-tab="favorites">Favorites <span id="tab-fav-count" style="background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:3px; display:none;">0</span></button>
-                <button class="tab" data-tab="templates">🧩 Templates</button>
+                <button class="tab" id="advanced-toggle" style="color:#555; font-size:12px; margin-left:auto;">More ▸</button>
+            </div>
+            <div class="tabs" id="advanced-tabs" style="display:none; border-top:1px solid #222; padding-top:4px;">
+                <button class="tab" data-tab="generate">Generate <span id="tab-job-count" style="display:none; background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:5px;">0</span></button>
+                <button class="tab" data-tab="templates" style="display:none;">🧩 Templates</button>
                 <button class="tab" data-tab="shootout">🎯 Model Shootout</button>
-                <button class="tab" data-tab="prompts" id="advanced-tab" style="color:#555; font-size:12px;">⚙️ Advanced</button>
+                <button class="tab" data-tab="prompts" id="advanced-tab" style="color:#555; font-size:12px;">⚙️ Prompts</button>
             </div>
         </header>
 
@@ -1696,6 +1708,16 @@
                         <label style="color: #fbbf24;">✏️ Thumbnail Copy <span style="color: #888; font-weight: normal; font-size: 11px;">(text that gets baked into each image)</span></label>
                         <input type="text" id="text-thumbnail-copy" placeholder="e.g. AI IS TAKING OVER" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #fbbf24; border-radius: 6px; color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 1px;">
                     </div>
+                    <!-- Template Presets -->
+                    <div class="form-group">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Quick Templates <span style="color:#888; font-size:11px;">(click to load proven YouTube formats)</span></span>
+                        </label>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load All Templates (10)</button>
+                            <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
+                        </div>
+                    </div>
                     <!-- Batch Queue -->
                     <div class="form-group">
                         <label style="display: flex; justify-content: space-between; align-items: center;">
@@ -1703,21 +1725,6 @@
                             <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Batch</button>
                         </label>
                         <div id="batch-queue-container">
-                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
-                                <span style="color:#555; font-size:12px; min-width:20px;">1.</span>
-                                <input type="text" class="batch-direction" placeholder="e.g. war tropes, OpenAI vs Claude icons" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
-                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
-                            </div>
-                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
-                                <span style="color:#555; font-size:12px; min-width:20px;">2.</span>
-                                <input type="text" class="batch-direction" placeholder="e.g. use earth splitting apart" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
-                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
-                            </div>
-                            <div class="batch-line" style="display:flex; gap:8px; margin-bottom:6px; align-items:center;">
-                                <span style="color:#555; font-size:12px; min-width:20px;">3.</span>
-                                <input type="text" class="batch-direction" placeholder="e.g. human face showing fear/awe" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
-                                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -2151,6 +2158,7 @@
     </div>
 
     <script>
+        console.log('[THUMB-GEN] Script loaded at', new Date().toISOString());
         // =====================================================
         // STATE
         // =====================================================
@@ -2570,6 +2578,7 @@
 
         // Generate template
         document.getElementById('generate-template-btn').addEventListener('click', async () => {
+            if (!requireVideo()) return;
             const topic = document.getElementById('template-topic').value.trim();
             if (!topic) { alert('Please enter a topic'); return; }
 
@@ -2594,7 +2603,8 @@
                 template: selectedTemplate,
                 topic: topic,
                 slots: slots,
-                model: model
+                model: model,
+                video: getVideoParam()
             });
 
             try {
@@ -3018,9 +3028,22 @@
         // =====================================================
         // TABS
         // =====================================================
+        // Advanced tabs toggle
+        document.getElementById('advanced-toggle').addEventListener('click', function() {
+            const advTabs = document.getElementById('advanced-tabs');
+            if (advTabs.style.display === 'none') {
+                advTabs.style.display = 'flex';
+                this.textContent = 'Less ▾';
+            } else {
+                advTabs.style.display = 'none';
+                this.textContent = 'More ▸';
+            }
+        });
+
         document.querySelectorAll('.tab').forEach(tab => {
+            if (tab.id === 'advanced-toggle') return; // skip the toggle button
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(t => { if (t.id !== 'advanced-toggle') t.classList.remove('active'); });
                 document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab).classList.add('active');
@@ -3031,11 +3054,115 @@
         });
 
         // =====================================================
+        // VIDEO SELECTOR
+        // =====================================================
+        let currentVideoName = localStorage.getItem('current_video') || '';
+
+        function getVideoParam() {
+            return currentVideoName || '';
+        }
+
+        function requireVideo() {
+            if (currentVideoName) return true;
+            const warning = document.getElementById('no-video-warning');
+            warning.style.display = 'inline';
+            document.getElementById('video-select').style.borderColor = '#f87171';
+            document.getElementById('video-select').focus();
+            setTimeout(() => {
+                warning.style.display = 'none';
+                document.getElementById('video-select').style.borderColor = currentVideoName ? '#fbbf24' : '#fbbf24';
+            }, 3000);
+            return false;
+        }
+
+        function updateVideoUI() {
+            const sel = document.getElementById('video-select');
+            sel.style.borderColor = currentVideoName ? '#4ade80' : '#fbbf24';
+            document.getElementById('no-video-warning').style.display = 'none';
+        }
+
+        async function loadVideoList() {
+            try {
+                const resp = await fetch('/api/videos');
+                const data = await resp.json();
+                const sel = document.getElementById('video-select');
+                sel.innerHTML = '<option value="">-- Select a Video --</option>';
+                (data.videos || []).forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v;
+                    opt.textContent = v;
+                    if (v === currentVideoName) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+                if (currentVideoName && !data.videos.includes(currentVideoName)) {
+                    const opt = document.createElement('option');
+                    opt.value = currentVideoName;
+                    opt.textContent = currentVideoName;
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                }
+                updateVideoUI();
+            } catch(e) { console.error('Failed to load videos:', e); }
+        }
+
+        document.getElementById('video-select').addEventListener('change', (e) => {
+            currentVideoName = e.target.value;
+            localStorage.setItem('current_video', currentVideoName);
+            updateVideoUI();
+            refreshCurrentTab();
+        });
+
+        document.getElementById('video-new-btn').addEventListener('click', () => {
+            const input = document.getElementById('video-new-name');
+            if (input.style.display === 'none') {
+                input.style.display = 'block';
+                input.focus();
+            } else {
+                const name = input.value.trim();
+                if (name) {
+                    currentVideoName = name;
+                    localStorage.setItem('current_video', currentVideoName);
+                    const sel = document.getElementById('video-select');
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                    input.value = '';
+                    input.style.display = 'none';
+                    updateVideoUI();
+                    refreshCurrentTab();
+                }
+            }
+        });
+
+        document.getElementById('video-new-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('video-new-btn').click();
+            if (e.key === 'Escape') {
+                e.target.style.display = 'none';
+                e.target.value = '';
+            }
+        });
+
+        function refreshCurrentTab() {
+            const activeTab = document.querySelector('.tab.active');
+            if (!activeTab) return;
+            const tab = activeTab.dataset.tab;
+            if (tab === 'favorites') loadFavorites();
+            else if (tab === 'generate') loadGenerateHistory();
+            else if (tab === 'text-tab') loadTextTabHistory();
+            else if (tab === 'shootout') loadAndMergeHistory();
+        }
+
+        loadVideoList();
+
+        // =====================================================
         // LOCALSTORAGE PERSISTENCE FOR FORM INPUTS
         // =====================================================
         const persistedFields = [
             'titles', 'script', 'creative-direction',
-            'text-titles', 'text-thumbnail-copy', 'text-creative-direction'
+            'text-titles', 'text-thumbnail-copy', 'text-creative-direction',
+            'text-count', 'text-max-iterations'
         ];
         // Restore saved values on page load
         persistedFields.forEach(id => {
@@ -3049,10 +3176,47 @@
             });
         });
 
+        // Batch directions persistence
+        function saveBatchDirections() {
+            const dirs = Array.from(document.querySelectorAll('.batch-direction')).map(i => i.value);
+            localStorage.setItem('batch_directions', JSON.stringify(dirs));
+        }
+        function restoreBatchDirections() {
+            const saved = localStorage.getItem('batch_directions');
+            if (!saved) return;
+            try {
+                const dirs = JSON.parse(saved);
+                if (!Array.isArray(dirs) || dirs.length === 0) return;
+                // If all directions are empty, don't restore (let presets load instead)
+                if (dirs.every(d => !d.trim())) return;
+                const container = document.getElementById('batch-queue-container');
+                // Clear default batch line
+                container.innerHTML = '';
+                dirs.forEach((dir, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'batch-line';
+                    div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+                    div.innerHTML = `
+                        <span style="color:#555; font-size:12px; min-width:20px;">${i + 1}.</span>
+                        <input type="text" class="batch-direction" placeholder="creative direction for batch ${i + 1}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;" value="${dir.replace(/"/g, '&quot;')}">
+                        <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                    `;
+                    container.appendChild(div);
+                    div.querySelector('input').addEventListener('input', saveBatchDirections);
+                });
+            } catch(e) {}
+        }
+        restoreBatchDirections();
+        // Wire up save on any batch inputs present at load (including defaults)
+        document.querySelectorAll('.batch-direction').forEach(input => {
+            input.addEventListener('input', saveBatchDirections);
+        });
+
         // =====================================================
         // GENERATION
         // =====================================================
         document.getElementById('generate-btn').addEventListener('click', () => {
+            if (!requireVideo()) return;
             const titles = document.getElementById('titles').value;
             const script = document.getElementById('script').value;
             const creativeDirection = document.getElementById('creative-direction').value;
@@ -3085,7 +3249,7 @@
                 const maxIterations = document.getElementById('agentic-max-iterations').value;
                 const qualityThreshold = document.getElementById('agentic-quality-threshold').value;
 
-                url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&max_iterations=${maxIterations}&quality_threshold=${qualityThreshold}`;
+                url = `/api/agentic-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&max_iterations=${maxIterations}&quality_threshold=${qualityThreshold}&video_name=${encodeURIComponent(getVideoParam())}`;
                 jobType = '🤖 Agentic';
             }
             // NORMAL MODE
@@ -3099,7 +3263,7 @@
                     return;
                 }
 
-                url = `/api/full-parallel?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&concepts_per_llm=${conceptsPerLlm}&llms=${llms.join(',')}&models=${models.join(',')}&use_favorites=${useFavorites}`;
+                url = `/api/full-parallel?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&concepts_per_llm=${conceptsPerLlm}&llms=${llms.join(',')}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}`;
                 jobType = 'MAX Diversity';
             } else if (generationMode === 'parallel') {
                 models = getSelectedModels();
@@ -3108,7 +3272,7 @@
                     return;
                 }
 
-                url = `/api/parallel-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}`;
+                url = `/api/parallel-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}`;
                 jobType = 'Parallel';
             } else {
                 const model = document.getElementById('model').value;
@@ -3122,6 +3286,7 @@
 
         // Quick generate
         document.getElementById('quick-generate-btn').addEventListener('click', async () => {
+            if (!requireVideo()) return;
             const prompt = document.getElementById('direct-prompt').value;
             const model = document.getElementById('model').value;
 
@@ -3230,6 +3395,60 @@
         let batchStopped = false;
         let activeBatchSources = []; // EventSource refs for stopping
 
+        const BATCH_PRESETS = {
+            starter: [
+                'Split screen — two sides divided down the middle, dramatic contrast',
+                'Before / After — left side is the old way, right side is the new way',
+                'Giant vs tiny — one massive thing towering over something small',
+                'Single iconic object — one bold symbol filling the frame',
+                'Dark silhouette — mysterious figure backlit, face hidden',
+                'Scale comparison — something impossibly big next to something normal-sized',
+                'Countdown / ranking — numbered items suggesting a list or levels',
+                'Collision / VS — two things about to crash into each other',
+                'Reveal / unveiling — something being uncovered, curtain pulled back, light spilling out',
+                'Transformation — something mid-change, morphing from one state to another',
+            ],
+            full: [], // populated dynamically below
+        };
+        BATCH_PRESETS.full = [...BATCH_PRESETS.starter];
+
+        function loadPreset(name) {
+            if (name === 'clear') {
+                document.getElementById('batch-queue-container').innerHTML = '';
+                addBatchLine();
+                saveBatchDirections();
+                return;
+            }
+            const directions = BATCH_PRESETS[name];
+            if (!directions) return;
+
+            const container = document.getElementById('batch-queue-container');
+            container.innerHTML = '';
+            directions.forEach((dir, i) => {
+                const div = document.createElement('div');
+                div.className = 'batch-line';
+                div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+                div.innerHTML = `
+                    <span style="color:#555; font-size:12px; min-width:20px;">${i + 1}.</span>
+                    <input type="text" class="batch-direction" value="${dir.replace(/"/g, '&quot;')}" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                    <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                `;
+                container.appendChild(div);
+                div.querySelector('input').addEventListener('input', saveBatchDirections);
+            });
+            saveBatchDirections();
+        }
+
+        // One-time migration: load starter presets (v3 = general YouTube thumbnail formats)
+        if (!localStorage.getItem('presets_v3_loaded')) {
+            localStorage.removeItem('batch_directions');
+            document.getElementById('batch-queue-container').innerHTML = '';
+            loadPreset('starter');
+            localStorage.setItem('presets_v3_loaded', 'true');
+        } else if (document.getElementById('batch-queue-container').children.length === 0) {
+            loadPreset('starter');
+        }
+
         function addBatchLine() {
             const container = document.getElementById('batch-queue-container');
             const count = container.children.length + 1;
@@ -3239,10 +3458,13 @@
             div.innerHTML = `
                 <span style="color:#555; font-size:12px; min-width:20px;">${count}.</span>
                 <input type="text" class="batch-direction" placeholder="creative direction for batch ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
-                <button onclick="this.parentElement.remove(); updateBatchNumbers()" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
             `;
             container.appendChild(div);
-            div.querySelector('input').focus();
+            const input = div.querySelector('input');
+            input.addEventListener('input', saveBatchDirections);
+            input.focus();
+            saveBatchDirections();
         }
 
         function updateBatchNumbers() {
@@ -3253,6 +3475,7 @@
         }
 
         function startBatchQueue() {
+            if (!requireVideo()) return;
             const titles = document.getElementById('text-titles').value.trim();
             const thumbnailText = document.getElementById('text-thumbnail-copy').value.trim();
             const count = document.getElementById('text-count').value;
@@ -3271,45 +3494,53 @@
                 .filter(d => d.length > 0);
 
             if (directions.length === 0) {
-                // No directions = single batch with no creative direction
                 directions.push('');
             }
 
-            batchQueue = directions.map((dir, i) => ({
-                index: i,
+            // Append new batches to existing queue (don't replace)
+            const startIndex = batchQueue.length;
+            const newBatches = directions.map((dir, i) => ({
+                index: startIndex + i,
                 direction: dir,
-                status: 'queued', // queued | running | done | error
+                status: 'queued',
                 titles, thumbnailText, count, maxIterations, models
             }));
+            batchQueue.push(...newBatches);
 
             batchStopped = false;
-            activeBatchSources = [];
 
-            // Show progress panel
-            document.getElementById('text-generate-btn').style.display = 'none';
+            // Show progress panel + keep generate button visible for adding more
+            document.getElementById('text-generate-btn').textContent = '+ Add More Batches';
             document.getElementById('text-stop-btn').style.display = 'block';
             document.getElementById('batch-progress').style.display = 'block';
             updateBatchProgress();
 
-            // Launch all batches simultaneously
-            batchRunning = true;
-            batchQueue.forEach((batch) => {
-                launchBatch(batch);
-            });
-
-            // Monitor completion
-            const check = setInterval(() => {
-                const pending = batchQueue.filter(b => b.status === 'queued' || b.status === 'running').length;
-                if (pending === 0 || batchStopped) {
-                    clearInterval(check);
-                    batchRunning = false;
-                    document.getElementById('text-generate-btn').style.display = 'block';
-                    document.getElementById('text-stop-btn').style.display = 'none';
-                }
-            }, 2000);
+            // If not already running, start processing from the first new batch
+            if (!batchRunning) {
+                batchRunning = true;
+                launchBatchSequential(startIndex);
+            }
         }
 
-        function launchBatch(batch) {
+        function launchBatchSequential(index) {
+            if (index >= batchQueue.length || batchStopped) {
+                batchRunning = false;
+                document.getElementById('text-generate-btn').textContent = 'Launch All Batches';
+                document.getElementById('text-stop-btn').style.display = 'none';
+                return;
+            }
+            // Skip already-done batches (from previous queue)
+            if (batchQueue[index].status === 'done' || batchQueue[index].status === 'error') {
+                launchBatchSequential(index + 1);
+                return;
+            }
+            const batch = batchQueue[index];
+            launchBatch(batch, () => {
+                launchBatchSequential(index + 1);
+            });
+        }
+
+        function launchBatch(batch, onComplete) {
             batch.status = 'running';
             updateBatchProgress();
 
@@ -3322,7 +3553,7 @@
             header.innerHTML = `Batch ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no direction)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
             grid.appendChild(header);
 
-            const url = `/api/agentic-generate?titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}`;
+            const url = `/api/agentic-generate?titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}`;
 
             const jobId = Date.now().toString(36) + batch.index;
             createJob(jobId, `Batch ${batch.index + 1}`, { models: batch.models, llms: [] });
@@ -3406,6 +3637,13 @@
 
                     case 'error':
                         console.error(`Batch ${batch.index + 1} error:`, data.message);
+                        batch.errorMsg = data.message;
+                        // Show error in batch header
+                        const errHdr = document.getElementById(`batch-header-${batch.index}`);
+                        if (errHdr) {
+                            errHdr.style.borderLeftColor = '#ef4444';
+                            errHdr.innerHTML += ` <span style="color:#ef4444;font-size:11px;">⚠️ ${data.message}</span>`;
+                        }
                         break;
 
                     case 'done':
@@ -3417,15 +3655,24 @@
                         eventSource.close();
                         const hdr = document.getElementById(`batch-header-${batch.index}`);
                         if (hdr) hdr.style.borderLeftColor = '#888';
+                        if (onComplete) onComplete();
                         break;
                 }
             };
 
             eventSource.onerror = () => {
                 if (batch.status === 'running') {
-                    batch.status = 'done';
-                    completeJob(jobId, true);
+                    // If no images were generated, this was an error, not success
+                    if (imageCount === 0) {
+                        batch.status = 'error';
+                        batch.errorMsg = batch.errorMsg || 'Connection lost before any images generated';
+                        completeJob(jobId, false);
+                    } else {
+                        batch.status = 'done';
+                        completeJob(jobId, true);
+                    }
                     updateBatchProgress();
+                    if (onComplete) onComplete();
                 }
                 eventSource.close();
             };
@@ -3441,7 +3688,9 @@
             // Also hit the server stop endpoint
             fetch('/stop', { method: 'POST' }).catch(() => {});
             updateBatchProgress();
-            document.getElementById('text-generate-btn').style.display = 'block';
+            batchRunning = false;
+            batchQueue = [];
+            document.getElementById('text-generate-btn').textContent = 'Launch All Batches';
             document.getElementById('text-stop-btn').style.display = 'none';
         }
 
@@ -3471,6 +3720,7 @@
         }
 
         function startGeneration(url, gridId, jobType, models = [], llms = [], meta = {}) {
+            if (!requireVideo()) return;
             const grid = document.getElementById(gridId);
             // DON'T clear the grid - allow multiple jobs to add to it
             // grid.innerHTML = '';
@@ -4217,7 +4467,8 @@
                     title_ref: data.title_ref || '',
                     category: data.category || '',
                     description: data.concept_summary || '',
-                    notes: ''
+                    notes: '',
+                    video_name: getVideoParam(),
                 })
             });
             const result = await response.json();
@@ -4278,7 +4529,8 @@
         });
 
         async function loadFavorites() {
-            const response = await fetch('/api/favorites');
+            const videoParam = currentVideoName ? `?video=${encodeURIComponent(currentVideoName)}` : '';
+            const response = await fetch('/api/favorites' + videoParam);
             const data = await response.json();
             favorites = data.favorites;
             window.favorites = favorites;
@@ -4303,8 +4555,10 @@
             favorites.forEach(fav => {
                 const card = document.createElement('div');
                 card.className = 'thumbnail-card favorited';
+                // Protected favorites use /data/ path, legacy ones use /output/
+                const imgPrefix = fav.thumbnail_path.startsWith('data/') ? '/' : '/output/';
                 card.innerHTML = `
-                    <img src="/output/${fav.thumbnail_path}" alt="${fav.concept_name}" onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image not on server</div>'">
+                    <img src="${imgPrefix}${fav.thumbnail_path}" alt="${fav.concept_name}" data-fallback="${fav.original_output_path || fav.thumbnail_path}">
                     <div class="thumbnail-info">
                         <h4>${fav.concept_name}</h4>
                         <p>${fav.description || fav.notes || ''}</p>
@@ -4314,6 +4568,19 @@
                         <button class="btn btn-primary variations-btn">Variations</button>
                     </div>
                 `;
+                // Add onerror handler programmatically to avoid quote-escaping hell in template literals
+                const favImg = card.querySelector('img');
+                favImg.onerror = function() {
+                    const fb = this.dataset.fallback;
+                    if (fb) {
+                        this.onerror = function() {
+                            this.outerHTML = '<div style="aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;">Image not on server</div>';
+                        };
+                        this.src = '/output/' + fb;
+                    } else {
+                        this.outerHTML = '<div style="aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;">Image not on server</div>';
+                    }
+                };
 
                 card.dataset.favoriteId = fav.id;
                 card.dataset.thumbnail = JSON.stringify({
@@ -4620,6 +4887,7 @@
         // MODEL SHOOTOUT
         // =====================================================
         document.getElementById('shootout-btn').addEventListener('click', () => {
+            if (!requireVideo()) return;
             const titles = document.getElementById('shootout-titles').value;
             const script = document.getElementById('shootout-script').value;
             const direction = document.getElementById('shootout-direction').value;
@@ -4638,7 +4906,7 @@
                 return;
             }
 
-            const url = `/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}`;
+            const url = `/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`;
 
             startShootout(url, models);
         });
@@ -4647,6 +4915,7 @@
         let currentShootoutData = null;
 
         function startShootout(url, models) {
+            if (!requireVideo()) return;
             const grid = document.getElementById('shootout-grid');
             grid.innerHTML = '';
 
@@ -4994,7 +5263,8 @@
 
         // Load and merge history from backend + localStorage
         function loadAndMergeHistory() {
-            fetch('/api/history?limit=100')
+            const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
+            fetch('/api/history?limit=100' + videoParam)
                 .then(r => r.json())
                 .then(data => {
                     console.log('Loaded backend history:', data.sessions?.length || 0, 'sessions,', data.thumbnails?.length || 0, 'thumbnails');
@@ -5172,7 +5442,8 @@
 
         // Load Generate page history
         function loadGenerateHistory() {
-            fetch('/api/history?limit=50')
+            const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
+            fetch('/api/history?limit=50' + videoParam)
                 .then(r => r.json())
                 .then(data => {
                     const sessions = data.sessions || [];

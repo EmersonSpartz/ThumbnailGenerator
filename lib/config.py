@@ -16,7 +16,7 @@ class Settings:
         self.google_api_keys = self._parse_google_keys()
 
         # Model settings
-        self.claude_model = os.getenv('CLAUDE_MODEL', 'claude-opus-4-5-20251101')
+        self.claude_model = os.getenv('CLAUDE_MODEL', 'claude-opus-4-20250514')
         self.thinking_budget_tokens = int(os.getenv('THINKING_BUDGET_TOKENS', '10000'))
 
         # Directories - use persistent volume on Railway, local dirs otherwise

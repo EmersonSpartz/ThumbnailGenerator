@@ -375,10 +375,10 @@ Return ALL {{COUNT}} concepts as JSON:
         # Build creative direction section
         cd_section = ""
         if creative_direction and creative_direction.strip():
-            cd_section = f"""**CREATIVE DIRECTION (use as an ingredient, not the whole concept):**
+            cd_section = f"""**CREATIVE DIRECTION (MANDATORY — must be visually prominent):**
 {creative_direction}
 
-Use this as a VISUAL ELEMENT or SETTING — but the concept must still tell a story about the video topic. The creative direction is ONE ingredient, not the entire thumbnail. If the user says "show earth," don't just show earth — show earth BEING AFFECTED by the topic (cracked, transformed, surrounded by competing forces, etc.). The video's theme/conflict must be VISIBLE in the image.
+This is a HARD REQUIREMENT, not a suggestion. The creative direction MUST be the dominant visual element in every thumbnail concept. If the direction says "mushroom cloud," there must be an actual mushroom cloud clearly visible as the main subject. If it says "earth," Earth must be prominently shown. The creative direction defines WHAT we see — the video topic/title defines the STORY or CONTEXT around it. Do NOT abstract away the creative direction into a vague metaphor. Be literal first, creative second.
 
 """
 

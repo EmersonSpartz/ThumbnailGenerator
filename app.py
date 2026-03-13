@@ -42,6 +42,39 @@ from lib.claude_client import (
     get_last_prompt, get_last_response, get_last_thinking,
     get_current_thinking, get_current_response, reset_current_stream
 )
+from lib.logo_compositor import LogoCompositor
+from lib.logo_stylizer import LogoStylizer
+
+_logo_compositor = LogoCompositor()
+_logo_stylizer = LogoStylizer()
+
+
+def _apply_logos_to_image(file_path: str, titles: str = "", creative_direction: str = "", concept_name: str = ""):
+    """Auto-detect and composite logos onto a generated thumbnail. Modifies file in place."""
+    try:
+        abs_path = str(settings.output_dir / file_path)
+        _, logos_applied, placements = _logo_compositor.auto_composite(
+            image_path=abs_path,
+            title=titles,
+            creative_direction=creative_direction,
+            concept_name=concept_name,
+            output_path=abs_path,
+        )
+        if logos_applied:
+            print(f"[LOGO] Applied {logos_applied} to {file_path}")
+
+            # Check for stylization instructions in creative direction
+            logo_styles = _logo_compositor.detect_logo_styles(creative_direction)
+            if logo_styles and placements and _logo_stylizer.available:
+                from PIL import Image as PILImage
+                img = PILImage.open(abs_path)
+                stylized = _logo_stylizer.stylize_logos(
+                    abs_path, placements, logo_styles, img.size
+                )
+                if stylized:
+                    print(f"[LOGO-STYLE] Stylized {stylized} on {file_path}")
+    except Exception as le:
+        print(f"[LOGO] Failed for {file_path}: {le}")
 
 from functools import wraps
 
@@ -156,6 +189,12 @@ def serve_output(filename):
     return send_from_directory(settings.output_dir, filename)
 
 
+@app.route('/data/<path:filename>')
+def serve_data(filename):
+    """Serve protected files (favorites images, etc.)."""
+    return send_from_directory(settings.data_dir, filename)
+
+
 @app.route('/api/health')
 def health_check():
     """Basic health check endpoint."""
@@ -190,10 +229,14 @@ def get_available_models():
 
 @app.route('/api/favorites', methods=['GET'])
 def get_favorites():
-    """Get all favorite thumbnails."""
+    """Get all favorite thumbnails, optionally filtered by video."""
     favorites_mgr = FavoritesManager(settings)
+    video_name = request.args.get('video', None)
+    all_favs = favorites_mgr.get_all_favorites()
+    if video_name:
+        all_favs = [f for f in all_favs if f.get("video_name") == video_name]
     return jsonify({
-        "favorites": favorites_mgr.get_all_favorites(),
+        "favorites": all_favs,
         "patterns": favorites_mgr.get_success_patterns()
     })
 
@@ -212,7 +255,8 @@ def add_favorite():
         category=data.get('category', ''),
         description=data.get('description', ''),
         notes=data.get('notes', ''),
-        performance_data=data.get('performance_data')
+        performance_data=data.get('performance_data'),
+        video_name=data.get('video_name', ''),
     )
 
     return jsonify({"success": True, "favorite": favorite})
@@ -232,10 +276,17 @@ def remove_favorite(favorite_id):
 
 @app.route('/api/history')
 def get_history():
-    """Get thumbnail generation history."""
+    """Get thumbnail generation history, optionally filtered by video."""
     limit = request.args.get('limit', 50, type=int)
     offset = request.args.get('offset', 0, type=int)
-    return jsonify(job_manager.get_history(limit=limit, offset=offset))
+    video_name = request.args.get('video', None)
+    return jsonify(job_manager.get_history(limit=limit, offset=offset, video_name=video_name))
+
+
+@app.route('/api/videos')
+def get_videos():
+    """Get all known video names."""
+    return jsonify({"videos": job_manager.get_all_video_names()})
 
 
 @app.route('/api/last-shootout')
@@ -1001,15 +1052,15 @@ def generate():
                 if underrep:
                     category_hint = f"Focus more on: {', '.join(underrep)}"
 
-            # STEP 1: Generate concepts with Claude (STREAMING for real-time visibility)
+            # COMBINED: Generate concepts AND prompts in single Claude call (~2x faster)
             try:
-                concepts = []
-                for event in ideator.generate_concepts_streaming(
+                prompts_with_concepts = []
+                for event in ideator.generate_concepts_and_prompts_streaming(
                     titles=titles,
                     used_ideas=freshness.get_summary_list(),
                     batch_number=batch_num,
                     script=script,
-                    favorites_context="",  # Removed favorites context
+                    favorites_context="",
                     category_hint=category_hint,
                     creative_direction=creative_direction,
                     count=count
@@ -1041,63 +1092,83 @@ def generate():
                         yield sse_message({
                             'type': 'claude_complete'
                         })
-                    elif event['type'] == 'concepts':
-                        concepts = event['concepts']
+                    elif event['type'] == 'prompts_ready':
+                        prompts_with_concepts = event['prompts']
 
                 yield sse_message({
                     'type': 'progress',
                     'current': generated,
                     'total': count,
-                    'message': f'Batch {batch_num}: Got {len(concepts)} concepts from Claude'
+                    'message': f'Batch {batch_num}: Got {len(prompts_with_concepts)} concepts+prompts from Claude'
                 })
             except Exception as e:
                 yield sse_message({'type': 'error', 'message': f'Claude error: {str(e)}'})
                 continue
 
-            if not concepts:
+            if not prompts_with_concepts:
                 yield sse_message({'type': 'error', 'message': 'No concepts generated'})
                 continue
 
             # Filter for freshness
-            fresh_concepts = freshness.filter_fresh(concepts)
+            fresh_prompts = freshness.filter_fresh(prompts_with_concepts)
             yield sse_message({
                 'type': 'progress',
                 'current': generated,
                 'total': count,
-                'message': f'Batch {batch_num}: {len(fresh_concepts)}/{len(concepts)} concepts are fresh'
+                'message': f'Batch {batch_num}: {len(fresh_prompts)}/{len(prompts_with_concepts)} concepts are fresh'
             })
 
-            if not fresh_concepts:
+            if not fresh_prompts:
                 yield sse_message({
                     'type': 'progress',
                     'message': f'Batch {batch_num}: All concepts too similar, retrying...'
                 })
                 continue
 
-            # STEP 2: Generate prompts
-            try:
-                prompts_with_concepts = ideator.generate_prompts_for_concepts(fresh_concepts)
-                yield sse_message({
-                    'type': 'progress',
-                    'current': generated,
-                    'total': count,
-                    'message': f'Batch {batch_num}: Generated {len(prompts_with_concepts)} prompts'
-                })
-            except Exception as e:
-                yield sse_message({'type': 'error', 'message': f'Prompt error: {str(e)}'})
-                continue
+            # Generate images IN PARALLEL for speed
+            prompts_to_generate = [p for p in fresh_prompts if generated + fresh_prompts.index(p) < count]
+            if _stop_generation:
+                break
 
-            # STEP 3: Generate images
-            for prompt_data in prompts_with_concepts:
-                if generated >= count or _stop_generation:
-                    break
+            from concurrent.futures import ThreadPoolExecutor, as_completed
 
-                # Retry logic for rate limiting
+            def _gen_image(prompt_data):
+                """Generate a single image with retry logic."""
                 max_retries = 3
                 for retry in range(max_retries):
                     result = generator.generate_with_model(model_key, prompt_data, batch_id)
-
                     if result.get('success'):
+                        return {'success': True, 'result': result, 'prompt_data': prompt_data}
+                    elif '429' in str(result.get('error', '')) or 'rate' in str(result.get('error', '')).lower():
+                        if retry < max_retries - 1:
+                            time.sleep(3 * (retry + 1))
+                        else:
+                            return {'success': False, 'error': 'Rate limit exceeded', 'prompt_data': prompt_data}
+                    else:
+                        return {'success': False, 'error': result.get('error', 'Unknown error'), 'prompt_data': prompt_data, 'quota_exhausted': result.get('quota_exhausted')}
+                return {'success': False, 'error': 'Max retries exceeded', 'prompt_data': prompt_data}
+
+            yield sse_message({
+                'type': 'progress',
+                'current': generated,
+                'total': count,
+                'message': f'Generating {len(prompts_to_generate)} images in parallel...'
+            })
+
+            with ThreadPoolExecutor(max_workers=min(len(prompts_to_generate), 5)) as img_executor:
+                futures = {img_executor.submit(_gen_image, pd): pd for pd in prompts_to_generate}
+                for future in as_completed(futures):
+                    if _stop_generation:
+                        break
+                    try:
+                        gen_result = future.result()
+                    except Exception as e:
+                        yield sse_message({'type': 'error', 'message': f'Image generation failed: {str(e)}'})
+                        continue
+
+                    if gen_result['success']:
+                        result = gen_result['result']
+                        prompt_data = gen_result['prompt_data']
                         freshness.add_used_idea(prompt_data)
                         generated += 1
 
@@ -1118,32 +1189,16 @@ def generate():
                             'total': count,
                             'message': f'Generated {generated}/{count}'
                         })
-                        break
-                    elif '429' in str(result.get('error', '')) or 'rate' in str(result.get('error', '')).lower():
-                        # Rate limited - wait and retry
-                        if retry < max_retries - 1:
-                            yield sse_message({
-                                'type': 'progress',
-                                'message': f'Rate limited, waiting 3s before retry ({retry + 1}/{max_retries})...'
-                            })
-                            time.sleep(3)
-                        else:
-                            yield sse_message({
-                                'type': 'error',
-                                'message': f'Rate limit exceeded. Try Gemini (free) or add credits to Replicate.'
-                            })
                     else:
-                        error_msg = result.get('error', 'Unknown error')
+                        error_msg = gen_result.get('error', 'Unknown error')
                         yield sse_message({'type': 'error', 'message': f'Image generation failed: {error_msg}'})
 
-                    if result.get('quota_exhausted'):
-                        yield sse_message({
-                            'type': 'quota_exhausted',
-                            'message': 'All API keys exhausted. Add more keys or wait.'
-                        })
-                        return
-
-                time.sleep(0.5)
+                        if gen_result.get('quota_exhausted'):
+                            yield sse_message({
+                                'type': 'quota_exhausted',
+                                'message': 'All API keys exhausted. Add more keys or wait.'
+                            })
+                            return
 
         yield sse_message({
             'type': 'complete',
@@ -1171,8 +1226,24 @@ def clear_history():
     return jsonify({'status': 'ok'})
 
 
+def _get_protected_paths() -> set:
+    """Get set of output folder names that contain favorited images — never delete these."""
+    protected = set()
+    try:
+        favs = FavoritesManager(settings).get_all_favorites()
+        for fav in favs:
+            # original_output_path or thumbnail_path like "shootout_20260205/concept_1/flux/img.png"
+            path = fav.get('original_output_path') or fav.get('thumbnail_path', '')
+            if path and '/' in path:
+                top_folder = path.split('/')[0]  # e.g. "shootout_20260205_131529"
+                protected.add(top_folder)
+    except Exception as e:
+        print(f"[AUTO-CLEANUP] Warning: could not read favorites: {e}")
+    return protected
+
+
 def _auto_cleanup_if_needed(max_folders=30):
-    """Automatically clean old output when folder count exceeds threshold."""
+    """Automatically clean old output when folder count exceeds threshold. NEVER deletes folders with favorited images."""
     import shutil
     output_dir = settings.output_dir
     if not output_dir.exists():
@@ -1183,13 +1254,45 @@ def _auto_cleanup_if_needed(max_folders=30):
     )
     if len(folders) <= max_folders:
         return
-    to_delete = folders[:-max_folders]
+    protected = _get_protected_paths()
+    to_delete = [f for f in folders[:-max_folders] if f.name not in protected]
+    skipped = len(folders[:-max_folders]) - len(to_delete)
     for folder in to_delete:
         try:
             shutil.rmtree(folder)
         except Exception:
             pass
-    print(f"[AUTO-CLEANUP] Deleted {len(to_delete)} old output folders, kept {max_folders}")
+    msg = f"[AUTO-CLEANUP] Deleted {len(to_delete)} old output folders, kept {max_folders}"
+    if skipped:
+        msg += f", protected {skipped} folders with favorites"
+    print(msg)
+
+
+def _protect_existing_favorites():
+    """On startup, copy any unprotected favorite images to the protected directory."""
+    import shutil as _shutil
+    try:
+        fav_mgr = FavoritesManager(settings)
+        protected_dir = settings.data_dir / 'favorites_images'
+        protected_dir.mkdir(parents=True, exist_ok=True)
+        migrated = 0
+        for fav in fav_mgr.get_all_favorites():
+            # Skip already-protected favorites
+            if fav.get('thumbnail_path', '').startswith('data/'):
+                continue
+            # Try to find the original in output dir
+            orig_path = fav.get('original_output_path') or fav.get('thumbnail_path', '')
+            src = settings.output_dir / orig_path
+            if src.exists():
+                ext = src.suffix
+                dest = protected_dir / f"fav_{fav['id']}{ext}"
+                if not dest.exists():
+                    _shutil.copy2(str(src), str(dest))
+                    migrated += 1
+        if migrated:
+            print(f"[FAVORITES] Startup migration: protected {migrated} existing favorite images")
+    except Exception as e:
+        print(f"[FAVORITES] Startup migration error: {e}")
 
 
 @app.route('/api/cleanup-output', methods=['POST'])
@@ -1211,7 +1314,10 @@ def cleanup_output():
     if len(folders) <= keep:
         return jsonify({'status': 'ok', 'message': f'Only {len(folders)} folders, nothing to clean', 'kept': len(folders)})
 
-    to_delete = folders[:-keep] if keep > 0 else folders
+    protected = _get_protected_paths()
+    candidates = folders[:-keep] if keep > 0 else folders
+    to_delete = [f for f in candidates if f.name not in protected]
+    skipped = len(candidates) - len(to_delete)
     deleted = 0
     freed_bytes = 0
     for folder in to_delete:
@@ -1224,13 +1330,27 @@ def cleanup_output():
             print(f"[CLEANUP] Error deleting {folder}: {e}")
 
     freed_mb = freed_bytes / (1024 * 1024)
+    msg = f'Deleted {deleted} folders, freed ~{freed_mb:.0f} MB'
+    if skipped:
+        msg += f' (protected {skipped} folders with favorites)'
     return jsonify({
         'status': 'ok',
         'deleted_folders': deleted,
         'kept_folders': keep,
+        'protected_folders': skipped,
         'freed_mb': round(freed_mb, 1),
-        'message': f'Deleted {deleted} folders, freed ~{freed_mb:.0f} MB'
+        'message': msg
     })
+
+
+def _require_video_name():
+    """Check that video_name is provided. Returns error Response if missing, None if OK."""
+    video_name = request.args.get('video_name', '').strip()
+    if not video_name:
+        def error_stream():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'No video selected. Please select or create a video before generating.'})}\n\n"
+        return Response(error_stream(), mimetype='text/event-stream')
+    return None
 
 
 # ============================================================
@@ -1252,9 +1372,12 @@ def model_shootout():
     - count: Number of concepts (default 5 for comparison)
     - models: Comma-separated list of models (default: all)
     """
+    err = _require_video_name()
+    if err: return err
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
     creative_direction = request.args.get('creative_direction', '')
+    video_name = request.args.get('video_name', '')
     count = int(request.args.get('count', 5))  # Fewer concepts for easier comparison
     models_str = request.args.get('models', 'gemini,aispecies,flux,sdxl,midjourney')
 
@@ -1393,7 +1516,8 @@ def model_shootout():
             'titles': titles,
             'creative_direction': creative_direction,
             'models': models_to_use,
-            'count': count
+            'count': count,
+            'video_name': video_name,
         })
         job_manager.start_job(job_id)
 
@@ -1435,6 +1559,10 @@ def model_shootout():
 
                     if result.get('success'):
                         file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
+
+                        # Auto-composite logos
+                        _apply_logos_to_image(file_path, titles_raw, creative_direction, concept_name)
+
                         concept_results[model_name] = file_path
 
                         # Save to history
@@ -1907,8 +2035,12 @@ def parallel_generate():
     - models: Comma-separated list of models to use
     - use_favorites: Whether to learn from favorites
     """
+    err = _require_video_name()
+    if err: return err
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
+    creative_direction = request.args.get('creative_direction', '')
+    video_name = request.args.get('video_name', '')
     count = int(request.args.get('count', 10))
     models_str = request.args.get('models', 'gemini,flux,sdxl,aispecies')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
@@ -2033,6 +2165,9 @@ def parallel_generate():
                     file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
                     freshness.add_used_idea(prompt_data)
 
+                    # Auto-composite logos
+                    _apply_logos_to_image(file_path, titles_raw, creative_direction, prompt_data.get('concept_name', ''))
+
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -2042,7 +2177,8 @@ def parallel_generate():
                         'category': prompt_data.get('category', ''),
                         'prompt': prompt_data.get('prompt', ''),
                         'current': completed_per_model[model_name],
-                        'total': len(prompts_with_concepts)
+                        'total': len(prompts_with_concepts),
+                        'video_name': video_name,
                     }
 
                     # Save to history
@@ -2330,9 +2466,12 @@ def agentic_generate():
     - max_iterations: Max refinement iterations (default 3)
     - quality_threshold: Min quality score 0-10 (default 8.0)
     """
+    err = _require_video_name()
+    if err: return err
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
     creative_direction = request.args.get('creative_direction', '').strip()
+    video_name = request.args.get('video_name', '')
     _auto_cleanup_if_needed()  # Prevent disk-full crashes
     count = min(int(request.args.get('count', 10)), 100)  # Cap at 100 to prevent server freeze
     models_str = request.args.get('models', 'gemini,flux,sdxl')
@@ -2453,6 +2592,7 @@ def agentic_generate():
             job_id = job_manager.create_job('agentic', {
                 'titles': titles,
                 'creative_direction': creative_direction,
+                'video_name': video_name,
                 'models': models_to_use,
                 'count': count,
                 'max_iterations': max_iterations,
@@ -2560,6 +2700,9 @@ def agentic_generate():
                                     )
                                 except Exception as te:
                                     print(f"[TEXT OVERLAY] Failed for {file_path}: {te}")
+
+                            # Auto-composite logos if detected in title/creative direction
+                            _apply_logos_to_image(file_path, titles_raw, creative_direction, concept_name)
 
                             # Save to history
                             result_record = {
@@ -3081,8 +3224,12 @@ def full_parallel_generate():
     - models: Comma-separated image models to use (default: all available)
     - use_favorites: Learn from favorites (default true)
     """
+    err = _require_video_name()
+    if err: return err
     titles_raw = request.args.get('titles', '')
     script = request.args.get('script', '')
+    creative_direction = request.args.get('creative_direction', '')
+    video_name = request.args.get('video_name', '')
     concepts_per_llm = int(request.args.get('concepts_per_llm', 7))
     llms_str = request.args.get('llms', '')
     models_str = request.args.get('models', '')
@@ -3290,6 +3437,9 @@ def full_parallel_generate():
                     file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
                     freshness.add_used_idea(prompt_data)
 
+                    # Auto-composite logos
+                    _apply_logos_to_image(file_path, titles_raw, creative_direction, prompt_data.get('concept_name', ''))
+
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -3302,7 +3452,8 @@ def full_parallel_generate():
                         'current': completed_per_model[model_name],
                         'total': len(prompts_with_concepts),
                         'overall_current': total_completed,
-                        'overall_total': total_images
+                        'overall_total': total_images,
+                        'video_name': video_name,
                     }
 
                     # Save to history
@@ -3356,6 +3507,9 @@ if __name__ == '__main__':
     print("  3. Multi-model support - Gemini, Flux, SDXL, Ideogram")
     print("  4. Learning from success - Uses favorites to improve generation")
     print()
+
+    # On startup: protect any existing favorites whose images are still on disk
+    _protect_existing_favorites()
 
     # Use PORT from environment (Railway/production) or default to 5050 (local)
     port = int(os.getenv('PORT', 5050))

@@ -114,8 +114,8 @@ class ClaudeIdeator:
         yield {"type": "prompt", "content": prompt}
 
         # More tokens needed since we're generating both concepts + prompts
-        tokens_needed = max(48000, count * 900 + self.budget_tokens + 8000)
-        tokens_needed = min(tokens_needed, 128000)
+        tokens_needed = max(16000, count * 900 + self.budget_tokens + 8000)
+        tokens_needed = min(tokens_needed, 32000)  # Opus 4 max output is 32k
 
         with self.client.messages.stream(
             model=self.model,
@@ -170,8 +170,8 @@ class ClaudeIdeator:
 
         tls.last_prompt = prompt
 
-        tokens_needed = max(48000, count * 900 + self.budget_tokens + 8000)
-        tokens_needed = min(tokens_needed, 128000)
+        tokens_needed = max(16000, count * 900 + self.budget_tokens + 8000)
+        tokens_needed = min(tokens_needed, 32000)  # Opus 4 max output is 32k
 
         response = self._stream_with_retry(
             model=self.model,
@@ -281,7 +281,7 @@ class ClaudeIdeator:
         # Scale max_tokens based on concept count (~200 tokens per concept in JSON)
         # thinking budget is separate, so we need enough for the full JSON response
         response_tokens_needed = max(32000, count * 300 + self.budget_tokens + 5000)
-        response_tokens_needed = min(response_tokens_needed, 128000)  # API limit
+        response_tokens_needed = min(response_tokens_needed, 32000)  # API limit
 
         # Stream the response
         with self.client.messages.stream(
@@ -412,7 +412,7 @@ class ClaudeIdeator:
 
         # Scale tokens for large concept counts (~600 tokens per detailed image prompt)
         prompt_tokens_needed = max(32000, len(concepts) * 600 + self.budget_tokens + 5000)
-        prompt_tokens_needed = min(prompt_tokens_needed, 128000)
+        prompt_tokens_needed = min(prompt_tokens_needed, 32000)
 
         with self.client.messages.stream(
             model=self.model,
