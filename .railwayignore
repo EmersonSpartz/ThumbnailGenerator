@@ -6,7 +6,6 @@ venv/
 training_data/
 aispecies_thumbnails.zip
 *.log
-fonts/
 create_logos.py
 lib/logo_compositor.py
 lib/logo_stylizer.py
