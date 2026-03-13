@@ -1861,7 +1861,9 @@
                             <span>Quick Templates <span style="color:#888; font-size:11px;">(click to load proven YouTube formats)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Species Templates (10)</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Templates (14)</button>
+                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Templates</button>
+                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All (29)</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
@@ -3612,22 +3614,48 @@
         let batchStopped = false;
         let activeBatchSources = []; // EventSource refs for stopping
 
+        // All available templates — compositional structures, not moods
+        const ALL_TEMPLATES = [
+            // === DEFAULT 14 (loaded automatically) ===
+            'Split screen (2 panels) — frame divided vertically into two halves showing two contrasting things side by side, strong dividing line between them',
+            'Before / After — left side shows the old state, right side shows the new state, time flows left to right, the transformation between the two tells the story',
+            'Triptych (3 panels) — three panels side by side showing a progression or three aspects of one topic, middle panel gets slight emphasis',
+            'Grid (4 panels) — four panels in a 2x2 grid, each showing a different example or variation, showcasing range or variety',
+            'Spectrum / Gradient — smooth transition from one state to another across the frame, left edge is one extreme, right edge is the other, continuous transformation',
+            'Evolution line — 3-5 objects arranged left to right, each a clear step forward from the last, escalating in size and complexity, the final one partially hidden',
+            'Domino / Chain reaction — a cascade in progress, each element triggering the next, each step getting bigger, the final domino is massive or cut off by the frame edge',
+            'Timeline / Path — a visual road or timeline receding into the distance with milestones along it, the endpoint is either dramatic or disappears into uncertainty',
+            'Funnel / Narrowing — many things at the top funneling down to one thing at the bottom, visual compression implying filtering or competition',
+            'Stacking / Layers — things stacked vertically, each layer building on the previous one, increasing complexity from bottom to top',
+            'Giant vs Tiny — one massive thing and one tiny thing in the same frame, extreme scale difference is the entire message, power imbalance',
+            'Collision / Impact — two things about to crash into each other or at the moment of impact, motion lines, energy at the contact point, debris',
+            'Map / Spread — a geographic or network visualization showing something spreading across territory, color-coded regions, spreading pattern tells the story',
+            'Surveillance / Monitor view — image framed as if through a security camera or monitor screen, interface elements, timestamps, recording indicators, fourth-wall breaking',
+
+            // === EXTRAS (loaded via "+ More Templates") ===
+            'Surrounded / Encircled — one thing in the center, many things closing in from all sides, isolated and possibly threatened',
+            'Dwarfed by environment — small figure in a vast overwhelming space, lost in scale, the emptiness itself is the point',
+            'Iceberg / Hidden depths — something small visible at the surface, massive complex structure revealed below, "you only see the tip"',
+            'Cross-section / Cutaway — something sliced open revealing hidden internal complexity, simple exterior vs intricate glowing interior',
+            'Partial reveal / Peek — only a fragment visible, the rest hidden in darkness or off-frame, enough to intrigue but not enough to understand',
+            'Redacted / Censored — a document or screen with key parts blacked out with [REDACTED] bars, visible context but hidden answer',
+            'Unwrapping / Peeling — an outer layer being torn away to reveal something different underneath, surface vs reality',
+            'Swarm / Multiplication — overwhelming quantity of identical things filling the frame, sheer volume is the message, unstoppable replication',
+            'Web / Network — interconnected nodes with visible connections, clusters and hubs, the pattern of relationships tells the story',
+            'POV / Threshold — first-person view looking through a doorway or portal into something beyond, you are at the boundary about to step through',
+            'UI / System interface — entire thumbnail styled as a system warning, error dialog, or terminal output, looks like your computer is alerting you',
+            'Macro / Extreme close-up — zoomed so close a familiar object becomes alien and abstract, texture and detail normally invisible becomes the whole image',
+            'Single iconic object — one bold symbol filling the center of the frame, nothing else, maximum simplicity, the object IS the concept',
+            'Visual metaphor — a literal depiction of a figurative idea, something obviously not real but instantly communicates the concept',
+            'Absence / Empty space — a space where something clearly should be but isn\'t, empty chair, vacant position, the void tells the story',
+        ];
+
+        const DEFAULT_COUNT = 14;
+
         const BATCH_PRESETS = {
-            starter: [
-                'Scale Dread — tiny human silhouette dwarfed by an impossibly massive glowing object that fills the sky, extreme scale difference, red light casting long shadows from the object, dark void background',
-                'Forbidden Object — single mysterious alien artifact floating in center of pure dark void, glowing intense red from within, intricate geometric detail, volumetric light rays, "you found something you weren\'t supposed to find" mood',
-                'Split Revelation — dramatic vertical split-screen, left side cold blue-white, right side deep red, dividing line glows white-hot and crackles with energy, both sides emerge from darkness, stark contrast between two states',
-                'The Breach — dark technological wall being violently torn open from the other side, intense red light pouring through the cracks, debris floating, circuit-patterned containment barrier failing, "containment has failed" mood',
-                'Ominous Glow — dark silhouette seen from behind facing an enormous overwhelming red light source filling the upper frame, volumetric light rays streaming past figure, reflective ground, person confronting something vast and unknowable',
-                'The Convergence — multiple elements rushing from all edges toward a single blinding point in center, red light trails, central point almost white with red energy halo, vortex/singularity feeling, pure black background',
-                'Face-Off — two entities facing each other from opposite sides, left lit in cool blue-white, right lit in deep red, energy crackling in the tense gap between them, symmetrical composition, "unstoppable force meets immovable object"',
-                'Void Reveal — extreme close-up with 70% of frame in total darkness, only a fragment of something enormous visible in deep red light, intricate surface detail, flashlight-in-dark-room feeling, makes viewer desperate to see the rest',
-                'Classified Diagram — sleek technical schematic rendered as glowing red wireframe on pure black, classified-document feel, key nodes highlighted, subtle grid lines, monospace font markers, "alien technical manual" aesthetic',
-                'The Sequence — 3-5 objects arranged left-to-right, each progressively larger and more intense, escalating red glow from dim to blazing, rightmost partially obscured by its own light, pure black background, inevitable progression',
-            ],
-            full: [], // populated dynamically below
+            starter: ALL_TEMPLATES.slice(0, DEFAULT_COUNT),
+            full: [...ALL_TEMPLATES],
         };
-        BATCH_PRESETS.full = [...BATCH_PRESETS.starter];
 
         function loadPreset(name) {
             if (name === 'clear') {
@@ -3656,12 +3684,49 @@
             saveBatchDirections();
         }
 
-        // One-time migration: load starter presets (v4 = Species-specific high-CTR templates)
-        if (!localStorage.getItem('presets_v4_loaded')) {
+        function addMoreTemplates() {
+            // Find which templates are already in the queue
+            const existing = new Set(
+                Array.from(document.querySelectorAll('.batch-direction')).map(i => i.value.trim())
+            );
+            // Find the next unused template
+            const nextTemplates = ALL_TEMPLATES.filter(t => !existing.has(t));
+            if (nextTemplates.length === 0) {
+                const btn = document.getElementById('more-templates-btn');
+                btn.textContent = 'All loaded!';
+                btn.style.opacity = '0.5';
+                return;
+            }
+            // Add the next 3 unused templates (or however many remain)
+            const toAdd = nextTemplates.slice(0, 3);
+            const container = document.getElementById('batch-queue-container');
+            toAdd.forEach(dir => {
+                const count = container.children.length + 1;
+                const div = document.createElement('div');
+                div.className = 'batch-line';
+                div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+                div.innerHTML = `
+                    <span style="color:#555; font-size:12px; min-width:20px;">${count}.</span>
+                    <input type="text" class="batch-direction" value="${dir.replace(/"/g, '&quot;')}" style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                    <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
+                `;
+                container.appendChild(div);
+                div.querySelector('input').addEventListener('input', saveBatchDirections);
+            });
+            saveBatchDirections();
+            // Update button to show remaining count
+            const remaining = nextTemplates.length - toAdd.length;
+            const btn = document.getElementById('more-templates-btn');
+            btn.textContent = remaining > 0 ? `+ More Templates (${remaining} left)` : 'All loaded!';
+            if (remaining === 0) btn.style.opacity = '0.5';
+        }
+
+        // One-time migration: load starter presets (v5 = compositional structure templates)
+        if (!localStorage.getItem('presets_v5_loaded')) {
             localStorage.removeItem('batch_directions');
             document.getElementById('batch-queue-container').innerHTML = '';
             loadPreset('starter');
-            localStorage.setItem('presets_v4_loaded', 'true');
+            localStorage.setItem('presets_v5_loaded', 'true');
         } else if (document.getElementById('batch-queue-container').children.length === 0) {
             loadPreset('starter');
         }
