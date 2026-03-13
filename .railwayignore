@@ -7,5 +7,3 @@ training_data/
 aispecies_thumbnails.zip
 *.log
 create_logos.py
-lib/logo_compositor.py
-lib/logo_stylizer.py
