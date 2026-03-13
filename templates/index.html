@@ -1861,7 +1861,7 @@
                             <span>Quick Templates <span style="color:#888; font-size:11px;">(click to load proven YouTube formats)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load All Templates (10)</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Species Templates (10)</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
@@ -3614,16 +3614,16 @@
 
         const BATCH_PRESETS = {
             starter: [
-                'Split screen — two sides divided down the middle, dramatic contrast',
-                'Before / After — left side is the old way, right side is the new way',
-                'Giant vs tiny — one massive thing towering over something small',
-                'Single iconic object — one bold symbol filling the frame',
-                'Dark silhouette — mysterious figure backlit, face hidden',
-                'Scale comparison — something impossibly big next to something normal-sized',
-                'Countdown / ranking — numbered items suggesting a list or levels',
-                'Collision / VS — two things about to crash into each other',
-                'Reveal / unveiling — something being uncovered, curtain pulled back, light spilling out',
-                'Transformation — something mid-change, morphing from one state to another',
+                'Scale Dread — tiny human silhouette dwarfed by an impossibly massive glowing object that fills the sky, extreme scale difference, red light casting long shadows from the object, dark void background',
+                'Forbidden Object — single mysterious alien artifact floating in center of pure dark void, glowing intense red from within, intricate geometric detail, volumetric light rays, "you found something you weren\'t supposed to find" mood',
+                'Split Revelation — dramatic vertical split-screen, left side cold blue-white, right side deep red, dividing line glows white-hot and crackles with energy, both sides emerge from darkness, stark contrast between two states',
+                'The Breach — dark technological wall being violently torn open from the other side, intense red light pouring through the cracks, debris floating, circuit-patterned containment barrier failing, "containment has failed" mood',
+                'Ominous Glow — dark silhouette seen from behind facing an enormous overwhelming red light source filling the upper frame, volumetric light rays streaming past figure, reflective ground, person confronting something vast and unknowable',
+                'The Convergence — multiple elements rushing from all edges toward a single blinding point in center, red light trails, central point almost white with red energy halo, vortex/singularity feeling, pure black background',
+                'Face-Off — two entities facing each other from opposite sides, left lit in cool blue-white, right lit in deep red, energy crackling in the tense gap between them, symmetrical composition, "unstoppable force meets immovable object"',
+                'Void Reveal — extreme close-up with 70% of frame in total darkness, only a fragment of something enormous visible in deep red light, intricate surface detail, flashlight-in-dark-room feeling, makes viewer desperate to see the rest',
+                'Classified Diagram — sleek technical schematic rendered as glowing red wireframe on pure black, classified-document feel, key nodes highlighted, subtle grid lines, monospace font markers, "alien technical manual" aesthetic',
+                'The Sequence — 3-5 objects arranged left-to-right, each progressively larger and more intense, escalating red glow from dim to blazing, rightmost partially obscured by its own light, pure black background, inevitable progression',
             ],
             full: [], // populated dynamically below
         };
@@ -3656,12 +3656,12 @@
             saveBatchDirections();
         }
 
-        // One-time migration: load starter presets (v3 = general YouTube thumbnail formats)
-        if (!localStorage.getItem('presets_v3_loaded')) {
+        // One-time migration: load starter presets (v4 = Species-specific high-CTR templates)
+        if (!localStorage.getItem('presets_v4_loaded')) {
             localStorage.removeItem('batch_directions');
             document.getElementById('batch-queue-container').innerHTML = '';
             loadPreset('starter');
-            localStorage.setItem('presets_v3_loaded', 'true');
+            localStorage.setItem('presets_v4_loaded', 'true');
         } else if (document.getElementById('batch-queue-container').children.length === 0) {
             loadPreset('starter');
         }
