@@ -151,8 +151,18 @@ class JobManager:
                 self.active_jobs[job_id]["progress"]["current"] = len(self.active_jobs[job_id]["results"])
 
             # Also add to persistent history
+            # Inject generation context from job params
+            extra = {}
+            job = self.active_jobs.get(job_id, {})
+            if job.get("params", {}).get("titles"):
+                extra["gen_title"] = job["params"]["titles"]
+            if job.get("params", {}).get("creative_direction"):
+                extra["gen_cd"] = job["params"]["creative_direction"]
+            if job.get("params", {}).get("video_name"):
+                extra["video_name"] = job["params"]["video_name"]
             thumbnail_record = {
                 **thumbnail_data,
+                **extra,
                 "job_id": job_id,
                 "generated_at": datetime.now().isoformat()
             }
@@ -228,14 +238,33 @@ class JobManager:
         with self.lock:
             return dict(self.active_jobs)
 
-    def get_history(self, limit=50, offset=0):
-        """Get thumbnail history."""
+    def get_history(self, limit=50, offset=0, video_name=None):
+        """Get thumbnail history, optionally filtered by video name."""
         thumbnails = list(reversed(self.history["thumbnails"]))
+        sessions = list(reversed(self.history["sessions"]))
+
+        if video_name:
+            thumbnails = [t for t in thumbnails if t.get("video_name") == video_name]
+            sessions = [s for s in sessions if s.get("params", {}).get("video_name") == video_name]
+
         return {
             "thumbnails": thumbnails[offset:offset+limit],
-            "total": len(self.history["thumbnails"]),
-            "sessions": list(reversed(self.history["sessions"]))[:20]
+            "total": len(thumbnails),
+            "sessions": sessions[:20]
         }
+
+    def get_all_video_names(self):
+        """Get all unique video names from history."""
+        names = set()
+        for t in self.history["thumbnails"]:
+            vn = t.get("video_name")
+            if vn:
+                names.add(vn)
+        for s in self.history["sessions"]:
+            vn = s.get("params", {}).get("video_name")
+            if vn:
+                names.add(vn)
+        return sorted(names)
 
     def cleanup_old_jobs(self, max_age_seconds=3600):
         """Remove completed jobs older than max_age."""

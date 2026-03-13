@@ -116,6 +116,14 @@ To add a model:
 
 **For scale testing**: Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
 
+## Multi-Session Coordination (CRITICAL)
+
+Emerson often runs 2+ Claude sessions on this project. See global CLAUDE.md for full system.
+
+**Quick version**: On session start, register and check for other sessions. You'll get an animal name (Fox, Owl, etc.). Introduce yourself to Emerson by that name. Before editing any file, check the lock. If another session owns it, work on something else.
+
+**Deploy rule**: Only one session deploys. Check `bash ~/.claude/hooks/session-coord.sh status` before `railway up`.
+
 ## Important Rules
 
 - **Quality > cost**: Cost irrelevant, optimize for thumbnail quality

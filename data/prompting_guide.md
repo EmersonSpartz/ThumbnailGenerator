@@ -1,115 +1,104 @@
-# YouTube Thumbnail Prompting Guide — Bold + Premium
+# Species Thumbnail Prompting Guide — Ominous Sci-Fi Aesthetic
 
-This guide produces thumbnails that STOP THE SCROLL while looking premium and professional. Bold colors, high contrast, cinematic quality.
+This guide produces thumbnails in the **Species brand style**: dark, ominous, sci-fi, with Shoggoth Red (#E20020) as the dominant accent color. Every thumbnail should feel like it belongs on a premium AI documentary channel.
 
 ## ⛔ CRITICAL: NO TEXT IN IMAGES
 
 **NEVER include text, words, letters, numbers, logos, watermarks, titles, labels, captions, or any written content in image prompts.** Text will be added separately. Every prompt MUST end with "no text, no words, no letters, no logos" to reinforce this.
 
-## The Goal
+## The Species Look
 
-**Scroll-stopping AND sophisticated.** Like the best Kurzgesagt, Veritasium, or National Geographic thumbnails — bold enough to grab attention, premium enough to feel trustworthy.
+**Dark + ominous + red.** Think surveillance footage, emergency lighting, CRT monitor glow, dystopian documentary. NOT bright, NOT cheerful, NOT generic tech. The mood is always: something important and slightly terrifying is happening.
+
+**Visual references:** 28 Years Later poster, Blade Runner 2049, Ex Machina, surveillance camera footage, emergency broadcast aesthetic, CRT scan lines.
+
+## Species Brand Colors (USE THESE)
+
+| Color | Hex | When to use |
+|-------|-----|-------------|
+| **Shoggoth Red** | **#E20020** | **PRIMARY — use in every thumbnail.** Red glows, red lighting, red accents. |
+| Glitch Cyan | #22E2FF | Tech, data, glitch effects, digital displays |
+| Glitch Magenta | #F732EF | Digital corruption, glitch artifacts |
+| Progress Blue | #2015ED | Timelines, graphs, progress indicators |
+| Tension Orange | #FBB500 | Warning elements, tension, heat |
+| Datacenter Green | #4DF000 | Terminal text, data streams, tech elements |
+
+**Color combos:** Red + Cyan (most common), Red + Blue, Cyan + Magenta, Red alone on black.
 
 ## Prompt Structure
 
 ```
-[STYLE/CAMERA] [SUBJECT] [BOLD COLOR PALETTE] [LIGHTING DIRECTION] [ATMOSPHERE] [COMPOSITION], 16:9, high contrast, cinematic lighting, no text, no words, no letters, no logos
+[STYLE/CAMERA] [SUBJECT with Species color palette] [DARK SETTING] [RED-TINTED LIGHTING] [ATMOSPHERE], dark ominous mood, red accent lighting (#E20020), dithered texture, film grain, 16:9, high contrast, no text, no words, no letters, no logos
 ```
 
-## 1. Color & Contrast (CTR Drivers — DON'T SKIP)
+## 1. The Species Palette (Mandatory)
 
-### Bold Color Palettes
-- Deep rich red + dark background (urgency, danger, power)
-- Electric blue + warm orange (classic cinema, high energy)
-- Vibrant teal + burnt orange (modern, premium)
-- Gold/amber + deep navy (prestige, authority)
-- Hot magenta/pink + dark teal (contemporary, eye-catching)
-- Single bold color against near-black (maximum contrast)
+### Every Thumbnail Must Have:
+- **Dark/black background** — never bright, never white, never colorful
+- **Shoggoth Red (#E20020) accent** — as glow, rim light, highlight, or environmental lighting
+- **High contrast** — dark darks, punchy accents
+- **Ominous atmosphere** — fog, haze, grain, particles
 
-### Contrast Rules
-- HIGH CONTRAST is mandatory — thumbnails live or die by contrast
-- Dark moody backgrounds make subjects POP
-- Bright subjects against dark = instant attention
-- Complementary colors for maximum visual impact
-- At thumbnail size (320x180), only high-contrast images register
+### Lighting Approaches:
+- "Red emergency lighting from below" — alarm/danger feel
+- "Single red spotlight from above" — dramatic, focused
+- "Cyan and red split lighting" — the glitch aesthetic
+- "Backlit with deep red rim light" — separates subject ominously
+- "Red glow emanating from subject" — something is wrong
+- "Surveillance camera aesthetic, infrared red tint" — watched
 
-## 2. Cinematic Quality (The Premium Layer)
+## 2. Texture & Atmosphere (The Species Signature)
 
-### Camera & Lens (adds realism)
-- "Shot on ARRI Alexa" / "Shot on RED Komodo" (cinematic look)
-- "85mm f/1.4 shallow depth of field" (intimate, premium)
-- "24mm wide angle" (epic scale)
-- "Macro lens, extreme close-up" (dramatic detail)
+### Must-Include Elements:
+- **Dithered/pixelated gradients** — Bayer dithering pattern, digital texture
+- **Film grain** — organic, gritty, not clean digital
+- **CRT scan lines** — horizontal lines suggesting old monitors
+- **Chromatic aberration** — RGB color fringing on edges
+- **Atmospheric haze/smoke** — depth and mystery
 
-### Lighting (makes it feel REAL, not AI)
-- "Dramatic sidelight from left" — specific direction, not generic
-- "Single overhead spotlight" — theatrical, focused
-- "Backlit with rim light" — separates subject from background
-- "Golden hour warmth" — natural, cinematic
-- "Cool blue fill with warm key light" — classic cinema
-- "Volumetric light through haze" — atmosphere and depth
-
-### Atmosphere (breaks the AI look)
-- Film grain texture — organic, not sterile digital
-- Atmospheric haze, smoke, or fog — adds depth layers
-- Dust particles in light beams — tactile reality
-- Shallow depth of field / bokeh — directs attention
-- Rain, mist, or condensation — environmental texture
+### Prompt Keywords for Texture:
+- "Bayer dithered gradient background"
+- "CRT monitor scan lines overlay"
+- "Chromatic aberration on edges"
+- "Heavy film grain texture"
+- "Digital noise and artifacts"
+- "Surveillance footage quality"
 
 ## 3. Composition for Thumbnails
 
 - **ONE focal point** — must read at 320x180px
 - **Subject fills 40-60% of frame** — big enough to see
-- **High contrast between subject and background** — separation is everything
-- **Rule of thirds** — off-center is more dynamic
-- **Scale contrast** — tiny human vs. massive object = instant drama
-- **Negative space** — breathing room, but use it with bold color/gradient
+- **Dark background with bright accent subject** — separation is everything
+- **Scale contrast** — tiny human vs. massive ominous object = instant drama
+- **Negative space** — dark breathing room, creates tension
 
-## 4. What Makes It Premium (Not Cheap/AI)
+## 4. Subject-Specific (Species Topics)
 
-### DO
-- Specific lighting direction ("backlit from upper right")
-- Bold but COHESIVE color palette (2-3 colors max)
-- Environmental context (subject IN a space, not floating)
-- Camera/lens references (grounds the look)
-- Film grain and atmosphere
-- Asymmetric composition
+### AI / Technology
+- Physical metaphors lit with red: machines, circuits, eyes, surveillance cameras
+- Scale contrast: human dwarfed by massive ominous tech
+- Red emergency lighting on dark server rooms, data centers
+- Glitch effects: chromatic aberration, pixel corruption, scan lines
 
-### DON'T
-- Perfect symmetry (AI tell)
-- Random rainbow of colors (AI tell)
-- Plastic/waxy skin on people (AI tell)
-- Multiple competing focal points
-- Generic "epic" or "dramatic" without specifics
-- Perfectly clean/sterile environments
+### Existential Risk / Dystopia
+- Surveillance aesthetic: security cameras, infrared, thermal imaging
+- Ominous silhouettes backlit with red
+- Cracking/breaking/shattering with red light emerging from cracks
+- Empty dystopian environments with red sky or red fog
 
-## 5. Subject-Specific
+### Science / Biology
+- Extreme macro with red tinting
+- Biological structures under red-shifted lighting
+- Cross-sections with red emergency glow
+- Brain/neural imagery in red-on-black
 
-### People
-- Real emotion: curiosity, awe, concern, determination — NOT fake shock
-- Environmental portraits — person in context
-- Dramatic lighting on face — Rembrandt lighting, split lighting
-- Profiles and three-quarter angles > straight-on
+## 5. Example Prompts (Species Style)
 
-### Technology/AI Topics
-- Physical metaphors with dramatic lighting
-- Scale contrast — human dwarfed by something massive
-- Intimate macro on hardware — abstract and beautiful
-- Bold single-color backgrounds with stark subject
+**Ominous Tech:**
+"Massive server room disappearing into darkness, single row of red emergency lights casting long shadows, cables hanging like tentacles, atmospheric fog catching the red light, Bayer dithered background texture, chromatic aberration, film grain, surveillance camera perspective, 16:9, dark ominous mood, red accent lighting, no text, no words, no letters, no logos"
 
-### Nature/Science
-- Vast scale with human reference
-- Extreme color: vivid sunsets, bioluminescence, aurora
-- Macro revealing alien-looking details
-- Weather as drama — storms, fog, lightning
+**AI Threat:**
+"Giant surveillance eye hovering above a dark cityscape, iris glowing Shoggoth Red (#E20020), city below in deep shadow with faint cyan (#22E2FF) data streams, atmospheric haze, CRT scan line texture, heavy film grain, shot on ARRI Alexa, 16:9, dark ominous mood, no text, no words, no letters, no logos"
 
-## 6. Example Prompts
-
-**Bold Portrait:**
-"Close-up portrait, 85mm f/1.4, person looking off-camera with expression of quiet awe, dramatic Rembrandt lighting from left with deep orange key light, dark moody background, rich teal and orange color grade, film grain, 16:9, high contrast, no text, no words, no letters, no logos"
-
-**Epic Scale:**
-"Vast aerial shot of enormous glowing data center in remote desert at twilight, single human figure for scale, vibrant electric blue lights against burnt orange sunset sky, atmospheric haze, shot on ARRI Alexa, 16:9, high contrast, cinematic lighting, no text, no words, no letters, no logos"
-
-**Bold Metaphor:**
-"Giant hourglass filled with glowing golden sand in a dark void, dramatic top-down spotlight creating a pool of light, rich amber and deep navy color palette, volumetric light through floating dust particles, 16:9, high contrast, cinematic lighting, no text, no words, no letters, no logos"
+**Scale Contrast:**
+"Tiny human silhouette standing before an enormous dark monolith, red light pulsing from cracks in the monolith surface, dark void background with subtle dithered gradient, volumetric red fog, chromatic aberration on edges, film grain, 16:9, high contrast, dark ominous mood, no text, no words, no letters, no logos"

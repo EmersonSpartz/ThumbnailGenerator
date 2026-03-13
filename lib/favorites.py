@@ -9,6 +9,7 @@ This module allows you to:
 
 import json
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from datetime import datetime
@@ -22,6 +23,8 @@ class FavoritesManager:
     def __init__(self, settings):
         self.settings = settings
         self.favorites_path = settings.favorites_db_path
+        self.protected_dir = settings.data_dir / 'favorites_images'
+        self.protected_dir.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
         self.favorites = self._load_favorites()
 
@@ -66,7 +69,8 @@ class FavoritesManager:
         category: str = "",
         description: str = "",
         notes: str = "",
-        performance_data: Optional[dict] = None
+        performance_data: Optional[dict] = None,
+        video_name: str = "",
     ) -> dict:
         """
         Add a thumbnail to favorites.
@@ -85,9 +89,26 @@ class FavoritesManager:
             The created favorite entry
         """
         with self._lock:
+            fav_id = len(self.favorites["favorites"]) + 1
+
+            # Copy image to protected directory so it survives output cleanup
+            protected_path = thumbnail_path
+            try:
+                src = self.settings.output_dir / thumbnail_path
+                if src.exists():
+                    ext = src.suffix
+                    dest = self.protected_dir / f"fav_{fav_id}{ext}"
+                    shutil.copy2(str(src), str(dest))
+                    # Store relative path from output_dir parent
+                    protected_path = str(Path('data/favorites_images') / dest.name)
+                    print(f"[FAVORITES] Protected image: {thumbnail_path} -> {protected_path}")
+            except Exception as e:
+                print(f"[FAVORITES] Warning: could not protect image: {e}")
+
             favorite = {
-                "id": len(self.favorites["favorites"]) + 1,
-                "thumbnail_path": thumbnail_path,
+                "id": fav_id,
+                "thumbnail_path": protected_path,
+                "original_output_path": thumbnail_path,
                 "concept_name": concept_name,
                 "prompt": prompt,
                 "title_ref": title_ref,
@@ -95,6 +116,7 @@ class FavoritesManager:
                 "description": description,
                 "notes": notes,
                 "performance_data": performance_data or {},
+                "video_name": video_name,
                 "added_at": datetime.now().isoformat(),
             }
 

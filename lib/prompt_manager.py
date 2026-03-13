@@ -58,47 +58,70 @@ class PromptManager:
 
     def _get_default_prompting_guide(self) -> str:
         """Default prompting guide for image generation."""
-        return """# YouTube Thumbnail Prompting Guide
+        return """# Species Thumbnail Prompting Guide
+
+## Brand Identity
+Species is a premium AI/tech YouTube channel with a distinct OMINOUS SCI-FI aesthetic.
+Primary color: Shoggoth Red (#E20020) — alarm bell red. ALWAYS present as accent.
+Background: Always dark/black. Never bright, never cheerful.
+Mood: Ominous, technological, documentary-grade, slightly dystopian.
 
 ## Core Principles
 - ONE clear focal point
 - Maximum 2-3 visual elements
-- High contrast between foreground and background
+- High contrast: dark backgrounds with bright subjects
 - NO TEXT IN IMAGES - text will be added separately
+- RED accent lighting or glow in every image
 
 ## Prompt Structure
-[STYLE] [SUBJECT] [ACTION/EMOTION] [SETTING] [LIGHTING] [COMPOSITION], 16:9 YouTube thumbnail
+[STYLE] [SUBJECT] [ACTION/EMOTION] [DARK SETTING] [RED-TINTED LIGHTING] [COMPOSITION], dark ominous mood, red accent lighting, 16:9 YouTube thumbnail
 
 ## Style Keywords
-- Cinematic, dramatic, movie-quality
-- Hyper-realistic, photorealistic
-- Bold graphic, high contrast
+- Cinematic, dramatic, ominous, dystopian
+- Hyper-realistic, photorealistic, surveillance footage
+- CRT glow, dithered texture, film grain, chromatic aberration
+- Dark room, red emergency lighting, sci-fi atmosphere
+
+## Species Color Palette
+- Shoggoth Red #E20020 (primary accent)
+- Glitch Cyan #22E2FF (tech/data)
+- Glitch Magenta #F732EF (digital glitch)
+- Progress Blue #2015ED (timelines)
+- Tension Orange #FBB500 (warnings)
+- Datacenter Green #4DF000 (data/terminal)
 
 ## What to AVOID
 - Text or words in the image
-- Too many elements (keep it simple)
-- Low contrast
-- Cluttered backgrounds
-- Generic stock photo look"""
+- Bright, cheerful, or colorful backgrounds
+- Generic stock photo look
+- Clickbait shock faces
+- Cliché AI imagery (glowing brains, circuit boards, matrix rain)"""
 
     def _get_default_image_prompt_template(self) -> str:
         """Default template for how Claude writes image prompts."""
         return """Write bold, cinematic image prompts for each thumbnail concept. These should produce images that are visually STRIKING and scroll-stopping while still looking premium and professional.
 
+SPECIES BRAND STYLE (MANDATORY):
+- Dark/black backgrounds with ominous red (#E20020) accent lighting as the PRIMARY color
+- Sci-fi documentary aesthetic — think "28 Years Later" poster, not generic tech
+- Accent colors: cyan (#22E2FF) for tech/glitch, magenta (#F732EF) for digital effects, orange (#FBB500) for tension
+- The mood is ALWAYS ominous, technological, slightly dystopian
+- Include textural elements: film grain, atmospheric haze, dithered/pixelated textures
+- Reference the Species look: dark room with red emergency lighting, CRT monitor glow, surveillance footage aesthetic
+
 CRITICAL RULES:
 - ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE
 - Keep prompts focused on ONE clear visual — bold but not cluttered
-- HIGH CONTRAST is essential — dark backgrounds with bright subjects, or vice versa
-- Bold, saturated color palette — but intentional and cohesive, not random neon
-- Include cinematic lighting direction (not just "dramatic lighting")
-- Add atmosphere and texture (fog, grain, depth of field, particles)
-- Specify a visual style when helpful (e.g. "Kurzgesagt aesthetic", "shot on ARRI Alexa", "National Geographic photography")
-- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, cinematic lighting
+- HIGH CONTRAST is essential — dark backgrounds with bright subjects
+- Include cinematic lighting direction (not just "dramatic lighting") — prefer red-tinted or warm/cool split lighting
+- Add atmosphere and texture (fog, grain, depth of field, particles, dither patterns)
+- Specify a visual style when helpful (e.g. "surveillance footage aesthetic", "shot on ARRI Alexa", "CRT monitor glow", "thermal imaging")
+- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, dark ominous mood, red accent lighting
 
 Follow the prompting guide provided."""
 
     # Version marker — bump this string to force migration of old Railway prompts
-    PROMPT_VERSION = "v5-conflict-diversity"
+    PROMPT_VERSION = "v6-species-brand"
 
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
@@ -118,7 +141,7 @@ Bold AND premium. These thumbnails need to GRAB attention in a sea of content wh
 - Bold, saturated color — but INTENTIONAL, not random neon. Pick a strong palette and commit
 - ONE clear focal point that reads instantly at thumbnail size
 - Visual tension, mystery, or scale that creates an "info gap"
-- Human faces with REAL emotion (curiosity, awe, concern — NOT fake shock/surprise)
+- Artistic face compositions ONLY if art-directed (dramatic lighting, partial face, symbolic overlay) — NO generic face close-ups or stock-photo-style emotion shots
 - Dynamic composition with energy — diagonals, leading lines, asymmetry
 
 ### What Makes It Premium (Add These)
@@ -136,12 +159,23 @@ Bold AND premium. These thumbnails need to GRAB attention in a sea of content wh
 - Over-busy compositions with too many competing elements
 - That specific "AI-generated" look: perfect symmetry, plastic skin, neon everything
 
-### Color Philosophy
-BOLD but INTENTIONAL. Strong saturated colors that pop, but chosen with purpose — not the random neon palette that screams AI. Think:
-- Deep rich reds, electric blues, vibrant oranges — but graded, not raw
-- Complementary color combos for maximum pop (teal/orange, blue/gold, red/cyan)
-- Dark moody backgrounds with one or two punchy accent colors
-- High contrast is king — dark darks, bright brights
+### Color Philosophy — SPECIES BRAND PALETTE
+The Species channel has a distinct visual identity. USE THESE COLORS:
+- **PRIMARY: Shoggoth Red (#E20020)** — alarm bell red. Use as the dominant accent color in most thumbnails. Red glows, red lighting, red highlights.
+- **Glitch Cyan (#22E2FF)** — electric cyan for tech/data/glitch effects
+- **Glitch Magenta (#F732EF)** — for glitch/digital corruption effects
+- **Progress Blue (#2015ED)** — for timelines, progress, graphs
+- **Tension Orange (#FBB500)** — for warning/tension moments
+- **Datacenter Green (#4DF000)** — for data/terminal/tech elements
+
+ALWAYS use dark/black backgrounds with these accent colors. The Species look is OMINOUS and SCI-FI — think dark room with red emergency lighting, not bright and cheerful. Complementary combos: red/cyan, red/blue, cyan/magenta.
+
+### Visual Texture & Atmosphere
+Species thumbnails have a distinctive sci-fi texture:
+- Bayer dithering pattern on backgrounds (pixelated gradient texture)
+- CRT scan lines and chromatic aberration (RGB color fringing on edges)
+- Film grain/noise overlay
+- The overall vibe is: ominous, technological, documentary-grade, slightly dystopian
 
 ---
 
@@ -201,13 +235,15 @@ Return ALL {{COUNT}} concepts as JSON:
         current_version = self.prompts.get('_version', '')
         if current_version == self.PROMPT_VERSION:
             return  # Already up to date
-        if 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current or 'Muted, graded, intentional' in current or '## CRITICAL RULES' not in current:
+        if current_version != self.PROMPT_VERSION or 'Generate TWO distinct' in current or '### The 10 Angles' in current or '{{COUNT}}' not in current or 'Assembly Line' in current or 'Shoggoths' in current or 'Muted, graded, intentional' in current or '## CRITICAL RULES' not in current:
             print("[PROMPT MANAGER] Migrating stale prompt template to current version")
             defaults = self._get_default_prompts()
             self.prompts['claude_prompt'] = defaults['claude_prompt']
             self.prompts['_version'] = self.PROMPT_VERSION
-            # Also update image_prompt_template if stale
+            # Also update image_prompt_template and prompting guide
             self.prompts['image_prompt_template'] = self._get_default_image_prompt_template()
+            self.prompts['prompting_guide'] = self._get_default_prompting_guide()
+            self.prompting_guide_file.write_text(self.prompts['prompting_guide'])
             self._save_prompts()
 
     def _save_prompts(self):
