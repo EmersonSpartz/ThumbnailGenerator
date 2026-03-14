@@ -1346,7 +1346,7 @@
         <header>
             <h1>Thumbnail Generator v2</h1>
             <div class="tabs">
-                <button class="tab active" data-tab="text-tab">✏️ Text Thumbnails</button>
+                <button class="tab active" data-tab="text-tab">Generate</button>
                 <button class="tab" data-tab="favorites">Favorites <span id="tab-fav-count" style="background:#ff0000; padding:2px 6px; border-radius:10px; font-size:11px; margin-left:3px; display:none;">0</span></button>
                 <button class="tab" id="advanced-toggle" style="color:#555; font-size:12px; margin-left:auto;">More ▸</button>
             </div>
@@ -1842,8 +1842,8 @@
         <!-- Text Thumbnails Panel -->
         <div id="text-tab" class="panel active">
             <div style="background: linear-gradient(135deg, #1a2a1a 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #333;">
-                <h2 style="margin-bottom: 8px; font-size: 20px;">Generate Text Thumbnails</h2>
-                <p style="color: #888; font-size: 14px; margin: 0;">Enter your video title + the text you want on the thumbnail. AI generates multiple concepts with text baked in. Click the heart on any thumbnail to save it to Favorites.</p>
+                <h2 style="margin-bottom: 8px; font-size: 20px;">Thumbnail Generator</h2>
+                <p style="color: #888; font-size: 14px; margin: 0;">Enter your video title and the text for the thumbnail. Pick some visual styles below, then hit Generate. AI will create multiple thumbnail ideas for each style.</p>
             </div>
             <div class="generate-form">
                 <div>
@@ -1858,20 +1858,20 @@
                     <!-- Template Presets -->
                     <div class="form-group">
                         <label style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Quick Templates <span style="color:#888; font-size:11px;">(click to load proven YouTube formats)</span></span>
+                            <span>Quick Start <span style="color:#888; font-size:11px;">(load pre-made visual styles — compositions like split screen, grid, timeline, etc.)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Templates (14)</button>
-                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Templates</button>
-                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All (29)</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load 14 Styles</button>
+                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Styles</button>
+                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 29</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
-                    <!-- Batch Queue -->
+                    <!-- Visual Styles Queue -->
                     <div class="form-group">
                         <label style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Batch Queue <span style="color:#888; font-size:11px;">(one creative direction per line = one batch)</span></span>
-                            <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Batch</button>
+                            <span>Visual Styles <span style="color:#888; font-size:11px;">(each style generates a separate set of thumbnails)</span></span>
+                            <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Style</button>
                         </label>
                         <div id="batch-queue-container">
                         </div>
@@ -1880,7 +1880,7 @@
                 <div class="settings-panel">
                     <h3>Settings</h3>
                     <div class="form-group">
-                        <label>Concepts per Batch</label>
+                        <label>Ideas per Style <span style="color:#666; font-weight:normal; font-size:11px;">(how many thumbnail ideas for each visual style)</span></label>
                         <input type="number" id="text-count" value="10" min="1" max="30">
                     </div>
                     <div class="form-group">
@@ -1906,19 +1906,15 @@
                             </label>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Max Iterations</label>
-                        <input type="number" id="text-max-iterations" value="1" min="1" max="5">
-                        <p style="font-size: 10px; color: #666; margin-top: 4px;">2 = Before/After comparison</p>
-                    </div>
+                    <input type="hidden" id="text-max-iterations" value="1">
 
                     <div style="display: flex; gap: 10px; flex-direction: column;">
-                        <button class="btn btn-primary" onclick="startBatchQueue()" id="text-generate-btn">Launch All Batches</button>
+                        <button class="btn btn-primary" onclick="startBatchQueue()" id="text-generate-btn">Generate Thumbnails</button>
                         <button class="btn btn-secondary" onclick="stopAllBatches()" style="display:none" id="text-stop-btn">Stop All</button>
                     </div>
                     <!-- Batch progress -->
                     <div id="batch-progress" style="display:none; margin-top:12px; padding:10px; background:#111; border-radius:8px; font-size:12px;">
-                        <div style="color:#888; margin-bottom:6px;">Batch Progress</div>
+                        <div style="color:#888; margin-bottom:6px;">Progress</div>
                         <div id="batch-progress-items"></div>
                     </div>
                 </div>
@@ -3417,7 +3413,7 @@
                     div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
                     div.innerHTML = `
                         <span style="color:#555; font-size:12px; min-width:20px;">${i + 1}.</span>
-                        <input type="text" class="batch-direction" placeholder="creative direction for batch ${i + 1}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;" value="${dir.replace(/"/g, '&quot;')}">
+                        <input type="text" class="batch-direction" placeholder="visual style ${i + 1}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;" value="${dir.replace(/"/g, '&quot;')}">
                         <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
                     `;
                     container.appendChild(div);
@@ -3739,7 +3735,7 @@
             div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
             div.innerHTML = `
                 <span style="color:#555; font-size:12px; min-width:20px;">${count}.</span>
-                <input type="text" class="batch-direction" placeholder="creative direction for batch ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                <input type="text" class="batch-direction" placeholder="visual style ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
                 <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
             `;
             container.appendChild(div);
@@ -3792,7 +3788,7 @@
             batchStopped = false;
 
             // Show progress panel + keep generate button visible for adding more
-            document.getElementById('text-generate-btn').textContent = '+ Add More Batches';
+            document.getElementById('text-generate-btn').textContent = '+ Add More Styles';
             document.getElementById('text-stop-btn').style.display = 'block';
             document.getElementById('batch-progress').style.display = 'block';
             updateBatchProgress();
@@ -3807,7 +3803,7 @@
         function launchBatchSequential(index) {
             if (index >= batchQueue.length || batchStopped) {
                 batchRunning = false;
-                document.getElementById('text-generate-btn').textContent = 'Launch All Batches';
+                document.getElementById('text-generate-btn').textContent = 'Generate Thumbnails';
                 document.getElementById('text-stop-btn').style.display = 'none';
                 return;
             }
@@ -3832,7 +3828,7 @@
             const header = document.createElement('div');
             header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #4ade80; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #4ade80;';
             header.id = `batch-header-${batch.index}`;
-            header.innerHTML = `Batch ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no direction)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
+            header.innerHTML = `Style ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no style specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
             grid.appendChild(header);
 
             const url = `/api/agentic-generate?titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}`;
@@ -3906,12 +3902,30 @@
                         break;
 
                     case 'claude_prompt':
+                        showClaudePanel();
+                        setClaudeStatus(true);
+                        document.getElementById('live-prompt').textContent = data.prompt || data.message || '';
+                        document.getElementById('live-thinking').textContent = 'Waiting for Claude to think...';
+                        document.getElementById('live-response').textContent = 'Waiting...';
+                        break;
                     case 'claude_thinking_start':
+                        document.getElementById('live-thinking').textContent = '';
+                        break;
                     case 'claude_thinking':
+                        const batchThinkEl = document.getElementById('live-thinking');
+                        batchThinkEl.textContent += data.content || data.text || '';
+                        batchThinkEl.scrollTop = batchThinkEl.scrollHeight;
+                        break;
                     case 'claude_response_start':
+                        document.getElementById('live-response').textContent = '';
+                        break;
                     case 'claude_response':
+                        const batchRespEl = document.getElementById('live-response');
+                        batchRespEl.textContent += data.content || data.text || '';
+                        batchRespEl.scrollTop = batchRespEl.scrollHeight;
+                        break;
                     case 'claude_complete':
-                        // Don't show Claude panel for batch mode — too noisy
+                        setClaudeStatus(false);
                         break;
 
                     case 'agentic_start':
@@ -3972,7 +3986,7 @@
             updateBatchProgress();
             batchRunning = false;
             batchQueue = [];
-            document.getElementById('text-generate-btn').textContent = 'Launch All Batches';
+            document.getElementById('text-generate-btn').textContent = 'Generate Thumbnails';
             document.getElementById('text-stop-btn').style.display = 'none';
         }
 
