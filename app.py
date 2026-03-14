@@ -137,19 +137,30 @@ def check_auth_api():
 def health():
     """Health check endpoint for Railway (no auth required).
     Also runs auto-cleanup to prevent disk-full crashes.
-    Returns 500 if disk is critically full (triggers Railway restart).
+    Always returns 200 so Railway doesn't kill the container — disk issues
+    are logged but don't block the health check.
     """
     import shutil
 
     # Auto-cleanup on every health check (runs every ~30s on Railway)
     _auto_cleanup_if_needed()
 
-    # Check disk space - fail health check if critically low
+    # Check disk space - aggressive cleanup if critically low, but always return 200
     try:
         usage = shutil.disk_usage(str(settings.output_dir))
         free_mb = usage.free / (1024 * 1024)
-        if free_mb < 50:  # Less than 50MB free = critical
-            return jsonify({'status': 'error', 'message': f'Disk critically low: {free_mb:.0f}MB free'}), 500
+        if free_mb < 100:
+            # Emergency cleanup: keep only 10 folders instead of 30
+            _auto_cleanup_if_needed(max_folders=10)
+            usage = shutil.disk_usage(str(settings.output_dir))
+            free_mb = usage.free / (1024 * 1024)
+            if free_mb < 50:
+                # Ultra-emergency: keep only 3 folders
+                _auto_cleanup_if_needed(max_folders=3)
+                usage = shutil.disk_usage(str(settings.output_dir))
+                free_mb = usage.free / (1024 * 1024)
+            print(f"[HEALTH] Disk low: {free_mb:.0f}MB free after emergency cleanup")
+            return jsonify({'status': 'ok', 'warning': f'Disk low: {free_mb:.0f}MB free'})
     except Exception:
         pass
 
@@ -245,6 +256,9 @@ def get_favorites():
 def add_favorite():
     """Add a thumbnail to favorites."""
     data = request.json
+    if not data or not data.get('thumbnail_path'):
+        return jsonify({"success": False, "error": "thumbnail_path is required"}), 400
+
     favorites_mgr = FavoritesManager(settings)
 
     favorite = favorites_mgr.add_favorite(
@@ -384,12 +398,21 @@ def get_prompts():
     })
 
 
+@app.route('/api/rubric')
+def get_rubric_alias():
+    """Alias for /api/get-rubric for consistency."""
+    return get_rubric()
+
+
 @app.route('/api/prompts/<key>', methods=['GET'])
 def get_prompt(key):
     """Get a specific prompt by key."""
+    value = prompt_manager.get_prompt(key)
+    if not value:
+        return jsonify({"error": f"Prompt key '{key}' not found"}), 404
     return jsonify({
         "key": key,
-        "value": prompt_manager.get_prompt(key)
+        "value": value
     })
 
 
