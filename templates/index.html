@@ -3800,9 +3800,10 @@
             }
         }
 
-        function launchBatchSequential(index) {
+        async function launchBatchSequential(index) {
             if (index >= batchQueue.length || batchStopped) {
                 batchRunning = false;
+                clearBatchQueueState();
                 document.getElementById('text-generate-btn').textContent = 'Generate Thumbnails';
                 document.getElementById('text-stop-btn').style.display = 'none';
                 return;
@@ -3813,25 +3814,52 @@
                 return;
             }
             const batch = batchQueue[index];
-            launchBatch(batch, () => {
+            await launchBatch(batch, () => {
                 launchBatchSequential(index + 1);
             });
         }
 
-        function launchBatch(batch, onComplete) {
+        // === BATCH STATE PERSISTENCE (survives page refresh) ===
+        function saveBatchQueueState() {
+            try {
+                const state = batchQueue.map(b => ({
+                    index: b.index,
+                    direction: b.direction,
+                    status: b.status,
+                    serverJobId: b.serverJobId || null,
+                    titles: b.titles,
+                    thumbnailText: b.thumbnailText,
+                    count: b.count,
+                    maxIterations: b.maxIterations,
+                    models: b.models,
+                    imageCount: b.imageCount || 0,
+                    jobId: b.jobId || null
+                }));
+                localStorage.setItem('batch_queue_state_v1', JSON.stringify(state));
+            } catch (e) { /* localStorage full, ignore */ }
+        }
+
+        function clearBatchQueueState() {
+            localStorage.removeItem('batch_queue_state_v1');
+        }
+
+        async function launchBatch(batch, onComplete) {
             batch.status = 'running';
             updateBatchProgress();
+            saveBatchQueueState();
 
             const grid = document.getElementById('text-thumbnail-grid');
 
             // Add batch header to grid
-            const header = document.createElement('div');
-            header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #4ade80; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #4ade80;';
-            header.id = `batch-header-${batch.index}`;
-            header.innerHTML = `Style ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no style specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
-            grid.appendChild(header);
+            if (!document.getElementById(`batch-header-${batch.index}`)) {
+                const header = document.createElement('div');
+                header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #4ade80; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #4ade80;';
+                header.id = `batch-header-${batch.index}`;
+                header.innerHTML = `Style ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no style specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
+                grid.appendChild(header);
+            }
 
-            const url = `/api/agentic-generate?titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}`;
+            const params = `titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}`;
 
             const jobId = Date.now().toString(36) + batch.index;
             createJob(jobId, `Batch ${batch.index + 1}`, { models: batch.models, llms: [] });
@@ -3842,12 +3870,44 @@
             });
             updateJobsPanel();
 
+            try {
+                // Step 1: Start job on server, get server job_id back
+                const startResp = await fetch(`/api/agentic-generate?${params}&mode=start`);
+                const startData = await startResp.json();
+                batch.serverJobId = startData.job_id;
+                saveBatchQueueState();
+
+                // Step 2: Connect to the job's SSE stream (supports reconnection)
+                const streamUrl = `/api/jobs/${startData.job_id}/stream`;
+                connectToJobStream(batch, streamUrl, jobId, onComplete, false);
+            } catch (err) {
+                console.error('Failed to start batch:', err);
+                batch.status = 'error';
+                batch.errorMsg = 'Failed to start generation: ' + err.message;
+                saveBatchQueueState();
+                updateBatchProgress();
+                if (onComplete) onComplete();
+            }
+        }
+
+        /**
+         * Connect to an SSE stream and handle events.
+         * Reusable for both initial connection and reconnection after refresh.
+         * @param {Object} batch - batch object
+         * @param {string} url - SSE endpoint URL
+         * @param {string} jobId - frontend job tracking ID
+         * @param {function} onComplete - callback when batch finishes
+         * @param {boolean} isReconnect - true if reconnecting after refresh
+         */
+        function connectToJobStream(batch, url, jobId, onComplete, isReconnect) {
+            const grid = document.getElementById('text-thumbnail-grid');
             const eventSource = new EventSource(url);
             activeBatchSources.push(eventSource);
-            let imageCount = 0;
+            let imageCount = batch.imageCount || 0;
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                if (data.type === 'keepalive') return;
                 data._gen_title = batch.titles;
                 data._gen_cd = batch.direction;
 
@@ -3857,14 +3917,18 @@
                     case 'image_generated':
                         addThumbnailCard(grid, data);
                         imageCount++;
+                        batch.imageCount = imageCount;
+                        saveBatchQueueState();
                         const countEl = document.getElementById(`batch-count-${batch.index}`);
                         if (countEl) countEl.textContent = `${imageCount} images`;
-                        const current = (activeJobs[jobId]?.progress?.current || 0) + 1;
-                        updateJob(jobId, {
-                            progress: { ...activeJobs[jobId].progress, current }
-                        });
-                        if (data.model && activeJobs[jobId]?.progress?.models[data.model]) {
-                            activeJobs[jobId].progress.models[data.model].current = data.current || (activeJobs[jobId].progress.models[data.model].current + 1);
+                        if (activeJobs[jobId]) {
+                            const current = (activeJobs[jobId]?.progress?.current || 0) + 1;
+                            updateJob(jobId, {
+                                progress: { ...activeJobs[jobId].progress, current }
+                            });
+                            if (data.model && activeJobs[jobId]?.progress?.models[data.model]) {
+                                activeJobs[jobId].progress.models[data.model].current = data.current || (activeJobs[jobId].progress.models[data.model].current + 1);
+                            }
                         }
                         updateJobsPanel();
                         break;
@@ -3873,16 +3937,20 @@
                     case 'phase':
                     case 'concept_start':
                     case 'iteration_start':
-                        updateJob(jobId, {
-                            progress: { ...activeJobs[jobId].progress, phase: data.message }
-                        });
+                        if (activeJobs[jobId]) {
+                            updateJob(jobId, {
+                                progress: { ...activeJobs[jobId].progress, phase: data.message }
+                            });
+                        }
                         updateBatchProgress();
                         break;
 
                     case 'parallel_start':
-                        updateJob(jobId, {
-                            progress: { ...activeJobs[jobId].progress, total: data.total || 0, phase: data.message }
-                        });
+                        if (activeJobs[jobId]) {
+                            updateJob(jobId, {
+                                progress: { ...activeJobs[jobId].progress, total: data.total || 0, phase: data.message }
+                            });
+                        }
                         break;
 
                     case 'model_status':
@@ -3912,29 +3980,33 @@
                         document.getElementById('live-thinking').textContent = '';
                         break;
                     case 'claude_thinking':
-                        const batchThinkEl = document.getElementById('live-thinking');
-                        batchThinkEl.textContent += data.content || data.text || '';
-                        batchThinkEl.scrollTop = batchThinkEl.scrollHeight;
+                        {
+                            const batchThinkEl = document.getElementById('live-thinking');
+                            batchThinkEl.textContent += data.content || data.text || '';
+                            batchThinkEl.scrollTop = batchThinkEl.scrollHeight;
+                        }
                         break;
                     case 'claude_response_start':
                         document.getElementById('live-response').textContent = '';
                         break;
                     case 'claude_response':
-                        const batchRespEl = document.getElementById('live-response');
-                        batchRespEl.textContent += data.content || data.text || '';
-                        batchRespEl.scrollTop = batchRespEl.scrollHeight;
+                        {
+                            const batchRespEl = document.getElementById('live-response');
+                            batchRespEl.textContent += data.content || data.text || '';
+                            batchRespEl.scrollTop = batchRespEl.scrollHeight;
+                        }
                         break;
                     case 'claude_complete':
                         setClaudeStatus(false);
                         break;
 
                     case 'agentic_start':
-                        break; // Silently handle
+                        // Capture server job ID if available
+                        break;
 
                     case 'error':
                         console.error(`Batch ${batch.index + 1} error:`, data.message);
                         batch.errorMsg = data.message;
-                        // Show error in batch header
                         const errHdr = document.getElementById(`batch-header-${batch.index}`);
                         if (errHdr) {
                             errHdr.style.borderLeftColor = '#ef4444';
@@ -3946,27 +4018,29 @@
                     case 'parallel_complete':
                     case 'agentic_complete':
                         batch.status = 'done';
-                        completeJob(jobId, true);
+                        saveBatchQueueState();
+                        if (activeJobs[jobId]) completeJob(jobId, true);
                         updateBatchProgress();
                         eventSource.close();
                         const hdr = document.getElementById(`batch-header-${batch.index}`);
                         if (hdr) hdr.style.borderLeftColor = '#888';
                         if (onComplete) onComplete();
-                        break;
+                        return;
                 }
             };
 
             eventSource.onerror = () => {
                 if (batch.status === 'running') {
-                    // If no images were generated, this was an error, not success
                     if (imageCount === 0) {
                         batch.status = 'error';
                         batch.errorMsg = batch.errorMsg || 'Connection lost before any images generated';
-                        completeJob(jobId, false);
+                        if (activeJobs[jobId]) completeJob(jobId, false);
                     } else {
+                        // Connection dropped but images were generated — generation continues on server
                         batch.status = 'done';
-                        completeJob(jobId, true);
+                        if (activeJobs[jobId]) completeJob(jobId, true);
                     }
+                    saveBatchQueueState();
                     updateBatchProgress();
                     if (onComplete) onComplete();
                 }
@@ -3986,6 +4060,7 @@
             updateBatchProgress();
             batchRunning = false;
             batchQueue = [];
+            clearBatchQueueState();
             document.getElementById('text-generate-btn').textContent = 'Generate Thumbnails';
             document.getElementById('text-stop-btn').style.display = 'none';
         }
@@ -4005,6 +4080,123 @@
                 </div>`;
             }).join('');
         }
+
+        // === RECONNECTION AFTER PAGE REFRESH ===
+        async function checkAndReconnectJobs() {
+            try {
+                const resp = await fetch('/api/jobs/active');
+                const { jobs } = await resp.json();
+
+                if (!jobs || jobs.length === 0) {
+                    clearBatchQueueState();
+                    return;
+                }
+
+                // Check for running jobs
+                const runningJobs = jobs.filter(j => j.status === 'running');
+                if (runningJobs.length === 0) {
+                    clearBatchQueueState();
+                    return;
+                }
+
+                // Restore batch queue from localStorage
+                const savedState = JSON.parse(localStorage.getItem('batch_queue_state_v1') || '[]');
+                if (savedState.length === 0) return;
+
+                // Show reconnection banner
+                showReconnectBanner('Reconnecting to generation in progress...');
+
+                const grid = document.getElementById('text-thumbnail-grid');
+                let reconnectedAny = false;
+
+                for (const saved of savedState) {
+                    // Find matching server job
+                    const serverJob = runningJobs.find(j => j.id === saved.serverJobId);
+
+                    if (saved.status === 'done' || saved.status === 'error') {
+                        // Already finished — rebuild batch queue entry for progress display
+                        batchQueue.push(saved);
+                        continue;
+                    }
+
+                    if (serverJob) {
+                        // Reconstruct batch and reconnect
+                        const batch = { ...saved, status: 'running', imageCount: 0 };
+                        batchQueue.push(batch);
+
+                        // Create header
+                        const header = document.createElement('div');
+                        header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #fbbf24; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #fbbf24;';
+                        header.id = `batch-header-${batch.index}`;
+                        header.innerHTML = `Style ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no style specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">reconnecting...</span>`;
+                        grid.appendChild(header);
+
+                        // Create frontend job tracking
+                        const jobId = 'rc_' + Date.now().toString(36) + batch.index;
+                        createJob(jobId, `Batch ${batch.index + 1}`, { models: batch.models || [], llms: [] });
+                        batch.jobId = jobId;
+                        (batch.models || []).forEach(m => {
+                            activeJobs[jobId].progress.models[m] = { status: 'waiting', current: 0, total: 0, complete: false };
+                        });
+
+                        // Connect to job stream (will replay past events + live stream)
+                        const streamUrl = `/api/jobs/${saved.serverJobId}/stream`;
+                        connectToJobStream(batch, streamUrl, jobId, () => {
+                            // When done, start next queued batch
+                            const nextQueued = batchQueue.find(b => b.status === 'queued');
+                            if (nextQueued) {
+                                launchBatch(nextQueued, () => {
+                                    const next2 = batchQueue.find(b => b.status === 'queued');
+                                    if (next2) launchBatchSequential(next2.index);
+                                });
+                            } else {
+                                batchRunning = false;
+                                document.getElementById('text-generate-btn').textContent = 'Generate Thumbnails';
+                                document.getElementById('text-stop-btn').style.display = 'none';
+                            }
+                        }, true);
+                        reconnectedAny = true;
+                    } else if (saved.status === 'queued') {
+                        // Was queued, server job not started — keep queued
+                        batchQueue.push({ ...saved, status: 'queued' });
+                    }
+                }
+
+                if (reconnectedAny || batchQueue.some(b => b.status === 'queued')) {
+                    batchRunning = true;
+                    document.getElementById('text-generate-btn').textContent = '+ Add More Styles';
+                    document.getElementById('text-stop-btn').style.display = 'block';
+                    document.getElementById('batch-progress').style.display = 'block';
+                    updateBatchProgress();
+                    updateJobsPanel();
+
+                    // If nothing is running but there are queued batches, start the next one
+                    if (!reconnectedAny) {
+                        const nextQueued = batchQueue.find(b => b.status === 'queued');
+                        if (nextQueued) launchBatch(nextQueued, () => launchBatchSequential(nextQueued.index + 1));
+                    }
+                }
+            } catch (e) {
+                console.log('No active jobs to reconnect to:', e);
+                clearBatchQueueState();
+            }
+        }
+
+        function showReconnectBanner(message) {
+            let banner = document.getElementById('reconnect-banner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'reconnect-banner';
+                banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#3b82f6,#8b5cf6);color:#fff;padding:12px 24px;text-align:center;z-index:9999;font-size:14px;font-weight:600;transition:opacity 0.5s;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+                document.body.prepend(banner);
+            }
+            banner.textContent = message || 'Reconnected to generation in progress';
+            banner.style.opacity = '1';
+            setTimeout(() => { banner.style.opacity = '0'; setTimeout(() => banner.remove(), 500); }, 5000);
+        }
+
+        // Check for active jobs on page load (enables refresh-safe generation)
+        checkAndReconnectJobs();
 
         // Keep legacy function for backward compat (Generate tab still uses it)
         function startTextGeneration() {
