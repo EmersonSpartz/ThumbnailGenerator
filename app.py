@@ -150,22 +150,37 @@ def health():
     try:
         usage = shutil.disk_usage(str(settings.output_dir))
         free_mb = usage.free / (1024 * 1024)
-        if free_mb < 100:
-            # Emergency cleanup: keep only 10 folders instead of 30
-            _auto_cleanup_if_needed(max_folders=10)
+        if free_mb < 200:
+            _auto_cleanup_if_needed(max_folders=5)
             usage = shutil.disk_usage(str(settings.output_dir))
             free_mb = usage.free / (1024 * 1024)
-            if free_mb < 50:
-                # Ultra-emergency: keep only 3 folders
-                _auto_cleanup_if_needed(max_folders=3)
+            if free_mb < 100:
+                _auto_cleanup_if_needed(max_folders=2)
+                # Also clean __pycache__ and any stray files
+                _deep_cleanup()
                 usage = shutil.disk_usage(str(settings.output_dir))
                 free_mb = usage.free / (1024 * 1024)
-            print(f"[HEALTH] Disk low: {free_mb:.0f}MB free after emergency cleanup")
-            return jsonify({'status': 'ok', 'warning': f'Disk low: {free_mb:.0f}MB free'})
+            if free_mb < 200:
+                print(f"[HEALTH] Disk low: {free_mb:.0f}MB free after cleanup")
+            return jsonify({'status': 'ok', 'free_mb': round(free_mb)})
     except Exception:
         pass
 
     return jsonify({'status': 'ok'})
+
+
+@app.route('/api/cleanup', methods=['POST'])
+def force_cleanup():
+    """Force aggressive disk cleanup. Keeps only favorites and most recent folder."""
+    import shutil
+    _auto_cleanup_if_needed(max_folders=1)
+    _deep_cleanup()
+    try:
+        usage = shutil.disk_usage(str(settings.output_dir))
+        free_mb = usage.free / (1024 * 1024)
+        return jsonify({'status': 'ok', 'free_mb': round(free_mb)})
+    except Exception as e:
+        return jsonify({'status': 'error', 'error': str(e)})
 
 
 
@@ -1264,6 +1279,31 @@ def _get_protected_paths() -> set:
     except Exception as e:
         print(f"[AUTO-CLEANUP] Warning: could not read favorites: {e}")
     return protected
+
+
+def _deep_cleanup():
+    """Clean __pycache__, temp files, and other non-essential disk usage."""
+    import shutil
+    app_dir = Path(__file__).parent
+    # Clean __pycache__ directories
+    for p in app_dir.rglob('__pycache__'):
+        try:
+            shutil.rmtree(p)
+        except Exception:
+            pass
+    # Clean any .pyc files
+    for p in app_dir.rglob('*.pyc'):
+        try:
+            p.unlink()
+        except Exception:
+            pass
+    # Clean server.log if it exists
+    log_file = app_dir / 'server.log'
+    if log_file.exists() and log_file.stat().st_size > 1024 * 1024:
+        try:
+            log_file.write_text('')
+        except Exception:
+            pass
 
 
 def _auto_cleanup_if_needed(max_folders=30):
