@@ -1436,6 +1436,17 @@
                         <p style="font-size: 10px; color: #666; margin-top: 4px;">How many different concepts to generate</p>
                     </div>
 
+                    <div class="form-group">
+                        <label>Species Style Post-Processing</label>
+                        <select id="species-style">
+                            <option value="none">Off</option>
+                            <option value="subtle" selected>Subtle (recommended)</option>
+                            <option value="full">Full</option>
+                            <option value="heavy">Heavy (CRT/glitch)</option>
+                        </select>
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">Applies dithering, red glow, scanlines, chromatic aberration &amp; grain</p>
+                    </div>
+
                     <details style="margin-bottom: 15px;">
                         <summary style="cursor: pointer; color: #666; font-size: 12px; padding: 8px 0;">Advanced Options</summary>
                     <div class="form-group" style="margin-top: 10px;">
@@ -1476,17 +1487,6 @@
                                 <p style="font-size: 11px; color: #888; margin: 0;">💡 <strong style="color: #fbbf24;">Rubric editor</strong> appears below when agentic mode is running</p>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Species Style Post-Processing</label>
-                        <select id="species-style">
-                            <option value="none">Off</option>
-                            <option value="subtle" selected>Subtle (recommended)</option>
-                            <option value="full">Full</option>
-                            <option value="heavy">Heavy (CRT/glitch)</option>
-                        </select>
-                        <p style="font-size: 10px; color: #666; margin-top: 4px;">Applies dithering, red glow, scanlines, chromatic aberration &amp; grain</p>
                     </div>
 
                     <div id="single-model-section">
@@ -3799,6 +3799,14 @@
         }
 
         // One-time migration: load starter presets (v5 = compositional structure templates)
+        // Force species-style to 'subtle' on first visit with this feature
+        if (!localStorage.getItem('species_style_v1')) {
+            localStorage.setItem('form_species-style', 'subtle');
+            const ss = document.getElementById('species-style');
+            if (ss) ss.value = 'subtle';
+            localStorage.setItem('species_style_v1', 'true');
+        }
+
         if (!localStorage.getItem('presets_v5_loaded')) {
             localStorage.removeItem('batch_directions');
             document.getElementById('batch-queue-container').innerHTML = '';
