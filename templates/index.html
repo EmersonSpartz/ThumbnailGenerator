@@ -325,20 +325,31 @@
         }
 
         .thumbnail-card {
-            background: #1a1a1a;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+            background: transparent;
+            border-radius: 0;
+            overflow: visible;
+            transition: transform 0.2s;
             cursor: pointer;
         }
 
         .thumbnail-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateY(-3px);
         }
 
         .thumbnail-card.favorited {
-            border: 2px solid #ff0000;
+            /* Red dot indicator instead of border */
+        }
+
+        .thumbnail-card.favorited::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 8px;
+            height: 8px;
+            background: #ff0000;
+            border-radius: 50%;
+            z-index: 11;
         }
 
         .thumbnail-card.keyboard-focus {
@@ -375,10 +386,46 @@
             width: 100%;
             aspect-ratio: 16/9;
             object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .yt-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #f1f1f1;
+            line-height: 20px;
+            margin: 10px 0 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            letter-spacing: -0.2px;
+        }
+
+        .yt-meta {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 18px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .yt-meta .model-tag {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .yt-prompt {
+            font-size: 11px;
+            color: #666;
+            line-height: 16px;
+            margin-top: 4px;
         }
 
         .thumbnail-info {
-            padding: 15px;
+            padding: 4px 0 0;
         }
 
         .thumbnail-info h4 {
@@ -393,14 +440,20 @@
 
         .thumbnail-actions {
             display: flex;
-            gap: 10px;
-            padding: 0 15px 15px;
+            gap: 8px;
+            padding: 6px 0 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .thumbnail-card:hover .thumbnail-actions {
+            opacity: 1;
         }
 
         .thumbnail-actions button {
             flex: 1;
-            padding: 8px;
-            font-size: 12px;
+            padding: 6px;
+            font-size: 11px;
         }
 
         .category-badge {
@@ -1425,14 +1478,25 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label>Species Style Post-Processing</label>
+                        <select id="species-style">
+                            <option value="none">Off</option>
+                            <option value="subtle" selected>Subtle (recommended)</option>
+                            <option value="full">Full</option>
+                            <option value="heavy">Heavy (CRT/glitch)</option>
+                        </select>
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">Applies dithering, red glow, scanlines, chromatic aberration &amp; grain</p>
+                    </div>
+
                     <div id="single-model-section">
                         <div class="form-group">
                             <label>Image Model</label>
                             <select id="model" onchange="updateCostEstimate()">
                                 <option value="nanobanana2" data-cost="0" data-limit="750/day">NanoBanana 2 Pro (FREE)</option>
-                                <option value="aispecies" data-cost="0.02" data-limit="none">AI Species - $0.02</option>
-                                <option value="flux" data-cost="0.003" data-limit="none">Flux - $0.003</option>
-                                <option value="sdxl" data-cost="0.002" data-limit="none">SDXL - $0.002</option>
+                                <option value="aispecies" data-cost="0.02" data-limit="none" style="display:none">AI Species - $0.02</option>
+                                <option value="flux" data-cost="0.003" data-limit="none" style="display:none">Flux - $0.003</option>
+                                <option value="sdxl" data-cost="0.002" data-limit="none" style="display:none">SDXL - $0.002</option>
                             </select>
                             <div id="cost-estimate" style="margin-top: 8px; padding: 8px; background: #252525; border-radius: 6px; font-size: 12px;">
                                 <span style="color: #4ade80;">FREE</span> - 750 images/day limit
@@ -1447,19 +1511,19 @@
                                 <label class="model-checkbox selected">
                                     <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="aispecies"> AI Species
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="flux"> Flux
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="sdxl"> SDXL
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="recraft"> Recraft V3
                                 </label>
                             </div>
@@ -1487,19 +1551,19 @@
                                 <label class="model-checkbox selected">
                                     <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="aispecies"> AI Species
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="flux"> Flux
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="sdxl"> SDXL
                                 </label>
-                                <label class="model-checkbox">
+                                <label class="model-checkbox" style="display:none">
                                     <input type="checkbox" value="recraft"> Recraft V3
                                 </label>
                             </div>
@@ -1641,19 +1705,19 @@
                             <label class="model-checkbox selected">
                                 <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="aispecies"> AI Species
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="flux"> Flux
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="sdxl"> SDXL
                             </label>
-                            <label class="model-checkbox" title="Requires LEGNEXT_API_KEY in .env">
+                            <label class="model-checkbox" style="display:none" title="Requires LEGNEXT_API_KEY in .env">
                                 <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                             </label>
-                            <label class="model-checkbox" title="Premium design aesthetic, clean typography">
+                            <label class="model-checkbox" style="display:none" title="Premium design aesthetic, clean typography">
                                 <input type="checkbox" value="recraft"> Recraft V3 <span style="color:#888;font-size:11px;">(design)</span>
                             </label>
                         </div>
@@ -1767,6 +1831,12 @@
                     </div>
                 </div>
                 <p style="color: #666; font-size: 12px; margin-bottom: 10px;">This instructs Claude how to write image generation prompts for each concept. The prompting guide (tab 3) provides additional context.</p>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                    <label style="white-space:nowrap;font-size:12px;color:#888;">Template Name:</label>
+                    <input type="text" id="template-name-input" placeholder="Name this template version..."
+                           style="flex:1;background:#1a1a1a;border:1px solid #333;color:#fff;padding:6px 10px;border-radius:4px;font-size:13px;">
+                    <button class="btn btn-primary" id="save-template-name-btn" style="padding:6px 12px;font-size:12px;">Save Name</button>
+                </div>
                 <textarea id="image-prompt-editor" style="flex: 1; min-height: 300px; font-family: monospace; font-size: 12px; line-height: 1.5; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 6px;"></textarea>
             </div>
 
@@ -1843,7 +1913,7 @@
         <div id="text-tab" class="panel active">
             <div style="background: linear-gradient(135deg, #1a2a1a 0%, #1a1a2e 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #333;">
                 <h2 style="margin-bottom: 8px; font-size: 20px;">Thumbnail Generator</h2>
-                <p style="color: #888; font-size: 14px; margin: 0;">Enter your video title and the text for the thumbnail. Pick some visual styles below, then hit Generate. AI will create multiple thumbnail ideas for each style.</p>
+                <p style="color: #888; font-size: 14px; margin: 0;">Enter your video title, describe the look you want, pick some visual layouts, then hit Generate.</p>
             </div>
             <div class="generate-form">
                 <div>
@@ -1855,14 +1925,20 @@
                         <label style="color: #fbbf24;">✏️ Thumbnail Copy <span style="color: #888; font-weight: normal; font-size: 11px;">(text that gets baked into each image)</span></label>
                         <input type="text" id="text-thumbnail-copy" placeholder="e.g. AI IS TAKING OVER" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #fbbf24; border-radius: 6px; color: #fff; font-size: 15px; font-weight: bold; letter-spacing: 1px;">
                     </div>
+                    <!-- Creative Direction -->
+                    <div class="form-group">
+                        <label style="font-size: 15px; color: #e2e8f0;">Creative Direction <span style="color:#666; font-weight:normal; font-size:12px;">— what should these thumbnails look and feel like?</span></label>
+                        <textarea id="text-creative-direction" placeholder="Examples:&#10;• Dark body horror, parasites, glowing infected veins&#10;• Bright colorful science, microscope photography, neon accents&#10;• Epic cinematic scale, tiny humans vs massive creature&#10;• Mysterious silhouette, fog, single light source&#10;&#10;The more specific, the better the results." style="min-height: 90px; background: #111; border: 1px solid #444; border-radius: 8px; padding: 12px; color: #fff; font-size: 13px; line-height: 1.5; resize: vertical;"></textarea>
+                    </div>
+
                     <!-- Template Presets -->
                     <div class="form-group">
                         <label style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Quick Start <span style="color:#888; font-size:11px;">(load pre-made visual styles — compositions like split screen, grid, timeline, etc.)</span></span>
+                            <span>Layouts <span style="color:#888; font-size:11px;">(structural compositions — combined with your creative direction above)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load 14 Styles</button>
-                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Styles</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load 14 Layouts</button>
+                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Layouts</button>
                             <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 29</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
@@ -1870,8 +1946,8 @@
                     <!-- Visual Styles Queue -->
                     <div class="form-group">
                         <label style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Visual Styles <span style="color:#888; font-size:11px;">(each style generates a separate set of thumbnails)</span></span>
-                            <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Style</button>
+                            <span>Layouts <span style="color:#888; font-size:11px;">(each layout generates a separate set of thumbnails)</span></span>
+                            <button onclick="addBatchLine()" style="background:#333; border:1px solid #555; color:#aaa; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">+ Add Layout</button>
                         </label>
                         <div id="batch-queue-container">
                         </div>
@@ -1880,7 +1956,7 @@
                 <div class="settings-panel">
                     <h3>Settings</h3>
                     <div class="form-group">
-                        <label>Ideas per Style <span style="color:#666; font-weight:normal; font-size:11px;">(how many thumbnail ideas for each visual style)</span></label>
+                        <label>Ideas per Layout <span style="color:#666; font-weight:normal; font-size:11px;">(how many thumbnail ideas for each layout)</span></label>
                         <input type="number" id="text-count" value="10" min="1" max="30">
                     </div>
                     <div class="form-group">
@@ -1889,19 +1965,19 @@
                             <label class="model-checkbox selected">
                                 <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="flux"> Flux
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="sdxl"> SDXL
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="aispecies"> AI Species
                             </label>
-                            <label class="model-checkbox">
+                            <label class="model-checkbox" style="display:none">
                                 <input type="checkbox" value="recraft"> Recraft V3
                             </label>
                         </div>
@@ -2001,9 +2077,9 @@
                         <label>Image Model</label>
                         <select id="template-model" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #fff;">
                             <option value="nanobanana2">NanoBanana 2 (FREE)</option>
-                            <option value="flux">Flux</option>
-                            <option value="aispecies">AI Species</option>
-                            <option value="recraft">Recraft</option>
+                            <option value="flux" style="display:none">Flux</option>
+                            <option value="aispecies" style="display:none">AI Species</option>
+                            <option value="recraft" style="display:none">Recraft</option>
                         </select>
                     </div>
                 </div>
@@ -2120,9 +2196,9 @@
                     <label>Model</label>
                     <select id="variations-model">
                         <option value="nanobanana2">NanoBanana 2 (FREE)</option>
-                        <option value="aispecies">AI Species</option>
-                        <option value="flux">Flux</option>
-                        <option value="sdxl">SDXL</option>
+                        <option value="aispecies" style="display:none">AI Species</option>
+                        <option value="flux" style="display:none">Flux</option>
+                        <option value="sdxl" style="display:none">SDXL</option>
                     </select>
                 </div>
             </div>
@@ -2134,19 +2210,19 @@
                         <label class="model-checkbox selected">
                             <input type="checkbox" value="nanobanana2" checked> NanoBanana 2
                         </label>
-                        <label class="model-checkbox">
+                        <label class="model-checkbox" style="display:none">
                             <input type="checkbox" value="midjourney"> Midjourney <span style="color:#888;font-size:11px;">(~60s)</span>
                         </label>
-                        <label class="model-checkbox">
+                        <label class="model-checkbox" style="display:none">
                             <input type="checkbox" value="aispecies"> AI Species
                         </label>
-                        <label class="model-checkbox">
+                        <label class="model-checkbox" style="display:none">
                             <input type="checkbox" value="flux"> Flux
                         </label>
-                        <label class="model-checkbox">
+                        <label class="model-checkbox" style="display:none">
                             <input type="checkbox" value="sdxl"> SDXL
                         </label>
-                        <label class="model-checkbox">
+                        <label class="model-checkbox" style="display:none">
                             <input type="checkbox" value="recraft"> Recraft V3
                         </label>
                     </div>
@@ -2446,8 +2522,11 @@
         document.getElementById('lightbox-more').addEventListener('click', (e) => {
             e.stopPropagation();
             if (currentThumbnail && currentThumbnail.prompt) {
-                const url = `/api/quick-variations?prompt=${encodeURIComponent(currentThumbnail.prompt)}&num_variations=2&models=gemini,flux,sdxl,aispecies`;
-                startGeneration(url, 'thumbnail-grid', 'Quick +5', ['gemini', 'flux', 'sdxl', 'aispecies']);
+                let url = `/api/quick-variations?prompt=${encodeURIComponent(currentThumbnail.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
+                if (currentThumbnail.thumbnail_text) {
+                    url += `&thumbnail_text=${encodeURIComponent(currentThumbnail.thumbnail_text)}`;
+                }
+                startGeneration(url, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
                 closeLightbox();
             } else {
                 alert('No prompt available');
@@ -2758,7 +2837,7 @@
                 let completedSlots = 0;
 
                 eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
+                    let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
 
                     if (data.type === 'progress') {
                         document.getElementById('template-progress-text').textContent = data.message;
@@ -3208,6 +3287,15 @@
             return currentVideoName || '';
         }
 
+        function getSpeciesStyle() {
+            const el = document.getElementById('species-style');
+            return el ? el.value : 'none';
+        }
+
+        function appendSpeciesStyle(url) {
+            return url + `&species_style=${getSpeciesStyle()}`;
+        }
+
         function requireVideo() {
             if (currentVideoName) return true;
             // Show the modal instead of a tiny warning
@@ -3250,6 +3338,11 @@
             }
             updateVideoUI();
             hideVideoModal();
+            // Clear grids so loadTextTabHistory / loadGenerateHistory reload for the new video
+            const textGrid = document.getElementById('text-thumbnail-grid');
+            if (textGrid) textGrid.innerHTML = '';
+            const genGrid = document.getElementById('thumbnail-grid');
+            if (genGrid) genGrid.innerHTML = '';
             refreshCurrentTab();
         }
 
@@ -3377,7 +3470,8 @@
         const persistedFields = [
             'titles', 'script', 'creative-direction',
             'text-titles', 'text-thumbnail-copy', 'text-creative-direction',
-            'text-count', 'text-max-iterations'
+            'text-count', 'text-max-iterations',
+            'species-style'
         ];
         // Restore saved values on page load
         persistedFields.forEach(id => {
@@ -3385,8 +3479,11 @@
             if (!el) return;
             const saved = localStorage.getItem('form_' + id);
             if (saved) el.value = saved;
-            // Save on every input change
+            // Save on every input/change
             el.addEventListener('input', () => {
+                localStorage.setItem('form_' + id, el.value);
+            });
+            el.addEventListener('change', () => {
                 localStorage.setItem('form_' + id, el.value);
             });
         });
@@ -3413,7 +3510,7 @@
                     div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
                     div.innerHTML = `
                         <span style="color:#555; font-size:12px; min-width:20px;">${i + 1}.</span>
-                        <input type="text" class="batch-direction" placeholder="visual style ${i + 1}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;" value="${dir.replace(/"/g, '&quot;')}">
+                        <input type="text" class="batch-direction" placeholder="layout ${i + 1}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;" value="${dir.replace(/"/g, '&quot;')}">
                         <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
                     `;
                     container.appendChild(div);
@@ -3491,11 +3588,12 @@
                 jobType = 'Parallel';
             } else {
                 const model = document.getElementById('model').value;
-                url = `/generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&model=${model}&use_favorites=${useFavorites}`;
+                url = `/generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&model=${model}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}`;
                 jobType = 'Single';
                 models = [model];
             }
 
+            url = appendSpeciesStyle(url);
             startGeneration(url, 'thumbnail-grid', jobType, models, llms, { titles, creativeDirection });
         });
 
@@ -3543,12 +3641,20 @@
         function loadTextTabHistory() {
             const grid = document.getElementById('text-thumbnail-grid');
             if (grid.children.length > 0) return; // Already has results, don't overwrite
-            fetch('/api/history?limit=100')
-                .then(r => r.json())
+            const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
+            console.log('[LOAD] loadTextTabHistory starting, video:', currentVideoName || '(none)');
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:20px;font-size:13px;">Loading thumbnails...</div>';
+            fetch('/api/history?limit=5000' + videoParam)
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
                 .then(data => {
-                    const thumbs = (data.thumbnails || []).filter(t => t.thumbnail_text);
+                    grid.innerHTML = ''; // Clear loading message
+                    const thumbs = (data.thumbnails || []);
+                    console.log('[LOAD] Got', thumbs.length, 'thumbnails from API');
                     if (thumbs.length === 0) {
-                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#555;padding:40px;font-size:13px;">No text thumbnails generated yet. Enter your thumbnail copy above and click Generate.</div>';
+                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#555;padding:40px;font-size:13px;">No thumbnails generated yet. Set up your creative direction and layouts above, then click Generate.</div>';
                         return;
                     }
                     thumbs.forEach(thumb => {
@@ -3558,50 +3664,25 @@
                             concept_summary: thumb.description || '',
                             prompt: thumb.prompt || '',
                             title_ref: thumb.title_ref || '',
+                            _gen_title: thumb.gen_title || '',
                             category: thumb.category || '',
                             model: thumb.model || '',
-                            thumbnail_text: thumb.thumbnail_text || ''
+                            thumbnail_text: thumb.thumbnail_text || '',
+                            original_file_path: thumb.original_file_path || '',
+                            template: thumb.template || '',
+                            template_name: thumb.template_name || '',
                         };
-                        const card = document.createElement('div');
-                        card.className = 'thumbnail-card';
-                        card.dataset.thumbnail = JSON.stringify(cardData);
-                        card.innerHTML = `
-                            <img src="/output/${escapeHtml(thumb.file_path)}" alt="${escapeHtml(thumb.concept_name || '')}"
-                                 onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image not found</div>'">
-                            <div class="thumbnail-info">
-                                ${thumb.gen_title ? `<p style="color:#fbbf24;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(thumb.gen_title)}">📹 ${escapeHtml(thumb.gen_title)}</p>` : ''}
-                                ${thumb.gen_cd ? `<p style="color:#818cf8;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(thumb.gen_cd)}">🎨 ${escapeHtml(thumb.gen_cd)}</p>` : ''}
-                                <h4>${escapeHtml(thumb.concept_name || '')}</h4>
-                                ${thumb.thumbnail_text ? `<p style="color:#fbbf24;font-size:11px;font-weight:bold;">"${escapeHtml(thumb.thumbnail_text)}"</p>` : ''}
-                                <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${escapeHtml(thumb.description || '')}</p>
-                                ${thumb.model ? `<span class="category-badge">${escapeHtml(thumb.model)}</span>` : ''}
-                            </div>
-                            <div class="thumbnail-actions">
-                                <button class="btn btn-secondary favorite-btn" title="Add to favorites">Fav</button>
-                                <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
-                            </div>`;
-
-                        card.querySelector('img').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            openLightbox(cardData, card);
-                        });
-                        card.querySelector('.favorite-btn').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            currentThumbnail = cardData;
-                            document.getElementById('favorite-modal').classList.add('active');
-                        });
-                        card.querySelector('.variations-btn').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            currentThumbnail = cardData;
-                            document.getElementById('variations-modal').dataset.prompt = cardData.prompt || '';
-                            document.getElementById('variations-modal').dataset.filePath = cardData.file_path || '';
-                            document.getElementById('variations-modal').classList.add('active');
-                        });
-
-                        grid.appendChild(card);
+                        addThumbnailCard(grid, cardData, { append: true });
                     });
+                    console.log('[LOAD] Rendered', grid.children.length, 'cards');
                 })
-                .catch(() => {});
+                .catch(err => {
+                    console.error('[LOAD] loadTextTabHistory FAILED:', err);
+                    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#f87171;padding:40px;font-size:14px;">
+                        Failed to load thumbnails: ${err.message}<br>
+                        <button onclick="location.reload()" style="margin-top:10px;padding:8px 16px;background:#333;color:#fff;border:none;border-radius:6px;cursor:pointer;">Retry</button>
+                    </div>`;
+                });
         }
 
         // === BATCH QUEUE SYSTEM ===
@@ -3735,7 +3816,7 @@
             div.style = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
             div.innerHTML = `
                 <span style="color:#555; font-size:12px; min-width:20px;">${count}.</span>
-                <input type="text" class="batch-direction" placeholder="visual style ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
+                <input type="text" class="batch-direction" placeholder="layout ${count}..." style="flex:1; padding:8px; background:#1a1a1a; border:1px solid #333; border-radius:6px; color:#fff; font-size:13px;">
                 <button onclick="this.parentElement.remove(); updateBatchNumbers(); saveBatchDirections();" style="background:none; border:none; color:#555; cursor:pointer; font-size:16px; padding:0 4px;" title="Remove">&times;</button>
             `;
             container.appendChild(div);
@@ -3756,6 +3837,7 @@
             if (!requireVideo()) return;
             const titles = document.getElementById('text-titles').value.trim();
             const thumbnailText = document.getElementById('text-thumbnail-copy').value.trim();
+            const creativeDirection = document.getElementById('text-creative-direction').value.trim();
             const count = document.getElementById('text-count').value;
             const maxIterations = document.getElementById('text-max-iterations').value;
 
@@ -3766,14 +3848,22 @@
             const models = Array.from(modelCheckboxes).map(cb => cb.value);
             if (models.length === 0) { alert('Please select at least one model'); return; }
 
-            // Collect batch directions
-            const directions = Array.from(document.querySelectorAll('.batch-direction'))
+            // Collect layout directions and combine with creative direction
+            const layouts = Array.from(document.querySelectorAll('.batch-direction'))
                 .map(input => input.value.trim())
                 .filter(d => d.length > 0);
 
-            if (directions.length === 0) {
-                directions.push('');
+            if (layouts.length === 0) {
+                layouts.push('');
             }
+
+            // Combine: creative direction + layout = full direction per batch
+            const directions = layouts.map(layout => {
+                if (creativeDirection && layout) {
+                    return `${creativeDirection}. Layout: ${layout}`;
+                }
+                return creativeDirection || layout;
+            });
 
             // Append new batches to existing queue (don't replace)
             const startIndex = batchQueue.length;
@@ -3855,7 +3945,7 @@
                 const header = document.createElement('div');
                 header.style = 'grid-column: 1 / -1; padding: 12px 16px; background: linear-gradient(90deg, #1a2a1a, transparent); border-left: 3px solid #4ade80; border-radius: 4px; margin: 8px 0; font-size: 14px; color: #4ade80;';
                 header.id = `batch-header-${batch.index}`;
-                header.innerHTML = `Style ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no style specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
+                header.innerHTML = `Layout ${batch.index + 1}: <span style="color:#888">${batch.direction || '(no direction specified)'}</span> <span id="batch-count-${batch.index}" style="color:#555; font-size:11px;">generating...</span>`;
                 grid.appendChild(header);
             }
 
@@ -3906,9 +3996,9 @@
             let imageCount = batch.imageCount || 0;
 
             eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
+                let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
                 if (data.type === 'keepalive') return;
-                data._gen_title = batch.titles;
+                data._gen_title = Array.isArray(batch.titles) ? batch.titles[0] || '' : (batch.titles || '');
                 data._gen_cd = batch.direction;
 
                 switch (data.type) {
@@ -4209,6 +4299,10 @@
 
         function startGeneration(url, gridId, jobType, models = [], llms = [], meta = {}) {
             if (!requireVideo()) return;
+            // Ensure species_style is always in the URL
+            if (!url.includes('species_style=')) {
+                url = appendSpeciesStyle(url);
+            }
             const grid = document.getElementById(gridId);
             // DON'T clear the grid - allow multiple jobs to add to it
             // grid.innerHTML = '';
@@ -4228,9 +4322,9 @@
             const eventSource = new EventSource(url);
 
             eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
+                let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
                 // Attach generation context to image events
-                if (!data._gen_title && meta.titles) data._gen_title = meta.titles;
+                if (!data._gen_title && meta.titles) data._gen_title = Array.isArray(meta.titles) ? meta.titles[0] || '' : (meta.titles || '');
                 if (!data._gen_cd && meta.creativeDirection) data._gen_cd = meta.creativeDirection;
 
                 switch (data.type) {
@@ -4578,13 +4672,52 @@
                     alert('Generation failed - the server may have encountered an error. Please try again.');
                 } else {
                     // Partial results received — connection dropped mid-generation
-                    // Show a banner and auto-reload after 5s to reconnect
+                    // Show a banner
                     const banner = document.createElement('div');
                     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;padding:12px 24px;text-align:center;z-index:9999;font-size:14px;font-weight:bold;';
-                    banner.innerHTML = `Connection dropped after ${results} thumbnails. The server may still be generating. <button onclick="location.reload()" style="margin-left:12px;padding:4px 12px;border:none;border-radius:4px;background:#000;color:#fff;cursor:pointer;">Reload Now</button>`;
+                    banner.innerHTML = `Connection dropped after ${results} thumbnails. Recovering results from history... <button onclick="location.reload()" style="margin-left:12px;padding:4px 12px;border:none;border-radius:4px;background:#000;color:#fff;cursor:pointer;">Reload Now</button>`;
                     document.body.prepend(banner);
-                    setTimeout(() => location.reload(), 8000);
+                    setTimeout(() => { if (banner.parentNode) banner.remove(); }, 15000);
                 }
+                // Recover any results that were saved to history but not yet shown
+                fetch('/api/history?limit=50')
+                    .then(r => r.json())
+                    .then(data => {
+                        const grid = document.getElementById(gridId);
+                        if (!grid) return;
+                        const existingPaths = new Set();
+                        grid.querySelectorAll('img').forEach(img => {
+                            const src = img.getAttribute('src');
+                            if (src) existingPaths.add(src.replace('/output/', ''));
+                        });
+                        // Add any history thumbnails from the last 5 minutes that aren't already shown
+                        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+                        let recovered = 0;
+                        (data.thumbnails || []).forEach(thumb => {
+                            const added = new Date(thumb.added_at || 0).getTime();
+                            if (added > fiveMinAgo && !existingPaths.has(thumb.file_path)) {
+                                const cardData = {
+                                    file_path: thumb.file_path,
+                                    concept_name: thumb.concept_name || '',
+                                    concept_summary: thumb.description || '',
+                                    prompt: thumb.prompt || '',
+                                    title_ref: thumb.title_ref || '',
+                                    _gen_title: thumb.gen_title || '',
+                                    category: thumb.category || '',
+                                    model: thumb.model || '',
+                                    thumbnail_text: thumb.thumbnail_text || '',
+                                    original_file_path: thumb.original_file_path || '',
+                                    template_name: thumb.template_name || '',
+                                };
+                                addThumbnailCard(grid, cardData, { append: true });
+                                recovered++;
+                            }
+                        });
+                        if (recovered > 0) {
+                            console.log(`[RECOVERY] Recovered ${recovered} thumbnails from history after SSE disconnect`);
+                        }
+                    })
+                    .catch(() => {});
                 completeJob(jobId, false);
                 eventSource.close();
             };
@@ -4795,9 +4928,10 @@
             return result.trim();
         }
 
-        function addThumbnailCard(grid, data) {
+        function addThumbnailCard(grid, data, options) {
+            const opts = options || {};
             const card = document.createElement('div');
-            card.className = 'thumbnail-card';
+            card.className = data._is_favorite ? 'thumbnail-card favorited' : 'thumbnail-card';
 
             // Build text controls HTML if this thumbnail has text
             const hasText = data.thumbnail_text && data.original_file_path;
@@ -4811,18 +4945,24 @@
                 <div class="text-adj-status" style="padding:0 8px 4px;font-size:9px;color:#666;text-align:center;">y: 12% · size: 20%</div>
             ` : '';
 
+            // YouTube-style card: thumbnail with rounded corners, title below, metadata under
+            const rawTitle = data._gen_title || data.title_ref || '';
+            const displayTitle = String(Array.isArray(rawTitle) ? rawTitle[0] || '' : rawTitle);
             card.innerHTML = `
-                <button class="quick-fav" title="Favorite (one click)">♡</button>
-                <img src="/output/${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
-                     onerror="this.outerHTML='<div style=\\'aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;\\'>Image unavailable</div>'">
-                ${textControlsHtml}
-                <div class="thumbnail-info">
-                    ${data._gen_title ? `<p style="color:#fbbf24;font-size:10px;margin-bottom:2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${data._gen_title.replace(/"/g, '&quot;')}">📹 ${data._gen_title}</p>` : ''}
-                    ${data._gen_cd ? `<p style="color:#818cf8;font-size:9px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${data._gen_cd.replace(/"/g, '&quot;')}">🎨 ${data._gen_cd}</p>` : ''}
-                    <h4>${data.concept_name || 'Untitled'}</h4>
-                    <p style="color:#aaa;font-size:11px;margin-bottom:4px;">${data.concept_summary || data.title_ref || ''}</p>
-                    ${data.model ? `<span class="category-badge">${data.model}</span>` : ''}
+                <div style="position:relative;">
+                    <button class="quick-fav${data._is_favorite ? ' favorited' : ''}" title="Favorite (one click)">${data._is_favorite ? '♥' : '♡'}</button>
+                    <img src="${data._img_prefix || '/output/'}${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
+                         onerror="if(!this.dataset.retries){this.dataset.retries='0';}if(+this.dataset.retries<3){this.dataset.retries=+this.dataset.retries+1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now()},2000);}else{this.closest('.thumbnail-card').style.display='none';}">
                 </div>
+                ${textControlsHtml}
+                <div class="yt-title" title="${(displayTitle).replace(/"/g, '&quot;')}">${displayTitle || data.concept_name || 'Untitled'}</div>
+                <div class="yt-meta">
+                    ${data.template ? `<span style="color:#4ade80;font-weight:600;">${data.template}</span>` : ''}
+                    ${data.concept_name ? `<span>${data.template ? ' · ' : ''}${data.concept_name}</span>` : ''}
+                    ${data.model ? `<span class="model-tag"> · ${data.model}</span>` : ''}
+                    ${data.template_name ? `<span class="model-tag" style="color:#6366f1;"> · ${data.template_name}</span>` : ''}
+                </div>
+                ${data.prompt ? `<div class="yt-prompt" title="${data.prompt.replace(/"/g, '&quot;')}">${data.prompt}</div>` : ''}
                 <div class="thumbnail-actions">
                     <button class="btn btn-primary more-btn" title="Generate 5 more like this instantly">+5 More</button>
                     <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
@@ -4881,7 +5021,7 @@
             card.dataset.thumbnail = JSON.stringify(data);
 
             // Click image to open lightbox
-            card.querySelector('img').addEventListener('click', (e) => {
+            card.querySelector('img')?.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openLightbox(data, card);
             });
@@ -4906,9 +5046,9 @@
                     return;
                 }
                 // Quick variations with all models, 2 each = 8 total
-                const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=2&models=gemini,flux,sdxl,aispecies`;
+                const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
                 console.log('+5 More URL:', url);
-                startGeneration(url, 'thumbnail-grid', 'Quick +5', ['gemini', 'flux', 'sdxl', 'aispecies']);
+                startGeneration(url, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
             });
 
             card.querySelector('.variations-btn').addEventListener('click', (e) => {
@@ -4920,8 +5060,12 @@
                 document.getElementById('variations-modal').classList.add('active');
             });
 
-            // Insert at beginning so newest are first
-            grid.insertBefore(card, grid.firstChild);
+            // Insert at beginning so newest are first, unless append requested
+            if (opts.append) {
+                grid.appendChild(card);
+            } else {
+                grid.insertBefore(card, grid.firstChild);
+            }
         }
 
         // =====================================================
@@ -4945,23 +5089,40 @@
         }
 
         async function quickFavorite(data) {
-            const response = await fetch('/api/favorites', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    thumbnail_path: data.file_path,
-                    concept_name: data.concept_name || '',
-                    prompt: data.prompt || '',
-                    title_ref: data.title_ref || '',
-                    category: data.category || '',
-                    description: data.concept_summary || '',
-                    notes: '',
-                    video_name: getVideoParam(),
-                })
-            });
-            const result = await response.json();
-            if (result.success) {
-                updateFavBadge(1);
+            try {
+                const response = await fetch('/api/favorites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        thumbnail_path: data.file_path,
+                        concept_name: data.concept_name || '',
+                        prompt: data.prompt || '',
+                        title_ref: data.title_ref || '',
+                        category: data.category || '',
+                        description: data.concept_summary || '',
+                        notes: '',
+                        video_name: getVideoParam(),
+                        thumbnail_text: data.thumbnail_text || '',
+                        original_file_path: data.original_file_path || '',
+                        model: data.model || '',
+                        gen_title: data._gen_title || '',
+                    })
+                });
+                if (!response.ok) {
+                    console.error('Favorite save failed:', response.status, await response.text());
+                    alert('Failed to save favorite — server returned ' + response.status);
+                    return;
+                }
+                const result = await response.json();
+                if (result.success) {
+                    updateFavBadge(1);
+                } else {
+                    console.error('Favorite save error:', result.error);
+                    alert('Failed to save favorite: ' + (result.error || 'unknown error'));
+                }
+            } catch(err) {
+                console.error('Favorite save exception:', err);
+                alert('Failed to save favorite — network error');
             }
         }
 
@@ -5041,59 +5202,24 @@
             }
 
             favorites.forEach(fav => {
-                const card = document.createElement('div');
-                card.className = 'thumbnail-card favorited';
-                // Protected favorites use /data/ path, legacy ones use /output/
-                const imgPrefix = fav.thumbnail_path.startsWith('data/') ? '/' : '/output/';
-                card.innerHTML = `
-                    <img src="${imgPrefix}${fav.thumbnail_path}" alt="${fav.concept_name}" data-fallback="${fav.original_output_path || fav.thumbnail_path}">
-                    <div class="thumbnail-info">
-                        <h4>${fav.concept_name}</h4>
-                        <p>${fav.description || fav.notes || ''}</p>
-                        ${fav.category ? `<span class="category-badge">${fav.category}</span>` : ''}
-                    </div>
-                    <div class="thumbnail-actions">
-                        <button class="btn btn-primary variations-btn">Variations</button>
-                    </div>
-                `;
-                // Add onerror handler programmatically to avoid quote-escaping hell in template literals
-                const favImg = card.querySelector('img');
-                favImg.onerror = function() {
-                    const fb = this.dataset.fallback;
-                    if (fb) {
-                        this.onerror = function() {
-                            this.outerHTML = '<div style="aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;">Image not on server</div>';
-                        };
-                        this.src = '/output/' + fb;
-                    } else {
-                        this.outerHTML = '<div style="aspect-ratio:16/9;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;border-radius:6px 6px 0 0;">Image not on server</div>';
-                    }
-                };
-
-                card.dataset.favoriteId = fav.id;
-                card.dataset.thumbnail = JSON.stringify({
-                    ...fav,
+                // Map favorite data to the standard card data format
+                const cardData = {
                     file_path: fav.thumbnail_path,
-                    concept_name: fav.concept_name
-                });
-
-                // Click image to open lightbox
-                card.querySelector('img').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openLightbox({
-                        ...fav,
-                        file_path: fav.thumbnail_path
-                    }, card);
-                });
-
-                card.querySelector('.variations-btn').addEventListener('click', () => {
-                    currentThumbnail = fav;
-                    document.getElementById('variations-modal').dataset.favoriteId = fav.id;
-                    document.getElementById('variations-modal').dataset.prompt = fav.prompt || '';
-                    document.getElementById('variations-modal').classList.add('active');
-                });
-
-                grid.appendChild(card);
+                    concept_name: fav.concept_name || '',
+                    concept_summary: fav.description || fav.notes || '',
+                    prompt: fav.prompt || '',
+                    title_ref: fav.title_ref || '',
+                    _gen_title: fav.gen_title || '',
+                    category: fav.category || '',
+                    model: fav.model || '',
+                    thumbnail_text: fav.thumbnail_text || '',
+                    original_file_path: fav.original_file_path || '',
+                    _favorite_id: fav.id,
+                    _is_favorite: true,
+                    // For protected favorites that use /data/ path
+                    _img_prefix: fav.thumbnail_path.startsWith('data/') ? '/' : '/output/',
+                };
+                addThumbnailCard(grid, cardData, { append: true });
             });
 
             // Update patterns
@@ -5148,9 +5274,9 @@
                 if (style === 'quick') {
                     // Quick: re-render same prompt
                     if (favoriteId) {
-                        url = `/api/quick-variations?favorite_id=${favoriteId}&num_variations=${numVariations}&models=${models.join(',')}`;
+                        url = `/api/quick-variations?favorite_id=${favoriteId}&num_variations=${numVariations}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`;
                     } else if (prompt) {
-                        url = `/api/quick-variations?prompt=${encodeURIComponent(prompt)}&num_variations=${numVariations}&models=${models.join(',')}`;
+                        url = `/api/quick-variations?prompt=${encodeURIComponent(prompt)}&num_variations=${numVariations}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`;
                     }
                 } else {
                     // Claude variations
@@ -5162,9 +5288,9 @@
 
                 if (style === 'quick') {
                     if (favoriteId) {
-                        url = `/api/quick-variations?favorite_id=${favoriteId}&num_variations=${numVariations}&models=${model}`;
+                        url = `/api/quick-variations?favorite_id=${favoriteId}&num_variations=${numVariations}&models=${model}&video_name=${encodeURIComponent(getVideoParam())}`;
                     } else if (prompt) {
-                        url = `/api/quick-variations?prompt=${encodeURIComponent(prompt)}&num_variations=${numVariations}&models=${model}`;
+                        url = `/api/quick-variations?prompt=${encodeURIComponent(prompt)}&num_variations=${numVariations}&models=${model}&video_name=${encodeURIComponent(getVideoParam())}`;
                     }
                 } else {
                     url = `/api/variations?favorite_id=${favoriteId}&num_variations=${numVariations}&style=${style}&model=${model}`;
@@ -5277,8 +5403,8 @@
                 case 'r':
                     // Regenerate - same as +5 More
                     if (data.prompt) {
-                        const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=2&models=gemini,flux,sdxl,aispecies`;
-                        startGeneration(url, 'thumbnail-grid', 'Quick +5', ['gemini', 'flux', 'sdxl', 'aispecies']);
+                        const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
+                        startGeneration(url, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
                     } else {
                         alert('No prompt available for this thumbnail');
                     }
@@ -5394,7 +5520,7 @@
                 return;
             }
 
-            const url = `/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`;
+            const url = appendSpeciesStyle(`/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`);
 
             startShootout(url, models);
         });
@@ -5432,7 +5558,7 @@
             const eventSource = new EventSource(url);
 
             eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
+                let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
 
                 switch (data.type) {
                     case 'shootout_start':
@@ -5752,7 +5878,7 @@
         // Load and merge history from backend + localStorage
         function loadAndMergeHistory() {
             const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
-            fetch('/api/history?limit=100' + videoParam)
+            fetch('/api/history?limit=5000' + videoParam)
                 .then(r => r.json())
                 .then(data => {
                     console.log('Loaded backend history:', data.sessions?.length || 0, 'sessions,', data.thumbnails?.length || 0, 'thumbnails');
@@ -5990,7 +6116,7 @@
                                         <img src="/output/${escapeHtml(thumb.file_path)}"
                                              style="width: 100%; aspect-ratio: 16/9; object-fit: cover;">
                                         <div style="padding: 8px;">
-                                            ${thumb.gen_title ? `<div style="font-size: 10px; color: #fbbf24; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(thumb.gen_title)}">📹 ${escapeHtml(thumb.gen_title)}</div>` : ''}
+                                            ${thumb.gen_title ? `<div style="font-size: 10px; color: #fbbf24; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(String(Array.isArray(thumb.gen_title) ? thumb.gen_title[0] : thumb.gen_title))}">📹 ${escapeHtml(String(Array.isArray(thumb.gen_title) ? thumb.gen_title[0] : thumb.gen_title))}</div>` : ''}
                                             ${thumb.gen_cd ? `<div style="font-size: 9px; color: #818cf8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(thumb.gen_cd)}">🎨 ${escapeHtml(thumb.gen_cd)}</div>` : ''}
                                             <div style="font-size: 11px; color: #888;">${escapeHtml(thumb.model)}</div>
                                             <div style="font-size: 12px; color: #ccc; margin-top: 3px;">${escapeHtml(thumb.concept_name || 'Concept')}</div>
@@ -6072,6 +6198,12 @@
                     imageTemplateEditor.value = promptsData['image_prompt_template'] || '';
                 }
 
+                // Load image prompt template name
+                const nameInput = document.getElementById('template-name-input');
+                if (nameInput && promptsData['image_prompt_template_name']) {
+                    nameInput.value = promptsData['image_prompt_template_name'];
+                }
+
                 // Load prompting guide
                 const guideEditor = document.getElementById('prompting-guide-editor');
                 if (guideEditor) {
@@ -6144,6 +6276,22 @@
                 savePrompt('image_prompt_template', 'image-prompt-editor');
             });
         }
+
+        // Save template name
+        document.getElementById('save-template-name-btn').addEventListener('click', async () => {
+            const name = document.getElementById('template-name-input').value.trim();
+            if (!name) return;
+            const resp = await fetch('/api/save-template-name', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name})
+            });
+            const result = await resp.json();
+            if (result.success) {
+                document.getElementById('save-template-name-btn').textContent = 'Saved!';
+                setTimeout(() => document.getElementById('save-template-name-btn').textContent = 'Save Name', 1500);
+            }
+        });
 
         // Save prompting guide
         const saveGuideBtn = document.getElementById('save-guide-btn');

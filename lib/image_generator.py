@@ -869,9 +869,14 @@ class MultiModelGenerator:
     Each registered model automatically appears in /api/models endpoint.
     """
 
-    def __init__(self, settings):
+    def __init__(self, settings, post_process: str = "none"):
         self.settings = settings
         self.generators = {}
+        # Species post-processing (applied after every generation)
+        self._post_process_preset = "none"
+        self._post_processor = None
+        if post_process and post_process != "none":
+            self.set_post_process(post_process)
 
         # Initialize available generators (auto-registered based on API keys)
         if GENAI_AVAILABLE and settings.google_api_keys:
@@ -911,13 +916,44 @@ class MultiModelGenerator:
         results = {}
         for name, generator in self.generators.items():
             result = generator.generate(prompt_data, f"{batch_id}/{name}" if batch_id else name)
+            result = self._apply_post_processing(result)
             results[name] = result
             time.sleep(1)  # Small delay between models
 
         return results
 
+    def set_post_process(self, preset: str = "subtle"):
+        """Set the Species post-processing preset. Use 'none' to disable."""
+        self._post_process_preset = preset
+        if preset and preset != "none":
+            from .species_post_processor import SpeciesPostProcessor
+            self._post_processor = SpeciesPostProcessor(preset)
+        else:
+            self._post_processor = None
+
+    def _apply_post_processing(self, result: dict) -> dict:
+        """Apply Species post-processing to a successful generation result."""
+        if not self._post_processor or not result.get("success"):
+            return result
+        try:
+            from PIL import Image as PILImage
+            file_path = result["file_path"]
+            img = PILImage.open(file_path).convert("RGB")
+            processed = self._post_processor.process(img)
+            ext = Path(file_path).suffix.lower()
+            if ext in ('.jpg', '.jpeg'):
+                processed.save(file_path, "JPEG", quality=95)
+            else:
+                processed.save(file_path, "PNG")
+            result["post_processed"] = self._post_process_preset
+        except Exception as e:
+            print(f"[POST-PROCESS] Warning: {e}")
+            # Don't fail the generation if post-processing fails
+        return result
+
     def generate_with_model(self, model_name: str, prompt_data: dict, batch_id: str = "") -> dict:
-        """Generate with a specific model."""
+        """Generate with a specific model, then apply Species post-processing if enabled."""
         if model_name not in self.generators:
             return {"success": False, "error": f"Model {model_name} not available"}
-        return self.generators[model_name].generate(prompt_data, batch_id)
+        result = self.generators[model_name].generate(prompt_data, batch_id)
+        return self._apply_post_processing(result)

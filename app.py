@@ -19,7 +19,7 @@ import queue
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, render_template, request, Response, send_from_directory, jsonify
+from flask import Flask, render_template, request, Response, send_from_directory, send_file, jsonify
 
 from lib import (
     Settings,
@@ -146,18 +146,22 @@ def health():
     # Auto-cleanup on every health check (runs every ~30s on Railway)
     _auto_cleanup_if_needed()
 
-    # Check disk space - aggressive cleanup if critically low, but always return 200
+    # Check disk space - cleanup old folders but NEVER delete recent work
     try:
         usage = shutil.disk_usage(str(settings.output_dir))
         free_mb = usage.free / (1024 * 1024)
         if free_mb < 200:
-            _auto_cleanup_if_needed(max_folders=5)
+            _auto_cleanup_if_needed(max_folders=5, min_age_hours=6)
             usage = shutil.disk_usage(str(settings.output_dir))
             free_mb = usage.free / (1024 * 1024)
             if free_mb < 100:
-                _auto_cleanup_if_needed(max_folders=2)
-                # Also clean __pycache__ and any stray files
+                _auto_cleanup_if_needed(max_folders=2, min_age_hours=2)
                 _deep_cleanup()
+                usage = shutil.disk_usage(str(settings.output_dir))
+                free_mb = usage.free / (1024 * 1024)
+            if free_mb < 50:
+                # Critical: delete everything except 1 folder, no age limit
+                _auto_cleanup_if_needed(max_folders=1, min_age_hours=0)
                 usage = shutil.disk_usage(str(settings.output_dir))
                 free_mb = usage.free / (1024 * 1024)
             if free_mb < 200:
@@ -171,9 +175,13 @@ def health():
 
 @app.route('/api/cleanup', methods=['POST'])
 def force_cleanup():
-    """Force aggressive disk cleanup. Keeps only favorites and most recent folder."""
+    """Force aggressive disk cleanup.
+    Favorites are already copied to data/favorites_images/, so output folders
+    are all safe to delete. Keeps only the 2 most recent output folders.
+    """
     import shutil
-    _auto_cleanup_if_needed(max_folders=1)
+    # All output folders are safe to delete — favorites already backed up to data/favorites_images/
+    _auto_cleanup_if_needed(max_folders=2, min_age_hours=0, ignore_protected=True)
     _deep_cleanup()
     try:
         usage = shutil.disk_usage(str(settings.output_dir))
@@ -181,6 +189,47 @@ def force_cleanup():
         return jsonify({'status': 'ok', 'free_mb': round(free_mb)})
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)})
+
+
+@app.route('/api/disk-usage')
+def disk_usage():
+    """Show disk usage breakdown by directory."""
+    import shutil, subprocess
+    result = {}
+    persistent = settings.data_dir.parent  # /app/persistent
+    try:
+        usage = shutil.disk_usage(str(persistent))
+        result['total_mb'] = round(usage.total / 1024 / 1024)
+        result['used_mb'] = round(usage.used / 1024 / 1024)
+        result['free_mb'] = round(usage.free / 1024 / 1024)
+    except Exception as e:
+        result['disk_error'] = str(e)
+    # du on key dirs
+    dirs_to_check = [settings.output_dir, settings.data_dir]
+    breakdown = {}
+    for d in dirs_to_check:
+        if d.exists():
+            try:
+                out = subprocess.check_output(['du', '-sm', str(d)], text=True)
+                mb = int(out.split()[0])
+                breakdown[str(d)] = mb
+                # Also list subdirs > 10MB
+                subdirs = {}
+                for sub in sorted(d.iterdir(), key=lambda x: x.stat().st_mtime if x.exists() else 0, reverse=True)[:20]:
+                    if sub.is_dir():
+                        try:
+                            out2 = subprocess.check_output(['du', '-sm', str(sub)], text=True)
+                            smb = int(out2.split()[0])
+                            if smb > 5:
+                                subdirs[sub.name] = smb
+                        except Exception:
+                            pass
+                if subdirs:
+                    breakdown[str(d) + '_subdirs'] = subdirs
+            except Exception as e:
+                breakdown[str(d)] = str(e)
+    result['breakdown'] = breakdown
+    return jsonify(result)
 
 
 
@@ -222,16 +271,74 @@ def serve_data(filename):
     return send_from_directory(settings.data_dir, filename)
 
 
+def _get_species_style():
+    """Get the Species post-processing preset from the request."""
+    return request.args.get('species_style', 'none')
+
+
+def _make_generator():
+    """Create a MultiModelGenerator with Species post-processing if requested."""
+    return MultiModelGenerator(settings, post_process=_get_species_style())
+
+
 @app.route('/api/health')
 def health_check():
     """Basic health check endpoint."""
     return jsonify({"status": "ok"})
 
 
+@app.route('/api/species-preview')
+def species_preview():
+    """Preview Species post-processing on an existing image. Pass ?path=output/...&preset=subtle"""
+    from lib.species_post_processor import SpeciesPostProcessor
+    from PIL import Image as PILImage
+    import io
+
+    image_path = request.args.get('path', '')
+    preset = request.args.get('preset', 'subtle')
+
+    if not image_path:
+        return jsonify({"error": "No path provided"}), 400
+
+    # Resolve relative to output dir or absolute
+    full_path = Path(image_path)
+    if not full_path.is_absolute():
+        full_path = settings.output_dir / image_path
+
+    if not full_path.exists():
+        return jsonify({"error": f"File not found: {image_path}"}), 404
+
+    processor = SpeciesPostProcessor(preset)
+    img = PILImage.open(full_path).convert("RGB")
+    processed = processor.process(img)
+
+    buf = io.BytesIO()
+    ext = full_path.suffix.lower()
+    if ext in ('.jpg', '.jpeg'):
+        processed.save(buf, 'JPEG', quality=95)
+        mimetype = 'image/jpeg'
+    else:
+        processed.save(buf, 'PNG')
+        mimetype = 'image/png'
+    buf.seek(0)
+
+    return send_file(buf, mimetype=mimetype)
+
+
+@app.route('/api/species-presets')
+def species_presets():
+    """Get available Species post-processing presets."""
+    from lib.species_post_processor import SpeciesPostProcessor
+    return jsonify({
+        "presets": list(SpeciesPostProcessor.PRESETS.keys()),
+        "default": "subtle"
+    })
+
+
 @app.route('/api/models')
 def get_available_models():
     """Get list of available image generation models."""
-    multi_gen = MultiModelGenerator(settings)
+    multi_gen = _make_generator()
     models = multi_gen.get_available_models()
 
     # Add model info
@@ -287,6 +394,10 @@ def add_favorite():
         notes=data.get('notes', ''),
         performance_data=data.get('performance_data'),
         video_name=data.get('video_name', ''),
+        thumbnail_text=data.get('thumbnail_text', ''),
+        original_file_path=data.get('original_file_path', ''),
+        model=data.get('model', ''),
+        gen_title=data.get('gen_title', ''),
     )
 
     return jsonify({"success": True, "favorite": favorite})
@@ -524,7 +635,7 @@ def get_pipeline_debug():
     sample_image_prompt = "Cinematic wide shot of massive metallic robot towering over tiny human silhouette, dramatic red and blue lighting, apocalyptic sky, extreme scale contrast showing robot 100x taller than human, bold graphic style, 16:9 YouTube thumbnail, high contrast"
 
     # Get available models
-    multi_gen = MultiModelGenerator(settings)
+    multi_gen = _make_generator()
     available_models = multi_gen.get_available_models()
 
     return jsonify({
@@ -587,7 +698,7 @@ def generate_variations():
 
         # Initialize components (pass prompt_manager so edits take effect)
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
 
         yield sse_message({
             'type': 'progress',
@@ -695,7 +806,9 @@ def quick_variations():
     favorite_id = request.args.get('favorite_id', '')
     direct_prompt = request.args.get('prompt', '')
     num_variations = int(request.args.get('num_variations', 5))
-    models_str = request.args.get('models', 'gemini')
+    models_str = request.args.get('models', 'nanobanana2')
+    thumbnail_text = request.args.get('thumbnail_text', '')
+    video_name = request.args.get('video_name', '')
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
 
@@ -723,7 +836,7 @@ def quick_variations():
         global _stop_generation
         _stop_generation = False
 
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         available_models = generator.get_available_models()
         models_to_use = [m for m in selected_models if m in available_models]
 
@@ -791,6 +904,23 @@ def quick_variations():
                 if result.get('success'):
                     file_path = result['file_path'].replace(str(settings.output_dir) + '/', '')
 
+                    # Apply text overlay if thumbnail_text was provided
+                    original_file_path = ''
+                    if thumbnail_text:
+                        try:
+                            overlay = TextOverlay()
+                            full_img_path = str(settings.output_dir / file_path)
+                            output_path = overlay.add_text(
+                                image_path=full_img_path,
+                                text=thumbnail_text,
+                                position='bottom-center',
+                                style='impact',
+                            )
+                            original_file_path = file_path
+                            file_path = str(Path(output_path).relative_to(settings.output_dir))
+                        except Exception as e:
+                            print(f"[VARIATIONS] Text overlay failed: {e}")
+
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -799,10 +929,14 @@ def quick_variations():
                         'concept_summary': f"Re-render #{var_num + 1}",
                         'based_on': concept_name,
                         'prompt': original_prompt,
+                        'thumbnail_text': thumbnail_text,
+                        'original_file_path': original_file_path,
                         'current': completed_per_model[model_name],
                         'total': num_variations,
                         'overall_current': total_completed,
-                        'overall_total': total_images
+                        'overall_total': total_images,
+                        'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
+                        'video_name': video_name,
                     }
 
                     # Save to history
@@ -855,7 +989,7 @@ def parallel_variations_get():
     favorite_id = int(request.args.get('favorite_id', 0))
     num_variations = int(request.args.get('num_variations', 5))
     variation_style = request.args.get('style', 'similar')
-    models_str = request.args.get('models', 'gemini,flux,sdxl,aispecies')
+    models_str = request.args.get('models', 'nanobanana2')
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
 
@@ -873,7 +1007,7 @@ def parallel_variations_get():
         _stop_generation = False
 
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         available_models = generator.get_available_models()
 
         models_to_use = [m for m in selected_models if m in available_models]
@@ -977,7 +1111,8 @@ def parallel_variations_get():
                         'current': completed_per_model[model_name],
                         'total': len(prompts_with_concepts),
                         'overall_current': total_completed,
-                        'overall_total': total_images
+                        'overall_total': total_images,
+                        'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
                     })
 
                     yield sse_message({
@@ -1050,7 +1185,7 @@ def generate():
 
         # Initialize components (pass prompt_manager so edits take effect)
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         freshness = FreshnessTracker(settings)
         favorites_mgr = FavoritesManager(settings)
 
@@ -1092,6 +1227,7 @@ def generate():
                     category_hint = f"Focus more on: {', '.join(underrep)}"
 
             # COMBINED: Generate concepts AND prompts in single Claude call (~2x faster)
+            this_batch_count = min(batch_size, count - generated)
             try:
                 prompts_with_concepts = []
                 for event in ideator.generate_concepts_and_prompts_streaming(
@@ -1102,7 +1238,7 @@ def generate():
                     favorites_context="",
                     category_hint=category_hint,
                     creative_direction=creative_direction,
-                    count=count
+                    count=this_batch_count
                 ):
                     if event['type'] == 'prompt':
                         yield sse_message({
@@ -1306,9 +1442,13 @@ def _deep_cleanup():
             pass
 
 
-def _auto_cleanup_if_needed(max_folders=30):
-    """Automatically clean old output when folder count exceeds threshold. NEVER deletes folders with favorited images."""
+def _auto_cleanup_if_needed(max_folders=30, min_age_hours=24, ignore_protected=False):
+    """Automatically clean old output when folder count exceeds threshold.
+    ignore_protected=True: delete even folders with favorites (safe because
+      favorites are already backed up to data/favorites_images/).
+    """
     import shutil
+    import time
     output_dir = settings.output_dir
     if not output_dir.exists():
         return
@@ -1318,17 +1458,26 @@ def _auto_cleanup_if_needed(max_folders=30):
     )
     if len(folders) <= max_folders:
         return
-    protected = _get_protected_paths()
-    to_delete = [f for f in folders[:-max_folders] if f.name not in protected]
-    skipped = len(folders[:-max_folders]) - len(to_delete)
+    protected = set() if ignore_protected else _get_protected_paths()
+    now = time.time()
+    age_cutoff = now - (min_age_hours * 3600)
+    candidates = folders[:-max_folders]
+    to_delete = [
+        f for f in candidates
+        if f.name not in protected and f.stat().st_mtime < age_cutoff
+    ]
+    skipped_protected = sum(1 for f in candidates if f.name in protected)
+    skipped_young = sum(1 for f in candidates if f.name not in protected and f.stat().st_mtime >= age_cutoff)
     for folder in to_delete:
         try:
             shutil.rmtree(folder)
         except Exception:
             pass
     msg = f"[AUTO-CLEANUP] Deleted {len(to_delete)} old output folders, kept {max_folders}"
-    if skipped:
-        msg += f", protected {skipped} folders with favorites"
+    if skipped_protected:
+        msg += f", protected {skipped_protected} folders with favorites"
+    if skipped_young:
+        msg += f", kept {skipped_young} folders younger than {min_age_hours}h"
     print(msg)
 
 
@@ -1443,7 +1592,7 @@ def model_shootout():
     creative_direction = request.args.get('creative_direction', '')
     video_name = request.args.get('video_name', '')
     count = int(request.args.get('count', 5))  # Fewer concepts for easier comparison
-    models_str = request.args.get('models', 'gemini,aispecies,flux,sdxl,midjourney')
+    models_str = request.args.get('models', 'nanobanana2')
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
@@ -1459,7 +1608,7 @@ def model_shootout():
         _stop_generation = False
 
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
 
         available_models = generator.get_available_models()
         models_to_use = [m for m in selected_models if m in available_models]
@@ -1638,7 +1787,8 @@ def model_shootout():
                             'description': prompt_data.get('description', ''),
                             'category': prompt_data.get('category', ''),
                             'title_ref': prompt_data.get('title_ref', ''),
-                            'batch_id': batch_id
+                            'batch_id': batch_id,
+                            'video_name': video_name,
                         })
 
                         yield sse_message({
@@ -1703,7 +1853,7 @@ def compare_models():
         )
 
     def compare_stream():
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         available = generator.get_available_models()
 
         yield sse_message({
@@ -1833,7 +1983,7 @@ def refine_and_generate():
         # Step 2: Generate new image
         yield sse_message({'type': 'progress', 'message': 'Generating new image...'})
 
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         prompt_data = {
             'prompt': new_prompt,
             'concept_name': f'refined_{datetime.now().strftime("%H%M%S")}',
@@ -1872,7 +2022,7 @@ def quick_generate():
     if not prompt:
         return jsonify({'success': False, 'error': 'No prompt provided'})
 
-    generator = MultiModelGenerator(settings)
+    generator = _make_generator()
     prompt_data = {
         'prompt': prompt,
         'concept_name': f'quick_{datetime.now().strftime("%H%M%S")}',
@@ -2106,7 +2256,7 @@ def parallel_generate():
     creative_direction = request.args.get('creative_direction', '')
     video_name = request.args.get('video_name', '')
     count = int(request.args.get('count', 10))
-    models_str = request.args.get('models', 'gemini,flux,sdxl,aispecies')
+    models_str = request.args.get('models', 'nanobanana2')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
@@ -2124,7 +2274,7 @@ def parallel_generate():
 
         # Initialize components (pass prompt_manager so edits take effect)
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         favorites_mgr = FavoritesManager(settings)
         freshness = FreshnessTracker(settings)
 
@@ -2232,6 +2382,7 @@ def parallel_generate():
                     # Auto-composite logos
                     _apply_logos_to_image(file_path, titles_raw, creative_direction, prompt_data.get('concept_name', ''))
 
+                    template_label = creative_direction.split(' — ')[0].strip() if creative_direction else ''
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -2243,6 +2394,8 @@ def parallel_generate():
                         'current': completed_per_model[model_name],
                         'total': len(prompts_with_concepts),
                         'video_name': video_name,
+                        'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
+                        'template': template_label,
                     }
 
                     # Save to history
@@ -2317,7 +2470,7 @@ def template_generate():
         _stop_generation = False
 
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
 
         available_models = generator.get_available_models()
         if model_name not in available_models:
@@ -2529,7 +2682,7 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
 
     # Initialize components
     ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-    generator = MultiModelGenerator(settings)
+    generator = _make_generator()
     refiner = AgenticImageRefiner(settings, max_iterations=max_iterations, quality_threshold=quality_threshold)
     favorites_mgr = FavoritesManager(settings)
     freshness = FreshnessTracker(settings)
@@ -2739,6 +2892,8 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                         _apply_logos_to_image(file_path, titles_raw, creative_direction, concept_name)
 
                         # Save to history
+                        # Extract short layout label from creative direction (before the " — ")
+                        template_label = creative_direction.split(' — ')[0].strip() if creative_direction else ''
                         result_record = {
                             'file_path': file_path,
                             'model': model_name,
@@ -2749,7 +2904,10 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                             'title_ref': current_prompt_data.get('title_ref', ''),
                             'batch_id': batch_id,
                             'iteration': iteration + 1,
-                            'agentic_score': None
+                            'agentic_score': None,
+                            'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
+                            'template': template_label,
+                            'video_name': video_name,
                         }
                         if thumbnail_text:
                             result_record['thumbnail_text'] = thumbnail_text
@@ -2766,7 +2924,9 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                             'prompt': current_prompt_data.get('prompt', ''),
                             'title_ref': current_prompt_data.get('title_ref', ''),
                             'category': current_prompt_data.get('category', ''),
-                            'iteration': iteration + 1
+                            'iteration': iteration + 1,
+                            'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
+                            'template': template_label,
                         }
                         if thumbnail_text:
                             sse_data['thumbnail_text'] = thumbnail_text
@@ -2947,7 +3107,7 @@ def agentic_generate():
     video_name = request.args.get('video_name', '')
     _auto_cleanup_if_needed()  # Prevent disk-full crashes
     count = min(int(request.args.get('count', 10)), 100)
-    models_str = request.args.get('models', 'gemini,flux,sdxl')
+    models_str = request.args.get('models', 'nanobanana2')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
     max_iterations = int(request.args.get('max_iterations', 2))
     quality_threshold = float(request.args.get('quality_threshold', 9.0))
@@ -3086,6 +3246,16 @@ def save_rubric():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/save-template-name', methods=['POST'])
+def save_template_name():
+    """Save the image prompt template name."""
+    name = request.json.get('name', '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'})
+    prompt_manager.update_prompt('image_prompt_template_name', name, note='Template name update')
+    return jsonify({'success': True})
+
+
 @app.route('/api/reset-rubric', methods=['POST'])
 def reset_rubric():
     """Reset rubric to default."""
@@ -3176,7 +3346,7 @@ def parallel_variations():
         _stop_generation = False
 
         ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         available_models = generator.get_available_models()
 
         models_to_use = selected_models if selected_models else available_models
@@ -3385,7 +3555,7 @@ def full_parallel_generate():
 
         # Initialize components
         multi_ideator = MultiLLMIdeator(settings)
-        generator = MultiModelGenerator(settings)
+        generator = _make_generator()
         favorites_mgr = FavoritesManager(settings)
         freshness = FreshnessTracker(settings)
 
@@ -3576,6 +3746,7 @@ def full_parallel_generate():
                     # Auto-composite logos
                     _apply_logos_to_image(file_path, titles_raw, creative_direction, prompt_data.get('concept_name', ''))
 
+                    template_label = creative_direction.split(' — ')[0].strip() if creative_direction else ''
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -3590,6 +3761,8 @@ def full_parallel_generate():
                         'overall_current': total_completed,
                         'overall_total': total_images,
                         'video_name': video_name,
+                        'template_name': prompt_manager.get_prompt('image_prompt_template_name') or 'Unnamed',
+                        'template': template_label,
                     }
 
                     # Save to history
