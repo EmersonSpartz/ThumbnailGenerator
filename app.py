@@ -272,13 +272,19 @@ def serve_data(filename):
 
 
 def _get_species_style():
-    """Get the Species post-processing preset from the request."""
-    return request.args.get('species_style', 'none')
+    """Get the Species post-processing preset from the request (safe for background threads)."""
+    try:
+        return request.args.get('species_style', 'none')
+    except RuntimeError:
+        # Called from background thread without request context
+        return 'none'
 
 
-def _make_generator():
-    """Create a MultiModelGenerator with Species post-processing if requested."""
-    return MultiModelGenerator(settings, post_process=_get_species_style())
+def _make_generator(species_style=None):
+    """Create a MultiModelGenerator with Species post-processing if requested.
+    Pass species_style explicitly when calling from background threads."""
+    preset = species_style if species_style is not None else _get_species_style()
+    return MultiModelGenerator(settings, post_process=preset)
 
 
 @app.route('/api/health')
@@ -2668,7 +2674,8 @@ def get_templates():
 
 def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_direction,
                               video_name, count, selected_models, use_favorites,
-                              max_iterations, quality_threshold, thumbnail_text):
+                              max_iterations, quality_threshold, thumbnail_text,
+                              species_style='none'):
     """
     Background generation function — runs in a thread, pushes events to job_event_store.
     Completely decoupled from SSE/browser connection. Survives page refresh.
@@ -2682,7 +2689,7 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
 
     # Initialize components
     ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
-    generator = _make_generator()
+    generator = _make_generator(species_style=species_style)
     refiner = AgenticImageRefiner(settings, max_iterations=max_iterations, quality_threshold=quality_threshold)
     favorites_mgr = FavoritesManager(settings)
     freshness = FreshnessTracker(settings)
@@ -3130,11 +3137,15 @@ def agentic_generate():
         'thumbnail_text': thumbnail_text,
     })
 
+    # Capture species_style from request context before spawning thread
+    species_style = _get_species_style()
+
     thread = threading.Thread(
         target=_run_agentic_generation,
         args=(store_job_id, titles, titles_raw, script, creative_direction,
               video_name, count, selected_models, use_favorites,
-              max_iterations, quality_threshold, thumbnail_text),
+              max_iterations, quality_threshold, thumbnail_text,
+              species_style),
         daemon=True
     )
     thread.start()
