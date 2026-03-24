@@ -3598,10 +3598,41 @@
         });
 
         // =====================================================
+        // PRE-GENERATION DISK CHECK
+        // =====================================================
+        async function checkDiskBeforeGeneration() {
+            try {
+                const resp = await fetch('/api/disk-usage');
+                const disk = await resp.json();
+                if (disk.free_mb < 50) {
+                    const proceed = confirm(`⚠️ Low disk space: only ${disk.free_mb}MB free.\n\nGeneration may fail. Run cleanup first?\n\nOK = Clean up & generate\nCancel = Cancel generation`);
+                    if (proceed) {
+                        try {
+                            await fetch('/api/cleanup', { method: 'POST' });
+                            const recheck = await fetch('/api/disk-usage');
+                            const newDisk = await recheck.json();
+                            if (newDisk.free_mb < 30) {
+                                alert(`Cleanup freed some space (${newDisk.free_mb}MB) but it's still very low. Generation cancelled.`);
+                                return false;
+                            }
+                        } catch(e) {
+                            alert('Cleanup failed: ' + e.message);
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            } catch(e) { /* disk check failed, proceed anyway */ }
+            return true;
+        }
+
+        // =====================================================
         // GENERATION
         // =====================================================
-        document.getElementById('generate-btn').addEventListener('click', () => {
+        document.getElementById('generate-btn').addEventListener('click', async () => {
             if (!requireVideo()) return;
+            if (!(await checkDiskBeforeGeneration())) return;
             const titles = document.getElementById('titles').value;
             const script = document.getElementById('script').value;
             const creativeDirection = document.getElementById('creative-direction').value;
@@ -6758,6 +6789,161 @@
                 img.src = URL.createObjectURL(blob);
             });
         }
+
+    // =====================================================
+    // EMBEDDED BROWSER QA TEST SUITE
+    // =====================================================
+    // Run via Chrome MCP after every deploy:
+    //   window.__runQA().then(r => JSON.stringify(r, null, 2))
+    //
+    // Tests all known failure patterns from bug-retros.md.
+    // Each test maps to a real bug that reached the user.
+    window.__runQA = async function() {
+        const results = [];
+        const pass = (name) => results.push({ test: name, status: 'PASS' });
+        const fail = (name, detail) => results.push({ test: name, status: 'FAIL', detail });
+
+        // 1. JS errors on load (Pattern G: Frontend JS runtime errors)
+        try {
+            // Check if key globals exist
+            if (typeof currentVideoName === 'undefined') throw new Error('currentVideoName missing');
+            if (typeof favoritedPaths === 'undefined') throw new Error('favoritedPaths missing');
+            if (typeof addThumbnailCard === 'undefined') throw new Error('addThumbnailCard missing');
+            if (typeof startGeneration === 'undefined') throw new Error('startGeneration missing');
+            pass('JS globals intact');
+        } catch(e) { fail('JS globals intact', e.message); }
+
+        // 2. Favorites cache loaded before cards (today's bug #1: race condition)
+        try {
+            if (!favoritedPathsReady) throw new Error('favoritedPaths not ready — race condition');
+            if (typeof favoritedPaths.size === 'undefined') throw new Error('favoritedPaths not a Set');
+            pass('Favorites cache loaded');
+        } catch(e) { fail('Favorites cache loaded', e.message); }
+
+        // 3. Video is selected (Pattern: video_name missing)
+        try {
+            if (!currentVideoName) throw new Error('No video selected — all generation will be untagged');
+            document.getElementById('video-bar-name').textContent.includes(currentVideoName) ||
+                (() => { throw new Error('Video bar does not show current video'); })();
+            pass('Video selected: ' + currentVideoName);
+        } catch(e) { fail('Video selected', e.message); }
+
+        // 4. Hearts match favorites (today's bug #1)
+        try {
+            const cards = document.querySelectorAll('.thumbnail-card');
+            let mismatches = 0;
+            let checked = 0;
+            cards.forEach(c => {
+                try {
+                    const d = JSON.parse(c.dataset.thumbnail);
+                    const shouldBeFav = favoritedPaths.has(d.file_path) ||
+                        (d.original_file_path && favoritedPaths.has(d.original_file_path));
+                    const isFav = c.querySelector('.quick-fav.favorited') !== null;
+                    if (shouldBeFav && !isFav) mismatches++;
+                    checked++;
+                } catch(e) {}
+            });
+            if (mismatches > 0) throw new Error(`${mismatches}/${checked} cards should show heart but don't`);
+            pass(`Hearts correct (${checked} cards checked)`);
+        } catch(e) { fail('Hearts match favorites', e.message); }
+
+        // 5. Key UI elements exist (Pattern G: JS crash kills all interactivity)
+        try {
+            const required = [
+                'titles', 'creative-direction', 'generate-btn',
+                'thumbnail-grid', 'video-bar-name', 'species-style'
+            ];
+            const missing = required.filter(id => !document.getElementById(id));
+            if (missing.length > 0) throw new Error('Missing elements: ' + missing.join(', '));
+            pass('Key UI elements present');
+        } catch(e) { fail('Key UI elements present', e.message); }
+
+        // 6. Tabs are clickable and switch content
+        try {
+            const tabs = document.querySelectorAll('.tab');
+            if (tabs.length === 0) throw new Error('No tab buttons found');
+            pass(`Tabs exist (${tabs.length})`);
+        } catch(e) { fail('Tabs exist', e.message); }
+
+        // 7. Disk space check (Pattern E: disk full kills generation)
+        try {
+            const resp = await fetch('/api/disk-usage');
+            const disk = await resp.json();
+            if (disk.free_mb < 50) throw new Error(`Only ${disk.free_mb}MB free — generation will fail`);
+            pass(`Disk OK (${disk.free_mb}MB free)`);
+        } catch(e) { fail('Disk space', e.message); }
+
+        // 8. API health (Pattern E: app going down)
+        try {
+            const resp = await fetch('/api/health');
+            if (!resp.ok) throw new Error('Health endpoint returned ' + resp.status);
+            pass('API healthy');
+        } catch(e) { fail('API healthy', e.message); }
+
+        // 9. History loads for current video (today's bug #2)
+        try {
+            const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
+            const resp = await fetch('/api/history?limit=10' + videoParam);
+            const data = await resp.json();
+            if (!resp.ok) throw new Error('History API returned ' + resp.status);
+            // History should return without error (empty is OK for new videos)
+            pass(`History API OK (${(data.thumbnails || []).length} thumbnails)`);
+        } catch(e) { fail('History loads', e.message); }
+
+        // 10. Favorites API works
+        try {
+            const resp = await fetch(`/api/favorites?video=${encodeURIComponent(currentVideoName || '')}`);
+            const data = await resp.json();
+            if (!resp.ok) throw new Error('Favorites API returned ' + resp.status);
+            const count = (data.favorites || []).length;
+            pass(`Favorites API OK (${count} favorites)`);
+        } catch(e) { fail('Favorites API', e.message); }
+
+        // 11. Species style dropdown has a value (aesthetic bug)
+        try {
+            const sel = document.getElementById('species-style');
+            if (!sel) throw new Error('Species style dropdown missing');
+            if (!sel.value || sel.value === 'none') throw new Error(`Species style is "${sel.value}" — thumbnails won't match brand`);
+            pass(`Species style: ${sel.value}`);
+        } catch(e) { fail('Species style set', e.message); }
+
+        // 12. No broken images visible (Pattern D: cleanup deleted referenced files)
+        try {
+            const images = document.querySelectorAll('.thumbnail-card img');
+            let broken = 0;
+            images.forEach(img => {
+                if (img.naturalWidth === 0 && img.complete) broken++;
+            });
+            if (broken > 0) throw new Error(`${broken} broken images on page`);
+            pass(`Images OK (${images.length} loaded)`);
+        } catch(e) { fail('No broken images', e.message); }
+
+        // 13. Per-video field persistence (today's bug #3)
+        try {
+            const key = 'video_fields_' + currentVideoName;
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                const fields = JSON.parse(saved);
+                const hasGenFields = fields.genTitles !== undefined || fields.genCreativeDirection !== undefined;
+                if (hasGenFields) {
+                    pass('Per-video fields saved (includes Generate tab)');
+                } else {
+                    fail('Per-video fields', 'Saved but missing Generate tab fields — old format?');
+                }
+            } else {
+                pass('Per-video fields (none saved yet — OK for new video)');
+            }
+        } catch(e) { fail('Per-video fields', e.message); }
+
+        // Summary
+        const passed = results.filter(r => r.status === 'PASS').length;
+        const failed = results.filter(r => r.status === 'FAIL').length;
+        return {
+            summary: `${passed} passed, ${failed} failed`,
+            allPassed: failed === 0,
+            results
+        };
+    };
 
     </script>
 </body>

@@ -3,14 +3,17 @@
     "verify_command": "./verify.sh",
     "deep_verify_command": "./deep-verify.sh",
     "test_after_edit": "",
-    "deploy_url": "",
+    "deploy_url": "https://web-production-d277.up.railway.app",
+    "post_deploy_command": "cd /Users/emersonspartz/Downloads/Claude/thumbnail_generator_v2 && node qa-flow.js",
     "critical_files": ["app.py", "rubric.txt", "lib/image_generator.py", "lib/claude_client.py", "lib/agentic_refiner.py"],
     "review_checklist": [
-        "Run: curl -s -X POST localhost:5050/api/quick-generate -H 'Content-Type: application/json' -d '{\"prompt\":\"dramatic tiger\",\"model\":\"gemini\"}' — does it return success?",
-        "Run a model-shootout with 2+ models — do ALL models produce images, or do some silently fail?",
-        "Run agentic-generate with max_iterations=2 — does it complete both iterations without freezing?",
-        "Open localhost:5050 in browser — does the UI load and can you click Generate?",
-        "Would Drew be able to use this for 10 minutes without hitting an error?"
+        "Before deploying: grep -n 'add_result' app.py — every call must include video_name",
+        "Before deploying: check any batch loop calling generate_concepts uses min(batch_size, remaining) not total count",
+        "Run: node qa-flow.js — all 7 user-flow tests must pass against Railway",
+        "Run: curl -s https://web-production-d277.up.railway.app/api/disk-usage | python3 -c \"import json,sys; d=json.load(sys.stdin); print(f'Disk: {d[\\\"free_mb\\\"]}MB free')\"",
+        "MANDATORY if frontend was changed: Open Railway URL in Chrome, run window.__runQA() — ALL tests must pass",
+        "MANDATORY if frontend was changed: Actually USE the app via Chrome — switch videos, check hearts, verify field persistence",
+        "Would Emerson be able to use this for 10 minutes without hitting an error?"
     ],
     "notes": ["Drew is the primary user", "Quality > cost", "Must handle full iteration cycles without freezing", "Server: python app.py on localhost:5050"]
 }

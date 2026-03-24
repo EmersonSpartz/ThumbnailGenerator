@@ -110,11 +110,38 @@ To add a model:
 - `job_manager.py`, `prompt_manager.py`: atomic file writes (tempfile + fsync + rename)
 - `app.py`: `executor.shutdown(wait=True)` in agentic endpoint
 
-## Verify Before Done
+## Verify Before Done (3 Levels)
 
-**Run `./verify.sh` after every code change.** Do not tell Emerson something is done until verify passes. It checks imports, lib modules, server startup, and key endpoints. Takes ~5 seconds.
+### Level 1: verify.sh (after every code change)
+**Run `./verify.sh`**. Checks imports, lib modules, server startup, and key endpoints. Takes ~5 seconds.
 
-**For scale testing**: Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
+### Level 2: Browser QA via Chrome (MANDATORY after frontend changes)
+After deploying ANY change to `templates/index.html` or frontend-affecting Python code:
+
+1. Open the Railway URL in Chrome (via Chrome MCP tools)
+2. Run the embedded QA test suite:
+   ```
+   window.__runQA().then(r => JSON.stringify(r, null, 2))
+   ```
+3. ALL tests must pass. Fix any failures before declaring done.
+4. Then USE THE APP like Emerson would — switch videos, check hearts, verify fields persist.
+
+**Why this exists:** 28+ bugs reached Emerson because they were browser-level behavioral bugs invisible to curl/API testing. Hearts disappearing, history not loading on video switch, fields not persisting — these only manifest in a real browser.
+
+The `__runQA()` function tests all known failure patterns from bug-retros.md:
+- JS globals intact (no runtime crashes)
+- Favorites cache loaded before cards render (race condition fix)
+- Video selected (prevents untagged thumbnails)
+- Hearts match favorites state
+- Key UI elements present
+- Disk space adequate
+- API health, history, favorites endpoints working
+- Species style dropdown has a value
+- No broken images
+- Per-video field persistence
+
+### Level 3: Scale testing
+Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
 
 ## Multi-Session Coordination (CRITICAL)
 
