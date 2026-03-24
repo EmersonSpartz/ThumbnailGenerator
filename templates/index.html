@@ -3361,6 +3361,12 @@
             if (saved) {
                 try {
                     const fields = JSON.parse(saved);
+                    // Auto-migrate old format: add genTitles/genCreativeDirection if missing
+                    if (fields.genTitles === undefined) {
+                        fields.genTitles = '';
+                        fields.genCreativeDirection = '';
+                        localStorage.setItem(key, JSON.stringify(fields));
+                    }
                     // Text tab fields
                     const titlesEl = document.getElementById('text-titles');
                     const copyEl = document.getElementById('text-thumbnail-copy');
@@ -3543,6 +3549,21 @@
             'text-count', 'text-max-iterations',
             'species-style', 'species-style-text'
         ];
+        // One-time migration: upgrade all old-format video_fields keys
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('video_fields_')) {
+                try {
+                    const v = JSON.parse(localStorage.getItem(k));
+                    if (v && v.genTitles === undefined) {
+                        v.genTitles = '';
+                        v.genCreativeDirection = '';
+                        localStorage.setItem(k, JSON.stringify(v));
+                    }
+                } catch(e) {}
+            }
+        }
+
         // Restore saved values on page load
         persistedFields.forEach(id => {
             const el = document.getElementById(id);
