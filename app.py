@@ -257,8 +257,25 @@ def sse_keepalive() -> str:
 
 
 def sse_response(stream):
-    """Create an SSE Response with headers that prevent Railway/Nginx buffering."""
-    resp = Response(stream, mimetype='text/event-stream')
+    """Create an SSE Response with headers that prevent Railway/Nginx buffering.
+    Wraps the stream to guarantee a 'complete' event even if the generator crashes."""
+    def safe_stream():
+        sent_complete = False
+        try:
+            for chunk in stream:
+                if '"type": "complete"' in chunk or '"type":"complete"' in chunk:
+                    sent_complete = True
+                yield chunk
+        except GeneratorExit:
+            pass  # Client disconnected
+        except Exception as e:
+            print(f"[SSE] Stream error: {e}")
+            yield sse_message({'type': 'error', 'message': f'Stream error: {str(e)}'})
+        finally:
+            if not sent_complete:
+                yield sse_message({'type': 'complete', 'message': 'Stream ended'})
+
+    resp = Response(safe_stream(), mimetype='text/event-stream')
     resp.headers['X-Accel-Buffering'] = 'no'
     resp.headers['Cache-Control'] = 'no-cache'
     resp.headers['Connection'] = 'keep-alive'
