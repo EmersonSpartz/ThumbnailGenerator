@@ -45,6 +45,7 @@ from lib.claude_client import (
 )
 from lib.logo_compositor import LogoCompositor
 from lib.logo_stylizer import LogoStylizer
+from lib.smart_refiner import enhance_prompt as smart_enhance_prompt, refine_thumbnail as smart_refine_thumbnail
 
 _logo_compositor = LogoCompositor()
 _logo_stylizer = LogoStylizer()
@@ -242,6 +243,20 @@ def disk_usage():
             except Exception as e:
                 breakdown[str(d)] = str(e)
     result['breakdown'] = breakdown
+    # Unified disk status — single source of truth for all QA layers
+    free = result.get('free_mb', 0)
+    total = result.get('total_mb', 1)
+    free_pct = round(free / total * 100) if total > 0 else 0
+    if free_pct < 10 or free < 50:
+        result['status'] = 'CRITICAL'
+        result['status_message'] = f'Only {free}MB ({free_pct}%) free — generation will fail'
+    elif free_pct < 20 or free < 100:
+        result['status'] = 'WARNING'
+        result['status_message'] = f'{free}MB ({free_pct}%) free — generation may be slow'
+    else:
+        result['status'] = 'OK'
+        result['status_message'] = f'{free}MB ({free_pct}%) free'
+    result['free_pct'] = free_pct
     return jsonify(result)
 
 
@@ -3958,6 +3973,46 @@ if __name__ == '__main__':
 
     # On startup: protect any existing favorites whose images are still on disk
     _protect_existing_favorites()
+
+    # =========================================================================
+    # Smart Refiner endpoints (separate from agentic_refiner — experiment-based)
+    # =========================================================================
+
+    @app.route('/api/enhance-prompt', methods=['POST'])
+    def enhance_prompt_endpoint():
+        """Apply learned thumbnail patterns to improve a prompt before generation."""
+        data = request.json or {}
+        prompt = data.get('prompt', '')
+        concept_name = data.get('concept_name', '')
+        if not prompt:
+            return jsonify({"error": "No prompt provided"}), 400
+        try:
+            enhanced = smart_enhance_prompt(prompt, concept_name, settings.anthropic_api_key)
+            return jsonify({"original": prompt, "enhanced": enhanced})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route('/api/smart-refine', methods=['POST'])
+    def smart_refine_endpoint():
+        """Diagnose a thumbnail's weakness and return a refined prompt."""
+        data = request.json or {}
+        image_path = data.get('image_path', '')
+        original_prompt = data.get('prompt', '')
+        concept_name = data.get('concept_name', '')
+        if not image_path or not original_prompt:
+            return jsonify({"error": "image_path and prompt required"}), 400
+        full_path = settings.output_dir / image_path
+        if not full_path.exists():
+            return jsonify({"error": f"Image not found: {image_path}"}), 404
+        try:
+            result = smart_refine_thumbnail(
+                full_path, original_prompt, concept_name,
+                api_key=settings.anthropic_api_key,
+                base_dir=settings.base_dir
+            )
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     # Use PORT from environment (Railway/production) or default to 5050 (local)
     port = int(os.getenv('PORT', 5050))

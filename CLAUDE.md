@@ -148,6 +148,18 @@ The `__runQA()` function tests all known failure patterns from bug-retros.md (18
 ### Level 3: Scale testing
 Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
 
+### QA Layer Coverage Map
+Each layer catches different things. Know the gaps:
+
+| Layer | Catches | DOES NOT Catch |
+|---|---|---|
+| **verify.sh** (~5s) | Syntax, imports, server starts, endpoint returns 200, first SSE event | SSE hanging mid-stream, API key expiration, concurrent races, output quality |
+| **qa-flow.js** (~2min) | Generation produces images, history filters correctly, favorites work | Browser-only bugs (hearts, field persistence), CSS/UI issues, slow model timeouts |
+| **__runQA()** (~3s) | JS crashes, favorites cache sync, hearts, UI elements, disk, deploy version, image quality, localStorage staleness | Timing-dependent races, multi-tab concurrency, "works but wrong" output content |
+| **deep-verify.sh** (~3min) | Real API calls, actual image generation, SSE completion | Only tests nanobanana2, doesn't test at user-scale volume |
+
+**Rule**: If your change could affect something a layer DOES NOT catch, you must test it manually via Chrome.
+
 ## Multi-Session Coordination (CRITICAL)
 
 Emerson often runs 2+ Claude sessions on this project. See global CLAUDE.md for full system.

@@ -1946,9 +1946,9 @@
                             <span>Layouts <span style="color:#888; font-size:11px;">(structural compositions — combined with your creative direction above)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Split-Screen (49)</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Split-Screen (51)</button>
                             <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ A-Tier Layouts</button>
-                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 69</button>
+                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 71</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
@@ -3625,15 +3625,15 @@
             try {
                 const resp = await fetch('/api/disk-usage');
                 const disk = await resp.json();
-                if (disk.free_mb < 50) {
-                    const proceed = confirm(`⚠️ Low disk space: only ${disk.free_mb}MB free.\n\nGeneration may fail. Run cleanup first?\n\nOK = Clean up & generate\nCancel = Cancel generation`);
+                if (disk.status === 'CRITICAL') {
+                    const proceed = confirm(`⚠️ ${disk.status_message}\n\nRun cleanup first?\n\nOK = Clean up & generate\nCancel = Cancel generation`);
                     if (proceed) {
                         try {
                             await fetch('/api/cleanup', { method: 'POST' });
                             const recheck = await fetch('/api/disk-usage');
                             const newDisk = await recheck.json();
-                            if (newDisk.free_mb < 30) {
-                                alert(`Cleanup freed some space (${newDisk.free_mb}MB) but it's still very low. Generation cancelled.`);
+                            if (newDisk.status === 'CRITICAL') {
+                                alert(`Cleanup ran but still critical: ${newDisk.status_message}. Generation cancelled.`);
                                 return false;
                             }
                         } catch(e) {
@@ -3841,7 +3841,7 @@
         // All available templates — compositional structures from layouts.py v4
         // Split-screen dominant: S=49 splits, A=15 non-split proven, B=5 wildcards
         const ALL_TEMPLATES = [
-            // === S-TIER (49): Split-screen layouts ===
+            // === S-TIER (51): Split-screen layouts ===
             'Split: Pristine \u2192 Destroyed \u2014 Vertical split. Left: something clean, perfect, polished, gleaming. Right: the SAME thing utterly destroyed \u2014 smashed, burned, crumbled to rubble. Total devastation.',
             'Split: Solid \u2192 Melting \u2014 Vertical split. Left: something solid, stable, confident. Right: the SAME thing actively melting, dripping, losing all form. Pools of liquid below.',
             'Split: New \u2192 Ancient \u2014 Vertical split. Left: something brand new, modern, gleaming tech. Right: the SAME thing aged thousands of years \u2014 crumbling, fossilized, covered in moss and decay.',
@@ -3887,6 +3887,8 @@
             'Split: Mirror Reflection Different \u2014 Subject in center with a mirror or reflective surface. The reflection shows something DIFFERENT \u2014 a darker version, future form, true nature. Reality vs reflection.',
             'Split: Zoomed In / Zoomed Out \u2014 Vertical split. Left: extreme close-up of a detail \u2014 texture, eye, component. Right: zoomed all the way out showing the full thing that detail belongs to. Scale reveal.',
             'Split: Two-Tone Color Contrast \u2014 Vertical split defined purely by COLOR \u2014 left half bathed in one dramatic color (red, warm), right half in the opposite (blue, cold). Same subject spans both halves.',
+            'Split: Sunglasses Reflection — Extreme close-up of a face wearing sunglasses. Each lens reflects a different dramatic scene — explosions, destruction, chaos, or two opposing forces. The face is stoic; the lenses show the drama.',
+            'Split: Eye Split in Half — Extreme close-up of a single eye, split down the middle. Left half of the iris/eye is one color/reality, right half is a completely different color/reality. The split goes right through the pupil.',
             'Split: Blueprint \u2192 Disaster \u2014 Vertical split. Left: a clean plan, schematic, idealized design. Right: the actual result \u2014 chaotic, broken, nothing like the plan. Design vs reality.',
             'Split: Prototype \u2192 Final Form \u2014 Vertical split. Left: early, rough, crude, small prototype. Right: the evolved final form \u2014 massive, refined, powerful, or terrifyingly different from the original.',
             'Split: Seed \u2192 Full Grown \u2014 Vertical split. Left: something in its earliest, smallest, most innocent form \u2014 a seed, spark, or first version. Right: what it grew into \u2014 massive, sprawling, unstoppable.',
@@ -3917,7 +3919,7 @@
             'Crowd with One Different \u2014 Uniform mass of identical things with ONE visibly different \u2014 glowing, different color, facing wrong way. Outlier is focal point.',
         ];
 
-        const DEFAULT_COUNT = 49;
+        const DEFAULT_COUNT = 51;
 
         // Auto-sort templates by favorite rate (best first)
         async function sortTemplatesByFavoriteRate() {
@@ -4046,11 +4048,11 @@
             ssText.addEventListener('change', () => { ssMain.value = ssText.value; localStorage.setItem('form_species-style', ssText.value); });
         }
 
-        if (!localStorage.getItem('presets_v8_loaded')) {
+        if (!localStorage.getItem('presets_v9_loaded')) {
             localStorage.removeItem('batch_directions');
             document.getElementById('batch-queue-container').innerHTML = '';
             loadPreset('starter');
-            localStorage.setItem('presets_v8_loaded', 'true');
+            localStorage.setItem('presets_v9_loaded', 'true');
         } else if (document.getElementById('batch-queue-container').children.length === 0) {
             loadPreset('starter');
         }
@@ -4588,7 +4590,39 @@
 
             const eventSource = new EventSource(url);
 
+            // Generation timeout watchdog — warn if no events arrive for 60s
+            let lastEventTime = Date.now();
+            let watchdogTimer = null;
+            let watchdogBanner = null;
+            function resetWatchdog() {
+                lastEventTime = Date.now();
+                if (watchdogBanner) { watchdogBanner.remove(); watchdogBanner = null; }
+            }
+            function stopWatchdog() {
+                if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+                if (watchdogBanner) { watchdogBanner.remove(); watchdogBanner = null; }
+            }
+            // Wrap eventSource.close to always clean up watchdog
+            const _origClose = eventSource.close.bind(eventSource);
+            eventSource.close = function() { stopWatchdog(); _origClose(); };
+
+            function startWatchdog() {
+                watchdogTimer = setInterval(() => {
+                    const elapsed = (Date.now() - lastEventTime) / 1000;
+                    if (elapsed > 60 && !watchdogBanner) {
+                        watchdogBanner = document.createElement('div');
+                        watchdogBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;padding:10px 24px;text-align:center;z-index:9999;font-size:13px;font-weight:bold;';
+                        watchdogBanner.innerHTML = `⚠️ No response from server for ${Math.round(elapsed)}s. Generation may be stuck. <button onclick="this.parentElement.remove();location.reload();" style="margin-left:12px;padding:4px 12px;border:none;border-radius:4px;background:#000;color:#fff;cursor:pointer;">Reload</button>`;
+                        document.body.prepend(watchdogBanner);
+                    } else if (elapsed > 60 && watchdogBanner) {
+                        watchdogBanner.innerHTML = `⚠️ No response from server for ${Math.round(elapsed)}s. Generation may be stuck. <button onclick="this.parentElement.remove();location.reload();" style="margin-left:12px;padding:4px 12px;border:none;border-radius:4px;background:#000;color:#fff;cursor:pointer;">Reload</button>`;
+                    }
+                }, 10000);
+            }
+            startWatchdog();
+
             eventSource.onmessage = (event) => {
+                resetWatchdog();
                 let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
                 // Attach generation context to image events
                 if (!data._gen_title && meta.titles) data._gen_title = Array.isArray(meta.titles) ? meta.titles[0] || '' : (meta.titles || '');
@@ -7037,6 +7071,34 @@
             if (genBtn.disabled) throw new Error('Generate button disabled');
             pass('Generate button interactive');
         } catch(e) { fail('Generate button interactive', e.message); }
+
+        // 19. Image output sanity check (pre-mortem R3: QA checks "did it run" not "is it right")
+        try {
+            const imgs = document.querySelectorAll('.thumbnail-card img');
+            let tooSmall = 0, wrongAspect = 0, checked = 0;
+            imgs.forEach(img => {
+                if (!img.complete || img.naturalWidth === 0) return;
+                checked++;
+                // Image should be at least 200px wide (not a 1x1 placeholder or corrupt)
+                if (img.naturalWidth < 200) tooSmall++;
+                // Aspect ratio should be roughly 16:9 (between 1.3 and 2.0)
+                const ratio = img.naturalWidth / img.naturalHeight;
+                if (ratio < 1.0 || ratio > 2.5) wrongAspect++;
+            });
+            if (tooSmall > 0) fail('Image quality', `${tooSmall}/${checked} images suspiciously small (<200px)`);
+            else if (wrongAspect > 0) fail('Image quality', `${wrongAspect}/${checked} images have wrong aspect ratio`);
+            else pass(`Image quality OK (${checked} checked)`);
+        } catch(e) { fail('Image quality', e.message); }
+
+        // 20. Disk status from unified API (pre-mortem R3: thresholds scattered across 4 places)
+        try {
+            const resp = await fetch('/api/disk-usage');
+            const disk = await resp.json();
+            const status = disk.status || (disk.free_mb < 50 ? 'CRITICAL' : disk.free_mb < 100 ? 'WARNING' : 'OK');
+            if (status === 'CRITICAL') fail('Disk status', `CRITICAL: ${disk.free_mb}MB free — generation will fail`);
+            else if (status === 'WARNING') pass(`Disk WARNING: ${disk.free_mb}MB free (generation may be slow)`);
+            else pass(`Disk OK: ${disk.free_mb}MB free`);
+        } catch(e) { fail('Disk status', e.message); }
 
         // Summary
         const passed = results.filter(r => r.status === 'PASS').length;
