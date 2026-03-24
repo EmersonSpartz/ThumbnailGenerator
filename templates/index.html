@@ -1906,6 +1906,15 @@
                 </div>
             </div>
 
+            <!-- Layout Leaderboard -->
+            <div id="layout-leaderboard" style="background: #1a1a2e; border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid #333;">
+                <h3 style="margin: 0 0 12px 0; font-size: 16px;">Layout Leaderboard</h3>
+                <p style="color: #666; font-size: 12px; margin: 0 0 12px 0;">Layouts ranked by favorite rate. Top layouts produce more keepers.</p>
+                <div id="layout-leaderboard-content" style="font-size: 13px;">
+                    <p style="color: #555;">Loading...</p>
+                </div>
+            </div>
+
             <div class="thumbnail-grid" id="favorites-grid"></div>
         </div>
 
@@ -1937,9 +1946,9 @@
                             <span>Layouts <span style="color:#888; font-size:11px;">(structural compositions — combined with your creative direction above)</span></span>
                         </label>
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load 14 Layouts</button>
-                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ More Layouts</button>
-                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 29</button>
+                            <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Split-Screen (49)</button>
+                            <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ A-Tier Layouts</button>
+                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 69</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
@@ -1958,6 +1967,16 @@
                     <div class="form-group">
                         <label>Ideas per Layout <span style="color:#666; font-weight:normal; font-size:11px;">(how many thumbnail ideas for each layout)</span></label>
                         <input type="number" id="text-count" value="10" min="1" max="30">
+                    </div>
+                    <div class="form-group">
+                        <label>Species Style Post-Processing</label>
+                        <select id="species-style-text" onchange="document.getElementById('species-style').value=this.value; localStorage.setItem('form_species-style', this.value);">
+                            <option value="none">Off</option>
+                            <option value="subtle" selected>Subtle (recommended)</option>
+                            <option value="full">Full</option>
+                            <option value="heavy">Heavy (CRT/glitch)</option>
+                        </select>
+                        <p style="font-size: 10px; color: #666; margin-top: 4px;">Applies dithering, red glow, scanlines, chromatic aberration &amp; grain</p>
                     </div>
                     <div class="form-group">
                         <label>Image Models</label>
@@ -3322,7 +3341,48 @@
             document.getElementById('no-video-warning').style.display = 'none';
         }
 
+        // Save/restore per-video fields (title, thumbnail copy)
+        function saveVideoFields() {
+            if (!currentVideoName) return;
+            const key = 'video_fields_' + currentVideoName;
+            const fields = {
+                // Text tab fields
+                titles: document.getElementById('text-titles')?.value || '',
+                thumbnailCopy: document.getElementById('text-thumbnail-copy')?.value || '',
+                // Generate tab fields
+                genTitles: document.getElementById('titles')?.value || '',
+                genCreativeDirection: document.getElementById('creative-direction')?.value || '',
+            };
+            localStorage.setItem(key, JSON.stringify(fields));
+        }
+        function restoreVideoFields(name) {
+            const key = 'video_fields_' + name;
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                try {
+                    const fields = JSON.parse(saved);
+                    // Text tab fields
+                    const titlesEl = document.getElementById('text-titles');
+                    const copyEl = document.getElementById('text-thumbnail-copy');
+                    if (titlesEl && fields.titles) titlesEl.value = fields.titles;
+                    if (copyEl) copyEl.value = fields.thumbnailCopy || '';
+                    // Generate tab fields
+                    const genTitlesEl = document.getElementById('titles');
+                    const genCdEl = document.getElementById('creative-direction');
+                    if (genTitlesEl && fields.genTitles) genTitlesEl.value = fields.genTitles;
+                    if (genCdEl && fields.genCreativeDirection) genCdEl.value = fields.genCreativeDirection;
+                    // Also update localStorage form persistence so it stays in sync
+                    if (fields.titles) localStorage.setItem('form_text-titles', fields.titles);
+                    if (fields.thumbnailCopy !== undefined) localStorage.setItem('form_text-thumbnail-copy', fields.thumbnailCopy);
+                    if (fields.genTitles) localStorage.setItem('form_titles', fields.genTitles);
+                    if (fields.genCreativeDirection) localStorage.setItem('form_creative-direction', fields.genCreativeDirection);
+                } catch(e) { console.warn('Failed to restore video fields:', e); }
+            }
+        }
+
         function selectVideo(name) {
+            // Save current video's fields before switching
+            saveVideoFields();
             currentVideoName = name;
             localStorage.setItem('current_video', currentVideoName);
             // Also update hidden select for backwards compat
@@ -3338,12 +3398,15 @@
             }
             updateVideoUI();
             hideVideoModal();
+            // Restore the new video's saved fields
+            restoreVideoFields(name);
             // Clear grids so loadTextTabHistory / loadGenerateHistory reload for the new video
             const textGrid = document.getElementById('text-thumbnail-grid');
             if (textGrid) textGrid.innerHTML = '';
             const genGrid = document.getElementById('thumbnail-grid');
             if (genGrid) genGrid.innerHTML = '';
-            refreshCurrentTab();
+            // Reload favorites cache for the new video so hearts are correct, then refresh
+            loadFavoritedPaths().then(() => refreshCurrentTab());
         }
 
         function showVideoModal() {
@@ -3458,20 +3521,27 @@
             const tab = activeTab.dataset.tab;
             if (tab === 'favorites') loadFavorites();
             else if (tab === 'generate') loadGenerateHistory();
-            else if (tab === 'text-tab') loadTextTabHistory();
+            else if (tab === 'text-tab') loadTextTabHistory(true);
             else if (tab === 'shootout') loadAndMergeHistory();
         }
 
         loadVideoList();
 
         // =====================================================
+        // Save per-video fields on page unload and as user types
+        window.addEventListener('beforeunload', () => saveVideoFields());
+        ['text-titles', 'text-thumbnail-copy', 'titles', 'creative-direction'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', () => saveVideoFields());
+        });
+
         // LOCALSTORAGE PERSISTENCE FOR FORM INPUTS
         // =====================================================
         const persistedFields = [
             'titles', 'script', 'creative-direction',
             'text-titles', 'text-thumbnail-copy', 'text-creative-direction',
             'text-count', 'text-max-iterations',
-            'species-style'
+            'species-style', 'species-style-text'
         ];
         // Restore saved values on page load
         persistedFields.forEach(id => {
@@ -3487,6 +3557,9 @@
                 localStorage.setItem('form_' + id, el.value);
             });
         });
+
+        // Per-video restore AFTER global restore — overrides with video-specific values
+        if (currentVideoName) restoreVideoFields(currentVideoName);
 
         // Batch directions persistence
         function saveBatchDirections() {
@@ -3638,9 +3711,9 @@
             }
         });
 
-        function loadTextTabHistory() {
+        function loadTextTabHistory(forceReload) {
             const grid = document.getElementById('text-thumbnail-grid');
-            if (grid.children.length > 0) return; // Already has results, don't overwrite
+            if (!forceReload && grid.children.length > 0) return; // Already has results, don't overwrite
             const videoParam = currentVideoName ? `&video=${encodeURIComponent(currentVideoName)}` : '';
             console.log('[LOAD] loadTextTabHistory starting, video:', currentVideoName || '(none)');
             grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:20px;font-size:13px;">Loading thumbnails...</div>';
@@ -3685,49 +3758,154 @@
                 });
         }
 
+        // === FAVORITES TRACKING (client-side cache) ===
+        // Tracks which file_paths are favorited so hearts persist across re-renders
+        const favoritedPaths = new Set();
+        let favoritedPathsReady = false;
+        let _favoritedPathsPromise = null;
+        // Load favorites to populate the hearts cache — call on startup and on video switch
+        async function loadFavoritedPaths() {
+            try {
+                favoritedPaths.clear();
+                favoritedPathsReady = false;
+                const resp = await fetch(`/api/favorites?video=${encodeURIComponent(getVideoParam())}`);
+                const data = await resp.json();
+                (data.favorites || []).forEach(f => {
+                    if (f.thumbnail_path) favoritedPaths.add(f.thumbnail_path);
+                    if (f.original_file_path) favoritedPaths.add(f.original_file_path);
+                    if (f.original_output_path) favoritedPaths.add(f.original_output_path);
+                });
+                favoritedPathsReady = true;
+            } catch(e) { console.warn('Failed to load favorites cache:', e); favoritedPathsReady = true; }
+        }
+        _favoritedPathsPromise = loadFavoritedPaths();
+
         // === BATCH QUEUE SYSTEM ===
         let batchQueue = [];
         let batchRunning = false;
         let batchStopped = false;
         let activeBatchSources = []; // EventSource refs for stopping
 
-        // All available templates — compositional structures, not moods
+        // All available templates — compositional structures from layouts.py v4
+        // Split-screen dominant: S=49 splits, A=15 non-split proven, B=5 wildcards
         const ALL_TEMPLATES = [
-            // === DEFAULT 14 (loaded automatically) ===
-            'Split screen (2 panels) — frame divided vertically into two halves showing two contrasting things side by side, strong dividing line between them',
-            'Before / After — left side shows the old state, right side shows the new state, time flows left to right, the transformation between the two tells the story',
-            'Triptych (3 panels) — three panels side by side showing a progression or three aspects of one topic, middle panel gets slight emphasis',
-            'Grid (4 panels) — four panels in a 2x2 grid, each showing a different example or variation, showcasing range or variety',
-            'Spectrum / Gradient — smooth transition from one state to another across the frame, left edge is one extreme, right edge is the other, continuous transformation',
-            'Evolution line — 3-5 objects arranged left to right, each a clear step forward from the last, escalating in size and complexity, the final one partially hidden',
-            'Domino / Chain reaction — a cascade in progress, each element triggering the next, each step getting bigger, the final domino is massive or cut off by the frame edge',
-            'Timeline / Path — a visual road or timeline receding into the distance with milestones along it, the endpoint is either dramatic or disappears into uncertainty',
-            'Funnel / Narrowing — many things at the top funneling down to one thing at the bottom, visual compression implying filtering or competition',
-            'Stacking / Layers — things stacked vertically, each layer building on the previous one, increasing complexity from bottom to top',
-            'Giant vs Tiny — one massive thing and one tiny thing in the same frame, extreme scale difference is the entire message, power imbalance',
-            'Collision / Impact — two things about to crash into each other or at the moment of impact, motion lines, energy at the contact point, debris',
-            'Map / Spread — a geographic or network visualization showing something spreading across territory, color-coded regions, spreading pattern tells the story',
-            'Surveillance / Monitor view — image framed as if through a security camera or monitor screen, interface elements, timestamps, recording indicators, fourth-wall breaking',
+            // === S-TIER (49): Split-screen layouts ===
+            'Split: Pristine \u2192 Destroyed \u2014 Vertical split. Left: something clean, perfect, polished, gleaming. Right: the SAME thing utterly destroyed \u2014 smashed, burned, crumbled to rubble. Total devastation.',
+            'Split: Solid \u2192 Melting \u2014 Vertical split. Left: something solid, stable, confident. Right: the SAME thing actively melting, dripping, losing all form. Pools of liquid below.',
+            'Split: New \u2192 Ancient \u2014 Vertical split. Left: something brand new, modern, gleaming tech. Right: the SAME thing aged thousands of years \u2014 crumbling, fossilized, covered in moss and decay.',
+            'Split: Small \u2192 Massive \u2014 Vertical split. Left: something tiny, harmless, palm-sized. Right: the SAME thing grown to terrifying building-sized scale, looming and threatening.',
+            'Split: One \u2192 Swarm \u2014 Vertical split. Left: a single thing, alone, isolated. Right: that same thing multiplied into hundreds filling the entire frame. Unstoppable replication.',
+            'Split: Clean \u2192 Infected \u2014 Vertical split. Left: something healthy and pristine. Right: the SAME thing with visible infection \u2014 glowing tendrils, corruption, veins spreading across its surface.',
+            'Split: Simple \u2192 Complex \u2014 Vertical split. Left: a clean simple thing. Right: that thing exploded into overwhelming complexity \u2014 wires, layers, tendrils, impossible sprawling detail.',
+            'Split: Whole \u2192 Shattered \u2014 Vertical split. Left: something complete and intact. Right: the SAME thing shattered into hundreds of floating fragments, mid-explosion, pieces drifting apart.',
+            'Split: Working \u2192 Broken \u2014 Vertical split. Left: something functioning, lit up, humming with energy. Right: the SAME thing broken, dark, sparking, cracked screen, dead.',
+            'Split: Calm \u2192 Chaos \u2014 Vertical split. Left: serene, ordered, peaceful, still. Right: the SAME scene in total chaos \u2014 fire, debris, destruction, motion blur, everything going wrong.',
+            'Split: Empty \u2192 Overflowing \u2014 Vertical split. Left: an empty container, vessel, or space. Right: the SAME thing impossibly overstuffed \u2014 contents bursting out, spilling everywhere.',
+            'Split: Hidden \u2192 Exposed \u2014 Vertical split. Left: something with a normal exterior, a mask, a shell. Right: the shell torn away revealing what\'s really inside \u2014 alien, mechanical, monstrous.',
+            'Split: Friendly \u2192 Menacing \u2014 Vertical split. Left: something that looks helpful, cute, welcoming. Right: the SAME thing looking sinister, dangerous, glowing red eyes, teeth. The mask slipped.',
+            'Split: Human \u2192 Machine \u2014 Vertical split. Left: organic, human, warm flesh and skin. Right: the SAME form revealed as machine \u2014 metal skeleton, wires, circuit boards, cold mechanical truth.',
+            'Split: Organic \u2192 Digital \u2014 Vertical split. Left: natural, organic, warm, analog. Right: the SAME thing digitized, pixelated, cold data. Transition from real to synthetic.',
+            'Split: Beautiful \u2192 Horrifying \u2014 Vertical split. Left: something beautiful, elegant, attractive. Right: the SAME thing revealed as grotesque, disturbing, body-horror, parasitic.',
+            'Split: Harmless \u2192 Lethal \u2014 Vertical split. Left: something small, cute, harmless-looking. Right: the SAME thing revealed as deadly \u2014 armed, venomous, predatory, weaponized.',
+            'Split: Helper \u2192 Controller \u2014 Vertical split. Left: something serving, assisting, offering help with open hands. Right: the SAME thing controlling, manipulating, with puppet strings or chains extending outward.',
+            'Split: Servant \u2192 Master \u2014 Vertical split. Left: something small, subservient, below, looking up. Right: the SAME thing towering, dominant, above, looking down. Power inversion.',
+            'Split: Tool \u2192 Weapon \u2014 Vertical split. Left: something useful, constructive, helpful. Right: the SAME thing repurposed as a weapon \u2014 sharp, aimed, dangerous, destructive.',
+            'Split: Public Face \u2192 Private Truth \u2014 Vertical split. Left: a polished, professional, trustworthy exterior. Right: behind that facade \u2014 dark, messy, sinister, or broken reality hidden from view.',
+            'Split: Promise \u2192 Reality \u2014 Vertical split. Left: a shiny marketing vision \u2014 clean, perfect, utopian. Right: the actual delivered reality \u2014 broken, disappointing, dystopian, dark.',
+            'Split: Free \u2192 Trapped \u2014 Vertical split. Left: something free, open, unrestricted, in open space. Right: the SAME thing caged, chained, enclosed behind barriers, locked down.',
+            'Split: Frozen \u2192 Burning \u2014 Vertical split. Left: encased in ice, frozen solid, cold blue tones. Right: the SAME thing engulfed in flames, hot red/orange tones. Extreme temperature contrast.',
+            'Split: Light \u2192 Dark \u2014 Vertical split. Left: bright, warm, golden, illuminated. Right: the SAME scene in deep shadow, ominous, cold blue or red. Same place, different world.',
+            'Split: Order \u2192 Entropy \u2014 Vertical split. Left: perfectly organized, aligned, geometric, controlled. Right: the same elements in total disorder \u2014 scattered, random, decaying, chaotic.',
+            'Split: Connected \u2192 Isolated \u2014 Vertical split. Left: something networked, linked, surrounded by connections and lines. Right: the SAME thing alone, all connections severed, cut off, isolated in void.',
+            'Split: Powered On \u2192 Dead \u2014 Vertical split. Left: lit up, glowing, humming with energy, screens on. Right: completely dark, dead, powered off, screens black, lifeless.',
+            'Split: Open \u2192 Sealed \u2014 Vertical split. Left: something open, accessible, inviting, transparent. Right: the SAME thing locked, sealed, bolted shut, reinforced, inaccessible.',
+            'Split: Surface \u2192 Depths \u2014 Vertical split. Left: what\'s visible on the surface \u2014 simple, clean, normal. Right: what\'s hidden underneath \u2014 vast, complex, dark, sprawling infrastructure or roots.',
+            'Split: Micro \u2192 Macro \u2014 Vertical split. Left: extreme close-up, microscopic detail of something. Right: the same thing zoomed out to show it\'s part of something impossibly large.',
+            'Split: Individual \u2192 System \u2014 Vertical split. Left: one single entity, alone, distinct. Right: that entity revealed as one tiny node in an enormous interconnected system/grid/network.',
+            'Split: Contained \u2192 Escaped \u2014 Vertical split. Left: something safely contained \u2014 in a box, behind glass, in a lab. Right: that thing out in the wild, free, spreading, uncontrolled.',
+            'Split: Local \u2192 Global \u2014 Vertical split. Left: something small, local, in one place. Right: that same thing spread across the entire world, everywhere, planetary scale.',
+            'Split: Winner \u2192 Loser \u2014 Vertical split. Left: something triumphant, glowing, ascending, crowned with light. Right: another thing defeated, crumbling, falling, fading into darkness.',
+            'Split: Rising \u2192 Falling \u2014 Vertical split. Left: something ascending, moving upward, growing, gaining momentum. Right: something plummeting, collapsing downward, shrinking, losing everything.',
+            'Split: Thriving \u2192 Dying \u2014 Vertical split. Left: something flourishing, green, growing, alive with energy. Right: the same thing withered, gray, dying, drained of all life.',
+            'Split: Predator \u2192 Prey \u2014 Vertical split. Left: something dominant, consuming, jaws open, devouring. Right: something being consumed, overwhelmed, disappearing into the predator\'s maw.',
+            'Split: Leading \u2192 Following \u2014 Vertical split. Left: something out front, pioneering, blazing a trail, confident. Right: many things following behind, copying, imitating, a herd.',
+            'Split: Diagonal Divide \u2014 Diagonal split (not vertical). Upper-left to lower-right divide. One reality above the line, contrasting reality below. The angled cut creates dynamic energy.',
+            'Split: One Object, Two Natures \u2014 NOT two panels \u2014 one single object split down the middle. Left half is one nature, right half is the opposite. Same object, two realities fused together.',
+            'Split: Above / Below Ground \u2014 Horizontal split (top/bottom). Above the surface: what\'s visible, the public version. Below the surface: the hidden foundation, roots, infrastructure, or truth.',
+            'Split: Mirror Reflection Different \u2014 Subject in center with a mirror or reflective surface. The reflection shows something DIFFERENT \u2014 a darker version, future form, true nature. Reality vs reflection.',
+            'Split: Zoomed In / Zoomed Out \u2014 Vertical split. Left: extreme close-up of a detail \u2014 texture, eye, component. Right: zoomed all the way out showing the full thing that detail belongs to. Scale reveal.',
+            'Split: Two-Tone Color Contrast \u2014 Vertical split defined purely by COLOR \u2014 left half bathed in one dramatic color (red, warm), right half in the opposite (blue, cold). Same subject spans both halves.',
+            'Split: Blueprint \u2192 Disaster \u2014 Vertical split. Left: a clean plan, schematic, idealized design. Right: the actual result \u2014 chaotic, broken, nothing like the plan. Design vs reality.',
+            'Split: Prototype \u2192 Final Form \u2014 Vertical split. Left: early, rough, crude, small prototype. Right: the evolved final form \u2014 massive, refined, powerful, or terrifyingly different from the original.',
+            'Split: Seed \u2192 Full Grown \u2014 Vertical split. Left: something in its earliest, smallest, most innocent form \u2014 a seed, spark, or first version. Right: what it grew into \u2014 massive, sprawling, unstoppable.',
+            'Split: Input \u2192 Output \u2014 Vertical split. Left: what goes in \u2014 raw material, data, a question. Right: what comes out \u2014 transformed, processed, the answer or result. The transformation is dramatic.',
 
-            // === EXTRAS (loaded via "+ More Templates") ===
-            'Surrounded / Encircled — one thing in the center, many things closing in from all sides, isolated and possibly threatened',
-            'Dwarfed by environment — small figure in a vast overwhelming space, lost in scale, the emptiness itself is the point',
-            'Iceberg / Hidden depths — something small visible at the surface, massive complex structure revealed below, "you only see the tip"',
-            'Cross-section / Cutaway — something sliced open revealing hidden internal complexity, simple exterior vs intricate glowing interior',
-            'Partial reveal / Peek — only a fragment visible, the rest hidden in darkness or off-frame, enough to intrigue but not enough to understand',
-            'Redacted / Censored — a document or screen with key parts blacked out with [REDACTED] bars, visible context but hidden answer',
-            'Unwrapping / Peeling — an outer layer being torn away to reveal something different underneath, surface vs reality',
-            'Swarm / Multiplication — overwhelming quantity of identical things filling the frame, sheer volume is the message, unstoppable replication',
-            'Web / Network — interconnected nodes with visible connections, clusters and hubs, the pattern of relationships tells the story',
-            'POV / Threshold — first-person view looking through a doorway or portal into something beyond, you are at the boundary about to step through',
-            'UI / System interface — entire thumbnail styled as a system warning, error dialog, or terminal output, looks like your computer is alerting you',
-            'Macro / Extreme close-up — zoomed so close a familiar object becomes alien and abstract, texture and detail normally invisible becomes the whole image',
-            'Single iconic object — one bold symbol filling the center of the frame, nothing else, maximum simplicity, the object IS the concept',
-            'Visual metaphor — a literal depiction of a figurative idea, something obviously not real but instantly communicates the concept',
-            'Absence / Empty space — a space where something clearly should be but isn\'t, empty chair, vacant position, the void tells the story',
+            // === A-TIER (15): Non-split proven performers ===
+            'Giant vs Tiny \u2014 One MASSIVE thing and one TINY thing in same frame. Extreme scale difference. Power imbalance is instant and visceral.',
+            'Explosion / Shatter \u2014 Something exploding outward \u2014 frozen at maximum impact. Debris and fragments radiating from center. Dark background.',
+            'Iceberg / Hidden Depths \u2014 Something small at the surface \u2014 MUCH more hidden below a waterline. The revealed structure below is larger and more complex.',
+            'Eye / Iris Close-Up \u2014 A single dramatic eye filling the frame. The iris contains something unexpected \u2014 a scene, symbol, or world. Extreme close-up.',
+            'Backlit Silhouette \u2014 A figure or object as pure dark silhouette against intensely colored/lit background. Shape tells the story; background provides drama.',
+            'Single Iconic Object \u2014 ONE bold object filling center frame against dark background. Nothing else. Maximum simplicity. The object must be VISCERALLY striking and specific to the topic.',
+            'Hatching / Emerging \u2014 Something cracking open to reveal what\'s inside \u2014 egg, cocoon, shell, pod. Mid-emergence. Light or energy spilling from cracks.',
+            'Melting / Dissolving \u2014 Something solid actively melting into liquid. Still recognizable but losing form. Dramatic drips pooling below against dark background.',
+            'Cracked Object with Light \u2014 A solid dark object with deep cracks \u2014 intense light or energy spilling out through the cracks. Dark exterior, glowing interior.',
+            'Object Engulfed in Flames \u2014 A recognizable object that shouldn\'t be burning, engulfed in dramatic fire against dark background.',
+            'Surrounded / Encircled \u2014 One thing in center, many things closing in from all sides. Center element isolated and threatened. Claustrophobic.',
+            'Cage / Prison \u2014 A subject behind thick bars, inside a cage, or enclosed in a glowing barrier. Heavy and oppressive.',
+            'Being Crushed \u2014 Something being crushed by enormous pressure from above \u2014 flattening, cracking, buckling. The crushing force is visible.',
+            'Tearing Through Surface \u2014 Something ripping through a surface from behind \u2014 paper, screen, reality. Hands, claws, or energy forcing through.',
+            'Crumbling to Dust \u2014 Something solid disintegrating \u2014 particles breaking away from edges, dissolving into dust. Half intact, half scattered.',
+
+            // === B-TIER (5): Wildcards ===
+            'Portal / Rift \u2014 A glowing tear in reality \u2014 a portal. One world on this side, completely different one through the opening.',
+            'One-Point Perspective Corridor \u2014 Symmetrical corridor receding to single vanishing point. Kubrick-style symmetry. Something dramatic at the far end.',
+            'Smoke / Fog Forming Shape \u2014 Smoke or mist forming a recognizable shape \u2014 face, skull, symbol. Not solid but unmistakably there. Ethereal and ominous.',
+            'Glowing Eyes in Darkness \u2014 Just glowing eyes visible in total darkness \u2014 watching, predatory. Rest of entity invisible. Primal fear.',
+            'Crowd with One Different \u2014 Uniform mass of identical things with ONE visibly different \u2014 glowing, different color, facing wrong way. Outlier is focal point.',
         ];
 
-        const DEFAULT_COUNT = 14;
+        const DEFAULT_COUNT = 49;
+
+        // Auto-sort templates by favorite rate (best first)
+        async function sortTemplatesByFavoriteRate() {
+            try {
+                const videoParam = currentVideoName ? `?video=${encodeURIComponent(currentVideoName)}` : '';
+                const resp = await fetch('/api/layout-leaderboard' + videoParam);
+                const data = await resp.json();
+                const board = data.leaderboard || [];
+                if (board.length === 0) return;
+
+                // Build a score map: template short name -> favorite_rate
+                const scoreMap = {};
+                board.forEach(l => {
+                    scoreMap[l.template] = l.favorite_rate;
+                    // Also map short name
+                    const shortName = l.template.split(' — ')[0].trim();
+                    scoreMap[shortName] = l.favorite_rate;
+                });
+
+                // Sort ALL_TEMPLATES: favorited ones first (by rate), then unfavorited in original order
+                ALL_TEMPLATES.sort((a, b) => {
+                    const aShort = a.split(' — ')[0].trim();
+                    const bShort = b.split(' — ')[0].trim();
+                    const aScore = scoreMap[a] || scoreMap[aShort] || 0;
+                    const bScore = scoreMap[b] || scoreMap[bShort] || 0;
+                    // Both have favorites: sort by rate
+                    if (aScore > 0 && bScore > 0) return bScore - aScore;
+                    // Only one has favorites: it goes first
+                    if (aScore > 0) return -1;
+                    if (bScore > 0) return 1;
+                    // Neither has favorites: keep original order
+                    return 0;
+                });
+                console.log('[TEMPLATES] Sorted by favorite rate:', ALL_TEMPLATES.slice(0, 3).map(t => t.split(' — ')[0]));
+            } catch(e) {
+                console.warn('Could not sort templates by favorite rate:', e);
+            }
+        }
+        // Sort on page load (before batch directions are populated)
+        sortTemplatesByFavoriteRate();
 
         const BATCH_PRESETS = {
             starter: ALL_TEMPLATES.slice(0, DEFAULT_COUNT),
@@ -3798,20 +3976,29 @@
             if (remaining === 0) btn.style.opacity = '0.5';
         }
 
-        // One-time migration: load starter presets (v5 = compositional structure templates)
-        // Force species-style to 'subtle' on first visit with this feature
-        if (!localStorage.getItem('species_style_v1')) {
+        // Force species-style to 'subtle' — v2 migration fixes users stuck on 'none'
+        if (!localStorage.getItem('species_style_v2')) {
             localStorage.setItem('form_species-style', 'subtle');
+            localStorage.setItem('form_species-style-text', 'subtle');
             const ss = document.getElementById('species-style');
             if (ss) ss.value = 'subtle';
-            localStorage.setItem('species_style_v1', 'true');
+            const sst = document.getElementById('species-style-text');
+            if (sst) sst.value = 'subtle';
+            localStorage.setItem('species_style_v2', 'true');
+        }
+        // Keep both dropdowns in sync
+        const ssMain = document.getElementById('species-style');
+        const ssText = document.getElementById('species-style-text');
+        if (ssMain && ssText) {
+            ssMain.addEventListener('change', () => { ssText.value = ssMain.value; localStorage.setItem('form_species-style-text', ssMain.value); });
+            ssText.addEventListener('change', () => { ssMain.value = ssText.value; localStorage.setItem('form_species-style', ssText.value); });
         }
 
-        if (!localStorage.getItem('presets_v5_loaded')) {
+        if (!localStorage.getItem('presets_v8_loaded')) {
             localStorage.removeItem('batch_directions');
             document.getElementById('batch-queue-container').innerHTML = '';
             loadPreset('starter');
-            localStorage.setItem('presets_v5_loaded', 'true');
+            localStorage.setItem('presets_v8_loaded', 'true');
         } else if (document.getElementById('batch-queue-container').children.length === 0) {
             loadPreset('starter');
         }
@@ -3957,7 +4144,8 @@
                 grid.appendChild(header);
             }
 
-            const params = `titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}`;
+            const speciesStyle = document.getElementById('species-style-text')?.value || document.getElementById('species-style')?.value || 'none';
+            const params = `titles=${encodeURIComponent(batch.titles)}&creative_direction=${encodeURIComponent(batch.direction)}&count=${batch.count}&models=${batch.models.join(',')}&use_favorites=true&max_iterations=${batch.maxIterations}&quality_threshold=9.0&thumbnail_text=${encodeURIComponent(batch.thumbnailText)}&video_name=${encodeURIComponent(getVideoParam())}&species_style=${speciesStyle}`;
 
             const jobId = Date.now().toString(36) + batch.index;
             createJob(jobId, `Batch ${batch.index + 1}`, { models: batch.models, llms: [] });
@@ -4003,7 +4191,24 @@
             activeBatchSources.push(eventSource);
             let imageCount = batch.imageCount || 0;
 
+            // Timeout: if no event for 2 minutes, assume batch is stuck and move on
+            let lastEventTime = Date.now();
+            const stuckCheckInterval = setInterval(() => {
+                if (Date.now() - lastEventTime > 120000) {
+                    clearInterval(stuckCheckInterval);
+                    console.warn(`Batch ${batch.index + 1} stuck — no events for 2 min, moving on`);
+                    eventSource.close();
+                    batch.status = imageCount > 0 ? 'done' : 'error';
+                    batch.errorMsg = batch.errorMsg || 'Timed out waiting for generation';
+                    if (activeJobs[jobId]) completeJob(jobId, imageCount > 0);
+                    saveBatchQueueState();
+                    updateBatchProgress();
+                    if (onComplete) onComplete();
+                }
+            }, 15000);
+
             eventSource.onmessage = (event) => {
+                lastEventTime = Date.now();
                 let data; try { data = JSON.parse(event.data); } catch(e) { console.error('SSE parse error:', event.data); return; }
                 if (data.type === 'keepalive') return;
                 data._gen_title = Array.isArray(batch.titles) ? batch.titles[0] || '' : (batch.titles || '');
@@ -4115,6 +4320,7 @@
                     case 'done':
                     case 'parallel_complete':
                     case 'agentic_complete':
+                        clearInterval(stuckCheckInterval);
                         batch.status = 'done';
                         saveBatchQueueState();
                         if (activeJobs[jobId]) completeJob(jobId, true);
@@ -4128,6 +4334,7 @@
             };
 
             eventSource.onerror = () => {
+                clearInterval(stuckCheckInterval);
                 if (batch.status === 'running') {
                     if (imageCount === 0) {
                         batch.status = 'error';
@@ -4939,10 +5146,12 @@
         function addThumbnailCard(grid, data, options) {
             const opts = options || {};
             const card = document.createElement('div');
-            card.className = data._is_favorite ? 'thumbnail-card favorited' : 'thumbnail-card';
+            const isFav = data._is_favorite || favoritedPaths.has(data.file_path) || (data.original_file_path && favoritedPaths.has(data.original_file_path));
+            card.className = isFav ? 'thumbnail-card favorited' : 'thumbnail-card';
 
             // Build text controls HTML if this thumbnail has text
-            const hasText = data.thumbnail_text && data.original_file_path;
+            // For favorites, use protected backup path if original is gone
+            const hasText = data.thumbnail_text && (data.original_file_path || data.file_path);
             const textControlsHtml = hasText ? `
                 <div class="text-adjust-controls" style="display:flex;gap:3px;padding:4px 8px 0;flex-wrap:wrap;">
                     <button class="btn btn-secondary txt-adj" data-action="move-up" style="padding:2px 6px;font-size:10px;flex:1;" title="Move text up">↑ Up</button>
@@ -4958,7 +5167,7 @@
             const displayTitle = String(Array.isArray(rawTitle) ? rawTitle[0] || '' : rawTitle);
             card.innerHTML = `
                 <div style="position:relative;">
-                    <button class="quick-fav${data._is_favorite ? ' favorited' : ''}" title="Favorite (one click)">${data._is_favorite ? '♥' : '♡'}</button>
+                    <button class="quick-fav${isFav ? ' favorited' : ''}" title="Favorite (one click)">${isFav ? '♥' : '♡'}</button>
                     <img src="${data._img_prefix || '/output/'}${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
                          onerror="if(!this.dataset.retries){this.dataset.retries='0';}if(+this.dataset.retries<3){this.dataset.retries=+this.dataset.retries+1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now()},2000);}else{this.closest('.thumbnail-card').style.display='none';}">
                 </div>
@@ -4998,7 +5207,7 @@
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    image_path: data.original_file_path,
+                                    image_path: data.original_file_path || data.file_path,
                                     text: data.thumbnail_text,
                                     position: 'top-center',
                                     style: 'impact',
@@ -5114,6 +5323,8 @@
                         original_file_path: data.original_file_path || '',
                         model: data.model || '',
                         gen_title: data._gen_title || '',
+                        template: data.template || '',
+                        layout: data.layout || '',
                     })
                 });
                 if (!response.ok) {
@@ -5123,6 +5334,9 @@
                 }
                 const result = await response.json();
                 if (result.success) {
+                    // Track in client-side cache so hearts persist on re-render
+                    if (data.file_path) favoritedPaths.add(data.file_path);
+                    if (data.original_file_path) favoritedPaths.add(data.original_file_path);
                     updateFavBadge(1);
                 } else {
                     console.error('Favorite save error:', result.error);
@@ -5224,6 +5438,7 @@
                     original_file_path: fav.original_file_path || '',
                     _favorite_id: fav.id,
                     _is_favorite: true,
+                    template: fav.template || '',
                     // For protected favorites that use /data/ path
                     _img_prefix: fav.thumbnail_path.startsWith('data/') ? '/' : '/output/',
                 };
@@ -5244,6 +5459,45 @@
                             <span style="margin-left: 10px; color: #888;">${info.count}</span>
                         </div>
                     `).join('');
+            }
+
+            // Load layout leaderboard
+            loadLayoutLeaderboard();
+        }
+
+        async function loadLayoutLeaderboard() {
+            try {
+                const videoParam = currentVideoName ? `?video=${encodeURIComponent(currentVideoName)}` : '';
+                const resp = await fetch('/api/layout-leaderboard' + videoParam);
+                const data = await resp.json();
+                const container = document.getElementById('layout-leaderboard-content');
+                const board = data.leaderboard || [];
+
+                if (board.length === 0) {
+                    container.innerHTML = '<p style="color:#555;">No layout data yet. Generate thumbnails with layouts and favorite the best ones.</p>';
+                    return;
+                }
+
+                const maxFavs = Math.max(...board.map(l => l.favorites), 1);
+                container.innerHTML = board.map((l, i) => {
+                    const label = l.template.split(' — ')[0]; // Short name only
+                    const rate = (l.favorite_rate * 100).toFixed(1);
+                    const barW = Math.max(4, (l.favorites / maxFavs) * 180);
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+                    const barColor = l.favorites > 0 ? '#4ade80' : '#333';
+                    return `
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                            <span style="width:28px;text-align:center;font-size:${i<3?'16px':'12px'};flex-shrink:0;">${medal}</span>
+                            <span style="flex:1;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${l.template}">${label}</span>
+                            <div style="width:180px;flex-shrink:0;display:flex;align-items:center;gap:4px;">
+                                <div style="background:${barColor};height:14px;width:${barW}px;border-radius:3px;"></div>
+                            </div>
+                            <span style="width:50px;text-align:right;color:#888;flex-shrink:0;font-size:11px;">${l.favorites}/${l.generations}</span>
+                            <span style="width:45px;text-align:right;color:${l.favorite_rate > 0.1 ? '#4ade80' : '#888'};flex-shrink:0;font-weight:600;">${rate}%</span>
+                        </div>`;
+                }).join('');
+            } catch(e) {
+                console.error('Failed to load layout leaderboard:', e);
             }
         }
 
@@ -5620,7 +5874,10 @@
                                     <div class="concept-row-title">${data.concept_name}</div>
                                     <div style="color: #888; font-size: 12px; margin-top: 5px;">${data.concept_description || ''}</div>
                                 </div>
-                                <span class="concept-row-category">${data.category || 'General'}</span>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    ${data.layout ? `<span style="font-size:11px;color:#E20020;background:#2a1515;padding:3px 8px;border-radius:4px;">${escapeHtml(data.layout)}</span>` : ''}
+                                    <span class="concept-row-category">${data.category || 'General'}</span>
+                                </div>
                             </div>
                             <div class="concept-row-prompt" title="Click to expand">${escapeHtml(data.prompt || 'No prompt available')}</div>
                             <div class="model-comparison" id="concept-models-${data.concept_index}">
@@ -5643,8 +5900,9 @@
                         const modelCard = document.getElementById(`model-card-${data.concept_index}-${data.model}`);
                         if (modelCard) {
                             const thumbJson = JSON.stringify(data).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                            const isFavModel = favoritedPaths.has(data.file_path);
                             modelCard.innerHTML = `
-                                <button class="quick-fav" title="Favorite" onclick="event.stopPropagation(); quickFavFromBtn(this, ${thumbJson})">♡</button>
+                                <button class="quick-fav${isFavModel ? ' favorited' : ''}" title="Favorite" onclick="event.stopPropagation(); quickFavFromBtn(this, ${thumbJson})">${isFavModel ? '♥' : '♡'}</button>
                                 <img src="/output/${data.file_path}" alt="${data.concept_name}">
                                 <div class="model-card-footer">
                                     <span class="model-name">${data.model}</span>
@@ -6158,10 +6416,12 @@
                 });
         }
 
-        // Load history on page load
-        loadAndMergeHistory();
-        loadGenerateHistory();
-        loadTextTabHistory();
+        // Load history on page load — wait for favorites cache first so hearts render correctly
+        _favoritedPathsPromise.then(() => {
+            loadAndMergeHistory();
+            loadGenerateHistory();
+            loadTextTabHistory();
+        });
 
         // =====================================================
         // SYSTEM LOGIC EDITOR (Prompts, Guide, etc.)
