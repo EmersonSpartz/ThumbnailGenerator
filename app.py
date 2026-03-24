@@ -134,6 +134,25 @@ def check_auth_api():
     return jsonify({'error': 'Unauthorized'}), 401
 
 
+@app.route('/api/version')
+def version():
+    """Return deploy version for QA validation — ensures tests run against new code, not cached old code."""
+    import subprocess
+    try:
+        git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        git_hash = 'unknown'
+    import time
+    return jsonify({
+        'git_hash': git_hash,
+        'started_at': getattr(app, '_started_at', None),
+    })
+
+# Store server start time
+import time as _time
+app._started_at = _time.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
 @app.route('/health')
 def health():
     """Health check endpoint for Railway (no auth required).
@@ -404,6 +423,8 @@ def add_favorite():
         original_file_path=data.get('original_file_path', ''),
         model=data.get('model', ''),
         gen_title=data.get('gen_title', ''),
+        template=data.get('template', ''),
+        layout=data.get('layout', ''),
     )
 
     return jsonify({"success": True, "favorite": favorite})
@@ -428,6 +449,91 @@ def get_history():
     offset = request.args.get('offset', 0, type=int)
     video_name = request.args.get('video', None)
     return jsonify(job_manager.get_history(limit=limit, offset=offset, video_name=video_name))
+
+
+@app.route('/api/layout-leaderboard')
+def get_layout_leaderboard():
+    """Get layout templates ranked by favorite rate."""
+    video_name = request.args.get('video', None)
+
+    # Count favorites per template
+    favorites_mgr = FavoritesManager(settings)
+    all_favs = favorites_mgr.get_all_favorites()
+    if video_name:
+        all_favs = [f for f in all_favs if f.get("video_name") == video_name]
+
+    fav_counts = {}
+    for f in all_favs:
+        t = f.get("template", "")
+        if t:
+            fav_counts[t] = fav_counts.get(t, 0) + 1
+
+    # Count total generations per template from history
+    history = job_manager.get_history(limit=100000, offset=0, video_name=video_name)
+    gen_counts = {}
+    for thumb in history.get("thumbnails", []):
+        t = thumb.get("template", "")
+        if t:
+            gen_counts[t] = gen_counts.get(t, 0) + 1
+
+    # Build leaderboard: all templates that have been generated
+    leaderboard = []
+    all_templates = set(list(fav_counts.keys()) + list(gen_counts.keys()))
+    for t in all_templates:
+        favs = fav_counts.get(t, 0)
+        gens = gen_counts.get(t, 0)
+        rate = favs / gens if gens > 0 else 0
+        leaderboard.append({
+            "template": t,
+            "favorites": favs,
+            "generations": gens,
+            "favorite_rate": round(rate, 4),
+        })
+
+    # Sort by favorite rate descending, then by favorites count
+    leaderboard.sort(key=lambda x: (-x["favorite_rate"], -x["favorites"]))
+
+    return jsonify({"leaderboard": leaderboard, "total_favorites": len(all_favs)})
+
+
+@app.route('/api/layout-stats')
+def get_layout_stats():
+    """Get compositional layout stats ranked by favorite rate."""
+    video_name = request.args.get('video', None)
+
+    favorites_mgr = FavoritesManager(settings)
+    all_favs = favorites_mgr.get_all_favorites()
+    if video_name:
+        all_favs = [f for f in all_favs if f.get("video_name") == video_name]
+
+    fav_counts = {}
+    for f in all_favs:
+        layout = f.get("layout", "")
+        if layout:
+            fav_counts[layout] = fav_counts.get(layout, 0) + 1
+
+    history = job_manager.get_history(limit=100000, offset=0, video_name=video_name)
+    gen_counts = {}
+    for thumb in history.get("thumbnails", []):
+        layout = thumb.get("layout", "")
+        if layout:
+            gen_counts[layout] = gen_counts.get(layout, 0) + 1
+
+    leaderboard = []
+    all_layouts = set(list(fav_counts.keys()) + list(gen_counts.keys()))
+    for layout in all_layouts:
+        favs = fav_counts.get(layout, 0)
+        gens = gen_counts.get(layout, 0)
+        rate = favs / gens if gens > 0 else 0
+        leaderboard.append({
+            "layout": layout,
+            "favorites": favs,
+            "generations": gens,
+            "favorite_rate": round(rate, 4),
+        })
+
+    leaderboard.sort(key=lambda x: (-x["favorite_rate"], -x["favorites"]))
+    return jsonify({"layouts": leaderboard, "total_favorites": len(all_favs)})
 
 
 @app.route('/api/videos')
@@ -1752,6 +1858,8 @@ def model_shootout():
                 'concept_index': concept_idx,
                 'concept_name': concept_name,
                 'concept_description': prompt_data.get('description', ''),
+                'layout': prompt_data.get('layout', ''),
+                'category': prompt_data.get('category', ''),
                 'prompt': prompt_data.get('prompt', ''),
                 'models': models_to_use
             })
@@ -2099,7 +2207,11 @@ def add_text_to_image():
         return jsonify({'success': False, 'error': 'Missing image_path or text'})
 
     # Build full path - prefer _original (no-text) version for clean overlays
-    full_path = _find_original_image(settings.output_dir / image_path)
+    # Check output dir first, then data dir (for favorites backup images)
+    if image_path.startswith('data/'):
+        full_path = _find_original_image(settings.data_dir.parent / image_path)
+    else:
+        full_path = _find_original_image(settings.output_dir / image_path)
 
     if not full_path.exists():
         return jsonify({'success': False, 'error': 'Image not found'})
@@ -2389,6 +2501,7 @@ def parallel_generate():
                     _apply_logos_to_image(file_path, titles_raw, creative_direction, prompt_data.get('concept_name', ''))
 
                     template_label = creative_direction.split(' — ')[0].strip() if creative_direction else ''
+                    layout_name = prompt_data.get('layout', '')
                     thumbnail_data = {
                         'type': 'model_thumbnail',
                         'model': model_name,
@@ -2396,6 +2509,7 @@ def parallel_generate():
                         'concept_name': prompt_data.get('concept_name', ''),
                         'concept_summary': prompt_data.get('description', ''),
                         'category': prompt_data.get('category', ''),
+                        'layout': layout_name,
                         'prompt': prompt_data.get('prompt', ''),
                         'current': completed_per_model[model_name],
                         'total': len(prompts_with_concepts),
@@ -2841,7 +2955,7 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                             prompt_data_for_gen = dict(current_prompt_data)
                             prompt_data_for_gen['prompt'] = (
                                 current_prompt_data.get('prompt', '') +
-                                f'\n\nIMPORTANT: Leave the bottom 20% of the image as a clean, uncluttered area for text overlay. Do NOT include any text, words, or letters anywhere in the image.'
+                                f'\n\nDo NOT include any text, words, or letters anywhere in the image. Keep the lower portion of the image slightly less busy so text can be overlaid later, but do NOT leave it blank or black — the image should fill the entire frame naturally.'
                             )
                         result = generator.generate_with_model(
                             model_name,
@@ -2916,6 +3030,8 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                             'template': template_label,
                             'video_name': video_name,
                         }
+                        if result.get('post_processed'):
+                            result_record['post_processed'] = result['post_processed']
                         if thumbnail_text:
                             result_record['thumbnail_text'] = thumbnail_text
                             if original_file_path:
@@ -3765,6 +3881,7 @@ def full_parallel_generate():
                         'concept_name': prompt_data.get('concept_name', ''),
                         'concept_summary': prompt_data.get('description', ''),
                         'category': prompt_data.get('category', ''),
+                        'layout': prompt_data.get('layout', ''),
                         'prompt': prompt_data.get('prompt', ''),
                         'source_llm': prompt_data.get('source_llm', 'unknown'),
                         'current': completed_per_model[model_name],

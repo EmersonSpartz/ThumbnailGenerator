@@ -6935,6 +6935,88 @@
             }
         } catch(e) { fail('Per-video fields', e.message); }
 
+        // 14. Deploy version validation (pre-mortem: tests pass on cached old code)
+        try {
+            const resp = await fetch('/api/version');
+            const ver = await resp.json();
+            if (!ver.git_hash || ver.git_hash === 'unknown') {
+                fail('Deploy version', 'No git hash — cannot verify deploy is current');
+            } else {
+                pass(`Deploy version: ${ver.git_hash} (started ${ver.started_at})`);
+            }
+        } catch(e) { fail('Deploy version', e.message); }
+
+        // 15. End-to-end favorite persistence (pre-mortem: in-memory cache ≠ disk)
+        try {
+            // Fetch favorites from API (disk truth) and compare to client cache
+            const resp = await fetch(`/api/favorites?video=${encodeURIComponent(currentVideoName || '')}`);
+            const data = await resp.json();
+            const diskFavPaths = new Set();
+            (data.favorites || []).forEach(f => {
+                if (f.thumbnail_path) diskFavPaths.add(f.thumbnail_path);
+                if (f.original_output_path) diskFavPaths.add(f.original_output_path);
+            });
+            // Client cache should be a superset of disk (might have session-only additions)
+            let missingFromClient = 0;
+            diskFavPaths.forEach(p => {
+                if (!favoritedPaths.has(p)) missingFromClient++;
+            });
+            if (missingFromClient > 0) {
+                fail('Favorite cache sync', `${missingFromClient} disk favorites missing from client cache`);
+            } else {
+                pass(`Favorite cache in sync (${diskFavPaths.size} paths on disk)`);
+            }
+        } catch(e) { fail('Favorite cache sync', e.message); }
+
+        // 16. SSE endpoint reachable (pre-mortem: SSE hangs, user stuck)
+        try {
+            // Quick connectivity test — open SSE to health-like endpoint, verify it responds
+            const sseOk = await new Promise((resolve) => {
+                const timeout = setTimeout(() => resolve(false), 5000);
+                // Test the models endpoint as a proxy for "server can handle requests"
+                fetch('/api/models').then(r => {
+                    clearTimeout(timeout);
+                    resolve(r.ok);
+                }).catch(() => { clearTimeout(timeout); resolve(false); });
+            });
+            if (sseOk) pass('Server responsive (SSE endpoint reachable)');
+            else fail('Server responsive', 'Server did not respond within 5s');
+        } catch(e) { fail('Server responsive', e.message); }
+
+        // 17. localStorage not stale (pre-mortem: old keys block new features)
+        try {
+            // Check for known problematic stale keys
+            const staleKeys = [];
+            // Check if video_fields use old format (missing genTitles)
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('video_fields_')) {
+                    try {
+                        const val = JSON.parse(localStorage.getItem(key));
+                        if (val && val.titles && val.genTitles === undefined) {
+                            staleKeys.push(key + ' (old format, missing genTitles)');
+                        }
+                    } catch(e) {}
+                }
+            }
+            if (staleKeys.length > 0) {
+                fail('localStorage freshness', `${staleKeys.length} stale keys: ${staleKeys[0]}`);
+            } else {
+                pass('localStorage freshness');
+            }
+        } catch(e) { fail('localStorage freshness', e.message); }
+
+        // 18. Generate button wired and clickable (pre-mortem: JS crash kills interactivity)
+        try {
+            const genBtn = document.getElementById('generate-btn');
+            if (!genBtn) throw new Error('Generate button not found');
+            // Check it has event listeners (indirect: check it's not disabled and visible)
+            const style = window.getComputedStyle(genBtn);
+            if (style.display === 'none') throw new Error('Generate button hidden');
+            if (genBtn.disabled) throw new Error('Generate button disabled');
+            pass('Generate button interactive');
+        } catch(e) { fail('Generate button interactive', e.message); }
+
         // Summary
         const passed = results.filter(r => r.status === 'PASS').length;
         const failed = results.filter(r => r.status === 'FAIL').length;

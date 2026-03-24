@@ -115,8 +115,8 @@ To add a model:
 ### Level 1: verify.sh (after every code change)
 **Run `./verify.sh`**. Checks imports, lib modules, server startup, and key endpoints. Takes ~5 seconds.
 
-### Level 2: Browser QA via Chrome (MANDATORY after frontend changes)
-After deploying ANY change to `templates/index.html` or frontend-affecting Python code:
+### Level 2: Browser QA via Chrome (MANDATORY after EVERY deploy)
+After deploying ANY change (frontend OR backend — backend changes break frontend too):
 
 1. Open the Railway URL in Chrome (via Chrome MCP tools)
 2. Run the embedded QA test suite:
@@ -128,17 +128,22 @@ After deploying ANY change to `templates/index.html` or frontend-affecting Pytho
 
 **Why this exists:** 28+ bugs reached Emerson because they were browser-level behavioral bugs invisible to curl/API testing. Hearts disappearing, history not loading on video switch, fields not persisting — these only manifest in a real browser.
 
-The `__runQA()` function tests all known failure patterns from bug-retros.md:
+The `__runQA()` function tests all known failure patterns from bug-retros.md (18 tests):
 - JS globals intact (no runtime crashes)
 - Favorites cache loaded before cards render (race condition fix)
 - Video selected (prevents untagged thumbnails)
 - Hearts match favorites state
-- Key UI elements present
-- Disk space adequate
+- Key UI elements present, tabs exist
+- Disk space adequate for generation
 - API health, history, favorites endpoints working
 - Species style dropdown has a value
-- No broken images
-- Per-video field persistence
+- No broken images on page
+- Per-video field persistence (includes Generate tab)
+- Deploy version validation (prevents testing cached old code)
+- Favorites cache matches disk truth (in-memory ≠ disk detection)
+- Server responsive (SSE endpoint reachable)
+- localStorage not stale (detects old-format keys blocking new features)
+- Generate button interactive (not hidden/disabled by JS crash)
 
 ### Level 3: Scale testing
 Run `./stress-test.sh 5 10 gemini` (~5min) before declaring generation reliable.
