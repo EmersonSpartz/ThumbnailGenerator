@@ -88,6 +88,7 @@ _stop_generation = False
 
 # Simple password auth (only enforced in production)
 APP_PASSWORD = os.getenv('APP_PASSWORD', '')
+BUILD_ID = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 def require_auth(f):
     """Simple password auth for production deployment."""
@@ -137,20 +138,13 @@ def check_auth_api():
 @app.route('/api/version')
 def version():
     """Return deploy version for QA validation — ensures tests run against new code, not cached old code."""
-    import subprocess
-    try:
-        git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], stderr=subprocess.DEVNULL).decode().strip()
-    except Exception:
-        git_hash = 'unknown'
-    import time
     return jsonify({
-        'git_hash': git_hash,
+        'build_id': BUILD_ID,
         'started_at': getattr(app, '_started_at', None),
     })
 
 # Store server start time
-import time as _time
-app._started_at = _time.strftime('%Y-%m-%dT%H:%M:%SZ')
+app._started_at = time.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 @app.route('/health')

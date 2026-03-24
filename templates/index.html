@@ -6939,10 +6939,10 @@
         try {
             const resp = await fetch('/api/version');
             const ver = await resp.json();
-            if (!ver.git_hash || ver.git_hash === 'unknown') {
-                fail('Deploy version', 'No git hash — cannot verify deploy is current');
+            if (!ver.build_id) {
+                fail('Deploy version', 'No build_id — cannot verify deploy is current');
             } else {
-                pass(`Deploy version: ${ver.git_hash} (started ${ver.started_at})`);
+                pass(`Deploy version: ${ver.build_id} (started ${ver.started_at})`);
             }
         } catch(e) { fail('Deploy version', e.message); }
 
