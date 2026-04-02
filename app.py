@@ -964,27 +964,10 @@ def generate_variations():
             yield sse_message({'type': 'error', 'message': f'Prompt generation error: {str(e)}'})
             return
 
-        # Step 2.5: Apply learned patterns via smart refiner (two-pass enhancement)
-        try:
-            from lib.smart_refiner import enhance_prompt
-            from concurrent.futures import ThreadPoolExecutor, as_completed
-            api_key = settings.anthropic_api_key
-            if api_key:
-                yield sse_message({'type': 'progress', 'message': f'Applying learned patterns to {len(prompts_with_concepts)} prompts...'})
-                def _enhance(pc):
-                    original = pc.get('prompt', '')
-                    if original:
-                        try:
-                            enhanced = enhance_prompt(original, pc.get('concept_name', ''), api_key)
-                            if enhanced and enhanced != original:
-                                pc['prompt'] = enhanced
-                                pc['original_prompt'] = original
-                        except Exception:
-                            pass  # Keep original on failure
-                with ThreadPoolExecutor(max_workers=5) as tex:
-                    list(tex.map(_enhance, prompts_with_concepts))
-        except Exception as e:
-            print(f"[SMART REFINER] Enhancement failed, using original prompts: {e}")
+        # NOTE: Learned patterns are already in the prompt-writing instructions (Layer 1).
+        # The two-pass enhance_prompt rewrite (Layer 2) was removed from Railway because
+        # it adds ~10-30s latency that triggers more NanoBanana 504 timeouts.
+        # Layer 1 alone provides the pattern benefit without the timeout risk.
 
         # Step 3: Generate images
         generated = 0
@@ -1298,28 +1281,8 @@ def parallel_variations_get():
             yield sse_message({'type': 'error', 'message': f'Prompt error: {str(e)}'})
             return
 
-        # PASS 2: Apply learned patterns via smart refiner (the "magic" from A/B testing)
-        # This rewrites each prompt with a second Claude call focused only on pattern application
-        try:
-            from lib.smart_refiner import enhance_prompt
-            from concurrent.futures import ThreadPoolExecutor
-            api_key = settings.anthropic_api_key
-            if api_key:
-                yield sse_message({'type': 'progress', 'message': f'Applying learned patterns to {len(prompts_with_concepts)} prompts...'})
-                def _enhance(pc):
-                    original = pc.get('prompt', '')
-                    if original:
-                        try:
-                            enhanced = enhance_prompt(original, pc.get('concept_name', ''), api_key)
-                            if enhanced and enhanced != original:
-                                pc['prompt'] = enhanced
-                                pc['original_prompt'] = original
-                        except Exception:
-                            pass
-                with ThreadPoolExecutor(max_workers=5) as tex:
-                    list(tex.map(_enhance, prompts_with_concepts))
-        except Exception as e:
-            print(f"[SMART REFINER] Pass 2 failed, using original prompts: {e}")
+        # NOTE: Learned patterns are already in the prompt-writing instructions (Layer 1).
+        # Layer 2 (enhance_prompt rewrite) removed — adds latency that triggers NanoBanana 504s.
 
         # Parallel image generation
         total_images = len(prompts_with_concepts) * len(models_to_use)
