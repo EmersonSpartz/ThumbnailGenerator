@@ -49,6 +49,15 @@ def reset_current_stream():
     tls.current_response = ""
 
 
+SPECIES_SYSTEM_MESSAGE = (
+    "You're a creative collaborator helping the Species YouTube channel — "
+    "a premium AI safety channel — design compelling thumbnails. "
+    "You're working alongside Emerson (the creator) and an image generation model. "
+    "Your role is to bring creative vision and critical eye to the process. "
+    "Have fun with it — the best thumbnails come from genuine creative enthusiasm."
+)
+
+
 class ClaudeIdeator:
     """Generate thumbnail concepts using Claude with extended thinking."""
 
@@ -61,6 +70,8 @@ class ClaudeIdeator:
 
     def _stream_with_retry(self, max_retries=3, **kwargs):
         """Stream a Claude message with retry on connection/rate limit errors."""
+        if 'system' not in kwargs:
+            kwargs['system'] = SPECIES_SYSTEM_MESSAGE
         for attempt in range(max_retries):
             try:
                 with self.client.messages.stream(**kwargs) as stream:
@@ -119,6 +130,7 @@ class ClaudeIdeator:
 
         with self.client.messages.stream(
             model=self.model,
+            system=SPECIES_SYSTEM_MESSAGE,
             max_tokens=tokens_needed,
             thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
             messages=[{"role": "user", "content": prompt}]
@@ -286,6 +298,7 @@ class ClaudeIdeator:
         # Stream the response
         with self.client.messages.stream(
             model=self.model,
+            system=SPECIES_SYSTEM_MESSAGE,
             max_tokens=response_tokens_needed,
             thinking={
                 "type": "enabled",
@@ -353,7 +366,7 @@ class ClaudeIdeator:
 
         # Recover individual concept objects from truncated JSON
         concept_objects = re.findall(
-            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*"category"\s*:\s*"[^"]*"\s*,\s*"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
+            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*(?:"layout"\s*:\s*"[^"]*"\s*,\s*)?(?:"category"\s*:\s*"[^"]*"\s*,\s*)?"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
             text, re.DOTALL
         )
         if concept_objects:
@@ -416,6 +429,7 @@ class ClaudeIdeator:
 
         with self.client.messages.stream(
             model=self.model,
+            system=SPECIES_SYSTEM_MESSAGE,
             max_tokens=prompt_tokens_needed,
             thinking={"type": "enabled", "budget_tokens": self.budget_tokens},
             messages=[{"role": "user", "content": prompt}]
@@ -500,6 +514,17 @@ class ClaudeIdeator:
             count=count
         )
 
+    def _get_learned_patterns(self) -> str:
+        """Load learned patterns from A/B testing (if available)."""
+        try:
+            from lib.smart_refiner import load_patterns
+            patterns = load_patterns(self.data_dir.parent if self.data_dir else None)
+            if patterns and len(patterns) > 50:
+                return patterns
+        except Exception:
+            pass
+        return ""
+
     def _build_prompts_prompt(self, concepts: list[dict]) -> str:
         """Build prompt for STEP 2: NanoBanana Pro prompt writing."""
         concepts_formatted = "\n\n".join([
@@ -512,6 +537,9 @@ class ClaudeIdeator:
         # Get editable prompting guide
         prompting_guide = self._get_prompting_guide()
 
+        # Get learned patterns from A/B testing
+        learned_patterns = self._get_learned_patterns()
+
         # Get image prompt template if available
         image_template = ""
         if self.prompt_manager:
@@ -523,11 +551,26 @@ class ClaudeIdeator:
 
 CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
 
-AESTHETIC MANDATE: Every prompt should be BOLD and scroll-stopping while looking premium. Use high contrast, bold saturated colors (intentional, not random neon), specific camera/lens references, cinematic lighting direction, and atmospheric details. The goal is visually striking AND premium — NOT muted/boring, NOT typical AI-generated content.
+SPECIES AESTHETIC MANDATE — THIS IS THE #1 PRIORITY:
+Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these patterns from the actual channel:
+- Dark background with visible TEXTURE (dithered grain, not pure black void)
+- ONE bold SYMBOLIC/ICONIC element — NOT a realistic scene. Think: a melting OpenAI logo, a cracked chess piece, a glowing red eye, an AI brain splitting apart
+- Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
+- CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
+- NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
+- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
+- The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
+- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting
 
 ## CONCEPTS:
 
 {concepts_formatted}
+
+---
+
+## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
+
+{learned_patterns if learned_patterns else "(No learned patterns yet)"}
 
 ---
 
@@ -576,6 +619,7 @@ Return as JSON:
 
         # Get prompting guide for image prompts
         prompting_guide = self._get_prompting_guide()
+        learned_patterns = self._get_learned_patterns()
         image_template = self.prompt_manager.get_prompt('image_prompt_template') if self.prompt_manager else ""
         template_instruction = image_template if image_template else "Write detailed cinematic image prompts."
 
@@ -591,7 +635,22 @@ After generating the concepts, ALSO write a detailed image generation prompt for
 
 CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
 
-AESTHETIC MANDATE: Every prompt should be BOLD and scroll-stopping while looking premium. Use high contrast, bold saturated colors (intentional, not random neon), specific camera/lens references, cinematic lighting direction, and atmospheric details.
+SPECIES AESTHETIC MANDATE — THIS IS THE #1 PRIORITY:
+Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these patterns from the actual channel:
+- Dark background with visible TEXTURE (dithered grain, not pure black void)
+- ONE bold SYMBOLIC/ICONIC element — NOT a realistic scene. Think: a melting OpenAI logo, a cracked chess piece, a glowing red eye, an AI brain splitting apart
+- Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
+- CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
+- NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
+- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
+- The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
+- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting
+
+## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
+
+{learned_patterns if learned_patterns else "(No learned patterns yet)"}
+
+---
 
 ## CINEMATIC PROMPTING GUIDE
 
@@ -625,15 +684,25 @@ Return ALL {count} concepts with their image prompts as JSON:
             try:
                 data = json.loads(json_str)
                 concepts = data.get('concepts', [])
-                if concepts and concepts[0].get('prompt'):
-                    return concepts
+                if concepts:
+                    # Ensure every concept has a prompt — synthesize from description if missing
+                    for c in concepts:
+                        if not c.get('prompt') and c.get('description'):
+                            c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, editorial illustration style, digital art'
+                            print(f"[PARSE] Synthesized prompt from description for '{c.get('concept_name', '?')}'")
+                    if any(c.get('prompt') for c in concepts):
+                        return concepts
             except json.JSONDecodeError:
                 continue
 
         # Fallback: try entire text as JSON
         try:
             data = json.loads(text)
-            return data.get('concepts', [])
+            concepts = data.get('concepts', [])
+            for c in concepts:
+                if not c.get('prompt') and c.get('description'):
+                    c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, editorial illustration style, digital art'
+            return concepts
         except json.JSONDecodeError:
             pass
 
@@ -648,7 +717,7 @@ Return ALL {count} concepts with their image prompts as JSON:
 
         # Recover individual objects from truncated JSON
         concept_objects = re.findall(
-            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*"category"\s*:\s*"[^"]*"\s*,\s*"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"prompt"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
+            r'\{\s*"title_ref"\s*:\s*"[^"]*"\s*,\s*"concept_name"\s*:\s*"[^"]+"\s*,\s*(?:"layout"\s*:\s*"[^"]*"\s*,\s*)?(?:"category"\s*:\s*"[^"]*"\s*,\s*)?"description"\s*:\s*"(?:[^"\\]|\\.)*"\s*,\s*"prompt"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}',
             text, re.DOTALL
         )
         if concept_objects:

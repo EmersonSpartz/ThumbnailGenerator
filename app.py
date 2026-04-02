@@ -158,24 +158,36 @@ def health():
     import shutil
 
     # Auto-cleanup on every health check (runs every ~30s on Railway)
+    # ALWAYS backup favorites first — this is the safety net
+    try:
+        _verify_all_favorites_backed_up()
+    except Exception:
+        pass
+
     _auto_cleanup_if_needed()
 
-    # Check disk space - cleanup old folders but NEVER delete recent work
+    # Check disk space - cleanup old folders but PROTECT favorites and recent work
     try:
         usage = shutil.disk_usage(str(settings.output_dir))
         free_mb = usage.free / (1024 * 1024)
+        if free_mb < 300:
+            # Early cleanup: delete folders older than 12h, keep 10
+            _auto_cleanup_if_needed(max_folders=10, min_age_hours=12)
+            usage = shutil.disk_usage(str(settings.output_dir))
+            free_mb = usage.free / (1024 * 1024)
         if free_mb < 200:
             _auto_cleanup_if_needed(max_folders=5, min_age_hours=6)
             usage = shutil.disk_usage(str(settings.output_dir))
             free_mb = usage.free / (1024 * 1024)
             if free_mb < 100:
-                _auto_cleanup_if_needed(max_folders=2, min_age_hours=2)
+                _auto_cleanup_if_needed(max_folders=3, min_age_hours=2)
                 _deep_cleanup()
                 usage = shutil.disk_usage(str(settings.output_dir))
                 free_mb = usage.free / (1024 * 1024)
             if free_mb < 50:
-                # Critical: delete everything except 1 folder, no age limit
-                _auto_cleanup_if_needed(max_folders=1, min_age_hours=0)
+                # Critical but NEVER ignore protected — keep 2 folders minimum
+                # Favorites are already backed up (done at top of health check)
+                _auto_cleanup_if_needed(max_folders=2, min_age_hours=0)
                 usage = shutil.disk_usage(str(settings.output_dir))
                 free_mb = usage.free / (1024 * 1024)
             if free_mb < 200:
@@ -190,11 +202,12 @@ def health():
 @app.route('/api/cleanup', methods=['POST'])
 def force_cleanup():
     """Force aggressive disk cleanup.
-    Favorites are already copied to data/favorites_images/, so output folders
-    are all safe to delete. Keeps only the 2 most recent output folders.
+    FIRST verifies every favorite image is safely backed up to data/favorites_images/.
+    Only then deletes output folders.
     """
     import shutil
-    # All output folders are safe to delete — favorites already backed up to data/favorites_images/
+    # CRITICAL: Before deleting ANYTHING, verify all favorites are backed up
+    _verify_all_favorites_backed_up()
     _auto_cleanup_if_needed(max_folders=2, min_age_hours=0, ignore_protected=True)
     _deep_cleanup()
     try:
@@ -567,6 +580,84 @@ def get_videos():
     """Get all known video names."""
     return jsonify({"videos": job_manager.get_all_video_names()})
 
+@app.route('/api/video-configs')
+def get_video_configs():
+    """Get per-video configs. Merges server-side saved configs with session history."""
+    # Load saved configs (source of truth)
+    configs_file = settings.output_dir.parent / 'data' / 'video_configs.json'
+    configs = {}
+    try:
+        with open(configs_file) as f:
+            saved = json.load(f)
+        for c in saved.get('configs', []):
+            vn = c.get('video_name', '')
+            if vn:
+                configs[vn] = c
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    # Backfill from session history (only for videos not already saved)
+    history = job_manager.get_history(limit=500, offset=0)
+    for s in history.get('sessions', []):
+        params = s.get('params', {})
+        vn = params.get('video_name', '')
+        titles = params.get('titles', [])
+        cd = params.get('creative_direction', '')
+        if not vn and titles:
+            vn = titles[0]
+        if not vn or vn in configs:
+            continue
+        # Clean: skip test entries and malformed titles
+        if vn.lower() in ('test', 'test video') or vn.startswith('Titles:'):
+            continue
+        configs[vn] = {
+            'video_name': vn,
+            'titles': titles,
+            'thumbnail_text': '',
+            'creative_direction': cd,
+        }
+
+    return jsonify({"configs": list(configs.values())})
+
+@app.route('/api/video-configs', methods=['POST'])
+def save_video_configs():
+    """Save/sync video configs from the frontend (localStorage → server)."""
+    data = request.get_json() or {}
+    new_configs = data.get('configs', [])
+    if not new_configs:
+        return jsonify({"error": "No configs provided"}), 400
+
+    configs_file = settings.output_dir.parent / 'data' / 'video_configs.json'
+
+    # Load existing
+    existing = {}
+    try:
+        with open(configs_file) as f:
+            saved = json.load(f)
+        for c in saved.get('configs', []):
+            existing[c.get('video_name', '')] = c
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    # Merge (new overrides existing)
+    for c in new_configs:
+        vn = c.get('video_name', '')
+        if vn:
+            existing[vn] = c
+
+    # Save
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=str(configs_file.parent), suffix='.json')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump({"configs": list(existing.values())}, f, indent=2)
+        os.replace(tmp, str(configs_file))
+    except Exception:
+        os.unlink(tmp)
+        raise
+
+    return jsonify({"success": True, "count": len(existing)})
+
 
 @app.route('/api/last-shootout')
 def get_last_shootout():
@@ -872,6 +963,28 @@ def generate_variations():
         except Exception as e:
             yield sse_message({'type': 'error', 'message': f'Prompt generation error: {str(e)}'})
             return
+
+        # Step 2.5: Apply learned patterns via smart refiner (two-pass enhancement)
+        try:
+            from lib.smart_refiner import enhance_prompt
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            api_key = settings.anthropic_api_key
+            if api_key:
+                yield sse_message({'type': 'progress', 'message': f'Applying learned patterns to {len(prompts_with_concepts)} prompts...'})
+                def _enhance(pc):
+                    original = pc.get('prompt', '')
+                    if original:
+                        try:
+                            enhanced = enhance_prompt(original, pc.get('concept_name', ''), api_key)
+                            if enhanced and enhanced != original:
+                                pc['prompt'] = enhanced
+                                pc['original_prompt'] = original
+                        except Exception:
+                            pass  # Keep original on failure
+                with ThreadPoolExecutor(max_workers=5) as tex:
+                    list(tex.map(_enhance, prompts_with_concepts))
+        except Exception as e:
+            print(f"[SMART REFINER] Enhancement failed, using original prompts: {e}")
 
         # Step 3: Generate images
         generated = 0
@@ -1184,6 +1297,29 @@ def parallel_variations_get():
         except Exception as e:
             yield sse_message({'type': 'error', 'message': f'Prompt error: {str(e)}'})
             return
+
+        # PASS 2: Apply learned patterns via smart refiner (the "magic" from A/B testing)
+        # This rewrites each prompt with a second Claude call focused only on pattern application
+        try:
+            from lib.smart_refiner import enhance_prompt
+            from concurrent.futures import ThreadPoolExecutor
+            api_key = settings.anthropic_api_key
+            if api_key:
+                yield sse_message({'type': 'progress', 'message': f'Applying learned patterns to {len(prompts_with_concepts)} prompts...'})
+                def _enhance(pc):
+                    original = pc.get('prompt', '')
+                    if original:
+                        try:
+                            enhanced = enhance_prompt(original, pc.get('concept_name', ''), api_key)
+                            if enhanced and enhanced != original:
+                                pc['prompt'] = enhanced
+                                pc['original_prompt'] = original
+                        except Exception:
+                            pass
+                with ThreadPoolExecutor(max_workers=5) as tex:
+                    list(tex.map(_enhance, prompts_with_concepts))
+        except Exception as e:
+            print(f"[SMART REFINER] Pass 2 failed, using original prompts: {e}")
 
         # Parallel image generation
         total_images = len(prompts_with_concepts) * len(models_to_use)
@@ -1582,11 +1718,15 @@ def _deep_cleanup():
 
 def _auto_cleanup_if_needed(max_folders=30, min_age_hours=24, ignore_protected=False):
     """Automatically clean old output when folder count exceeds threshold.
-    ignore_protected=True: delete even folders with favorites (safe because
-      favorites are already backed up to data/favorites_images/).
+    Always verifies favorite backups before deleting anything.
     """
     import shutil
     import time
+    # ALWAYS verify favorites are backed up before ANY deletion — no exceptions
+    try:
+        _verify_all_favorites_backed_up()
+    except Exception as e:
+        print(f"[AUTO-CLEANUP] WARNING: Could not verify favorites backup: {e}")
     output_dir = settings.output_dir
     if not output_dir.exists():
         return
@@ -1617,6 +1757,46 @@ def _auto_cleanup_if_needed(max_folders=30, min_age_hours=24, ignore_protected=F
     if skipped_young:
         msg += f", kept {skipped_young} folders younger than {min_age_hours}h"
     print(msg)
+
+
+def _verify_all_favorites_backed_up():
+    """Verify EVERY favorite has a backup in data/favorites_images/ before cleanup.
+    If any backup is missing but the original still exists in output/, copy it now.
+    This prevents the disaster where cleanup deletes originals before they're backed up.
+    """
+    import shutil as _shutil
+    try:
+        fav_mgr = FavoritesManager(settings)
+        protected_dir = settings.data_dir / 'favorites_images'
+        protected_dir.mkdir(parents=True, exist_ok=True)
+        rescued = 0
+        already_safe = 0
+        lost = 0
+        for fav in fav_mgr.get_all_favorites():
+            tp = fav.get('thumbnail_path', '')
+            # Check if backup exists
+            if tp.startswith('data/favorites_images/'):
+                backup_path = settings.data_dir.parent / tp
+                if backup_path.exists():
+                    already_safe += 1
+                    continue
+            # Backup missing — try to rescue from original
+            orig = fav.get('original_output_path') or tp
+            src = settings.output_dir / orig
+            if src.exists():
+                ext = src.suffix
+                dest = protected_dir / f"fav_{fav['id']}{ext}"
+                if not dest.exists():
+                    _shutil.copy2(str(src), str(dest))
+                    rescued += 1
+                    print(f"[CLEANUP-GUARD] Rescued favorite {fav['id']} ({fav.get('concept_name','?')}): {orig} -> {dest.name}")
+                else:
+                    already_safe += 1
+            else:
+                lost += 1
+        print(f"[CLEANUP-GUARD] Favorites check: {already_safe} safe, {rescued} rescued, {lost} already lost")
+    except Exception as e:
+        print(f"[CLEANUP-GUARD] Error verifying favorites: {e}")
 
 
 def _protect_existing_favorites():
@@ -1731,6 +1911,7 @@ def model_shootout():
     video_name = request.args.get('video_name', '')
     count = int(request.args.get('count', 5))  # Fewer concepts for easier comparison
     models_str = request.args.get('models', 'nanobanana2')
+    smart_enhance_enabled = request.args.get('smart_enhance', 'false').lower() == 'true'
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
@@ -1852,6 +2033,26 @@ def model_shootout():
                 return
             else:
                 yield sse_message({'type': 'keepalive'})
+
+        # Smart Enhance: apply learned thumbnail patterns
+        if smart_enhance_enabled:
+            yield sse_message({
+                'type': 'progress',
+                'message': f'Smart Enhance: optimizing {len(prompts_with_concepts)} prompts...'
+            })
+            for prompt_data in prompts_with_concepts:
+                try:
+                    original = prompt_data.get('prompt', '')
+                    enhanced = smart_enhance_prompt(
+                        original,
+                        prompt_data.get('concept_name', ''),
+                        settings.anthropic_api_key
+                    )
+                    if enhanced and enhanced != original:
+                        prompt_data['prompt_original'] = original
+                        prompt_data['prompt'] = enhanced
+                except Exception as e:
+                    print(f"[SMART ENHANCE] Failed for {prompt_data.get('concept_name', '?')}: {e}")
 
         yield sse_message({
             'type': 'prompts_ready',
@@ -2402,6 +2603,7 @@ def parallel_generate():
     count = int(request.args.get('count', 10))
     models_str = request.args.get('models', 'nanobanana2')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
+    smart_enhance_enabled = request.args.get('smart_enhance', 'false').lower() == 'true'
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
@@ -2459,6 +2661,26 @@ def parallel_generate():
 
         # Limit to requested count
         prompts_with_concepts = prompts_with_concepts[:count]
+
+        # Smart Enhance: apply learned thumbnail patterns to each prompt
+        if smart_enhance_enabled:
+            yield sse_message({
+                'type': 'progress',
+                'message': f'Smart Enhance: optimizing {len(prompts_with_concepts)} prompts for thumbnail impact...'
+            })
+            for prompt_data in prompts_with_concepts:
+                try:
+                    original = prompt_data.get('prompt', '')
+                    enhanced = smart_enhance_prompt(
+                        original,
+                        prompt_data.get('concept_name', ''),
+                        settings.anthropic_api_key
+                    )
+                    if enhanced and enhanced != original:
+                        prompt_data['prompt_original'] = original
+                        prompt_data['prompt'] = enhanced
+                except Exception as e:
+                    print(f"[SMART ENHANCE] Failed for {prompt_data.get('concept_name', '?')}: {e}")
 
         yield sse_message({
             'type': 'progress',
@@ -3693,6 +3915,7 @@ def full_parallel_generate():
     llms_str = request.args.get('llms', '')
     models_str = request.args.get('models', '')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
+    smart_enhance_enabled = request.args.get('smart_enhance', 'false').lower() == 'true'
 
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
 
@@ -3833,6 +4056,26 @@ def full_parallel_generate():
         except Exception as e:
             yield sse_message({'type': 'error', 'message': f'Prompt generation failed: {str(e)}'})
             return
+
+        # Smart Enhance: apply learned thumbnail patterns
+        if smart_enhance_enabled:
+            yield sse_message({
+                'type': 'progress',
+                'message': f'Smart Enhance: optimizing {len(prompts_with_concepts)} prompts...'
+            })
+            for prompt_data in prompts_with_concepts:
+                try:
+                    original = prompt_data.get('prompt', '')
+                    enhanced = smart_enhance_prompt(
+                        original,
+                        prompt_data.get('concept_name', ''),
+                        settings.anthropic_api_key
+                    )
+                    if enhanced and enhanced != original:
+                        prompt_data['prompt_original'] = original
+                        prompt_data['prompt'] = enhanced
+                except Exception as e:
+                    print(f"[SMART ENHANCE] Failed for {prompt_data.get('concept_name', '?')}: {e}")
 
         yield sse_message({
             'type': 'prompts_complete',
@@ -3994,25 +4237,478 @@ if __name__ == '__main__':
 
     @app.route('/api/smart-refine', methods=['POST'])
     def smart_refine_endpoint():
-        """Diagnose a thumbnail's weakness and return a refined prompt."""
+        """Diagnose a thumbnail's weakness, refine prompt, and regenerate."""
         data = request.json or {}
-        image_path = data.get('image_path', '')
+        file_path = data.get('file_path', '')
         original_prompt = data.get('prompt', '')
         concept_name = data.get('concept_name', '')
-        if not image_path or not original_prompt:
-            return jsonify({"error": "image_path and prompt required"}), 400
-        full_path = settings.output_dir / image_path
+        video_name = data.get('video_name', '')
+        if not file_path or not original_prompt:
+            return jsonify({"success": False, "error": "file_path and prompt required"}), 400
+        full_path = settings.output_dir / file_path
         if not full_path.exists():
-            return jsonify({"error": f"Image not found: {image_path}"}), 404
+            return jsonify({"success": False, "error": f"Image not found: {file_path}"}), 404
         try:
-            result = smart_refine_thumbnail(
+            # Step 1: Diagnose weakness and get refined prompt
+            diagnosis = smart_refine_thumbnail(
                 full_path, original_prompt, concept_name,
                 api_key=settings.anthropic_api_key,
                 base_dir=settings.base_dir
             )
-            return jsonify(result)
+            refined_prompt = diagnosis.get('refined_prompt', original_prompt)
+
+            # Step 2: Generate new image with refined prompt
+            gen = _make_generator()
+            prompt_data = {
+                'concept_name': concept_name + '_refined',
+                'prompt': refined_prompt,
+                'layout': 'refined',
+            }
+            batch_id = f"refined_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            result = gen.generate_with_model('nanobanana2', prompt_data, batch_id)
+
+            if result.get('success'):
+                # Make path relative to output dir for frontend
+                raw_path = result['file_path']
+                output_str = str(settings.output_dir)
+                rel_path = raw_path.replace(output_str + '/', '').replace(output_str, '') if raw_path.startswith(output_str) else raw_path
+                return jsonify({
+                    "success": True,
+                    "file_path": rel_path,
+                    "refined_prompt": refined_prompt,
+                    "original_prompt": original_prompt,
+                    "weakness": diagnosis.get('weakness', ''),
+                    "pattern_used": diagnosis.get('pattern_used', ''),
+                    "feeling": diagnosis.get('feeling', ''),
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": f"Image generation failed: {result.get('error', 'unknown')}",
+                    "weakness": diagnosis.get('weakness', ''),
+                    "refined_prompt": refined_prompt,
+                })
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/review')
+    def review_page():
+        """Visual review page for refinement experiment results."""
+        return render_template('review.html')
+
+    @app.route('/api/generate-hypothesis-tests', methods=['POST'])
+    def generate_hypothesis_tests():
+        """Trigger controlled hypothesis tests — one variable per pair."""
+        import subprocess
+        data = request.get_json() or {}
+        max_pairs = min(data.get("max_pairs", 25), 50)
+        hypotheses = min(data.get("hypotheses", 5), 10)
+        concepts = min(data.get("concepts", 5), 10)
+
+        # Kill any existing generation process
+        subprocess.run(["pkill", "-f", "run_ab_from_real|run_self_improving_loop|run_hypothesis_test|run_ab_full_pipeline"], capture_output=True)
+
+        python_exe = str(settings.output_dir.parent / "venv" / "bin" / "python")
+        cmd = [
+            python_exe, "-u",
+            str(settings.output_dir.parent / "run_hypothesis_test.py"),
+            "--hypotheses", str(hypotheses),
+            "--concepts", str(concepts),
+        ]
+        env = {**os.environ}
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
+            cmd,
+            stdout=open("/tmp/self_improving_loop.log", "w"),
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=str(settings.output_dir.parent)
+        )
+        return jsonify({
+            "success": True,
+            "pid": proc.pid,
+            "message": f"Running {hypotheses} hypothesis tests × {concepts} concepts = ~{hypotheses*concepts} controlled pairs"
+        })
+
+    @app.route('/api/generate-wave', methods=['POST'])
+    def generate_wave():
+        """Trigger A/B pairs using the full Species pipeline."""
+        import subprocess
+        data = request.get_json() or {}
+        max_pairs = min(data.get("max_pairs", 50), 100)
+        title = data.get("title", "")
+        thumbnail_text = data.get("thumbnail_text", "")
+        creative_direction = data.get("creative_direction", "")
+        species_style = data.get("species_style", "full")
+
+        # Kill any existing generation process first
+        subprocess.run(["pkill", "-f", "run_ab_full_pipeline|run_ab_from_real|run_self_improving_loop"], capture_output=True)
+
+        python_exe = str(settings.output_dir.parent / "venv" / "bin" / "python")
+
+        # Full pipeline: if title provided, use it. Otherwise auto-cycle from history.
+        cmd = [
+            python_exe, "-u",
+            str(settings.output_dir.parent / "run_ab_full_pipeline.py"),
+            "--max-pairs", str(max_pairs),
+            "--species-style", species_style,
+        ]
+        if title:
+            cmd.extend(["--title", title])
+        if thumbnail_text:
+            cmd.extend(["--thumbnail-text", thumbnail_text])
+        if creative_direction:
+            cmd.extend(["--creative-direction", creative_direction])
+        env = {**os.environ}
+        env["PYTHONUNBUFFERED"] = "1"
+        proc = subprocess.Popen(
+            cmd,
+            stdout=open("/tmp/self_improving_loop.log", "w"),
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=str(settings.output_dir.parent)
+        )
+        return jsonify({
+            "success": True,
+            "pid": proc.pid,
+            "pairs_target": max_pairs,
+            "message": f"Generating {max_pairs} pairs"
+        })
+
+    @app.route('/api/dashboard')
+    def dashboard_data():
+        """Return full learning system dashboard data."""
+        import glob as g
+        from collections import defaultdict
+
+        # 1. Load votes
+        votes_file = settings.base_dir / 'data' / 'votes.json'
+        try:
+            with open(votes_file) as f:
+                d = json.load(f)
+            votes = d if isinstance(d, list) else d.get('votes', [])
+            votes.sort(key=lambda v: v.get('timestamp', ''))
+        except:
+            votes = []
+
+        # 2. Overall stats
+        enh = sum(1 for v in votes if v.get('vote') in ('enhanced', 'B', 'refined'))
+        orig = sum(1 for v in votes if v.get('vote') in ('original', 'A'))
+        tie = sum(1 for v in votes if v.get('vote') == 'tie')
+
+        # 3. Win rate over time (chunks of 50)
+        win_rate_over_time = []
+        for i in range(0, len(votes), 50):
+            chunk = votes[:i+50]
+            e = sum(1 for v in chunk if v.get('vote') in ('enhanced', 'B', 'refined'))
+            o = sum(1 for v in chunk if v.get('vote') in ('original', 'A'))
+            rate = round(e/(e+o)*100) if e+o > 0 else 0
+            win_rate_over_time.append({"votes": min(i+50, len(votes)), "rate": rate})
+
+        # 4. Load patterns
+        patterns_file = settings.base_dir / 'data' / 'learned_patterns.json'
+        try:
+            with open(patterns_file) as f:
+                p = json.load(f)
+            patterns = [{"name": pat["name"], "confidence": pat.get("confidence", 0),
+                         "description": pat.get("description", "")[:150]}
+                        for pat in p.get("patterns", [])]
+            pattern_version = p.get("version", 0)
+        except:
+            patterns = []
+            pattern_version = 0
+
+        # 5. Council vs Human agreement
+        agree = disagree = no_verdict = 0
+        comp_cache = {}
+        for comp_path in g.glob(str(settings.output_dir / '**' / 'comparison.json'), recursive=True):
+            try:
+                with open(comp_path) as f:
+                    comp = json.load(f)
+                concept = comp.get('concept', '')
+                if concept:
+                    comp_cache[concept] = comp
+            except:
+                continue
+
+        for v in votes:
+            concept = v.get('concept', '')
+            human = v.get('vote', '')
+            comp = comp_cache.get(concept)
+            if not comp:
+                no_verdict += 1
+                continue
+            claude_winner = comp.get('comparison', {}).get('winner', comp.get('winner', '?'))
+            if claude_winner == '?':
+                no_verdict += 1
+            else:
+                claude_pick = 'enhanced' if claude_winner == 'B' else 'original' if claude_winner == 'A' else 'tie'
+                if claude_pick == human:
+                    agree += 1
+                else:
+                    disagree += 1
+
+        # 6. By experiment type
+        type_stats = defaultdict(lambda: {'enh': 0, 'orig': 0, 'tie': 0})
+        for v in votes:
+            pid = v.get('pair_id', '')
+            if 'experiment/' in pid: t = 'original'
+            elif 'loop/' in pid: t = 'loop'
+            elif 'fair_' in pid: t = 'fair_ab'
+            elif 'real_' in pid: t = 'real_ab'
+            elif 'ab_test/' in pid: t = 'ab_test'
+            else: t = 'other'
+            vote = v.get('vote', '')
+            if vote in ('enhanced', 'B', 'refined'): type_stats[t]['enh'] += 1
+            elif vote in ('original', 'A'): type_stats[t]['orig'] += 1
+            else: type_stats[t]['tie'] += 1
+
+        by_type = []
+        for t, c in sorted(type_stats.items()):
+            total = c['enh'] + c['orig']
+            by_type.append({
+                "type": t, "votes": c['enh']+c['orig']+c['tie'],
+                "win_rate": round(c['enh']/total*100) if total > 0 else 0
+            })
+
+        # 7. Hypothesis results
+        hyp_stats = defaultdict(lambda: {'a_wins': 0, 'b_wins': 0, 'ties': 0, 'hypothesis': '', 'category': ''})
+        for v in votes:
+            hid = v.get('hypothesis_id', '')
+            if not hid:
+                continue
+            vote_val = v.get('vote', '')
+            hyp_stats[hid]['hypothesis'] = v.get('variable', hid)
+            hyp_stats[hid]['category'] = v.get('category', '')
+            if vote_val in ('original', 'A'):
+                hyp_stats[hid]['a_wins'] += 1
+            elif vote_val in ('enhanced', 'B', 'refined'):
+                hyp_stats[hid]['b_wins'] += 1
+            else:
+                hyp_stats[hid]['ties'] += 1
+
+        hypothesis_results = []
+        for hid, s in sorted(hyp_stats.items(), key=lambda x: x[1]['a_wins']+x[1]['b_wins'], reverse=True):
+            total = s['a_wins'] + s['b_wins']
+            hypothesis_results.append({
+                "id": hid,
+                "variable": s['hypothesis'],
+                "category": s['category'],
+                "tests": total + s['ties'],
+                "a_wins": s['a_wins'], "b_wins": s['b_wins'], "ties": s['ties'],
+                "b_rate": round(s['b_wins']/total*100) if total > 0 else 0,
+                "status": "confirmed" if total >= 10 and s['b_wins']/total > 0.7 else
+                          "rejected" if total >= 10 and s['b_wins']/total < 0.3 else
+                          "testing" if total > 0 else "untested"
+            })
+
+        # Load hypothesis registry
+        try:
+            reg_file = settings.base_dir / 'data' / 'hypothesis_registry.json'
+            with open(reg_file) as f:
+                reg = json.load(f)
+            all_hypotheses = [{
+                "id": h["id"], "hypothesis": h["hypothesis"],
+                "variable": h["variable"], "category": h["category"],
+                "condition_a": h["condition_a"], "condition_b": h["condition_b"],
+            } for h in reg.get("hypotheses", [])]
+        except:
+            all_hypotheses = []
+
+        return jsonify({
+            "total_votes": len(votes),
+            "enhanced_wins": enh, "original_wins": orig, "ties": tie,
+            "overall_win_rate": round(enh/(enh+orig)*100) if enh+orig > 0 else 0,
+            "win_rate_over_time": win_rate_over_time,
+            "patterns": patterns,
+            "pattern_version": pattern_version,
+            "council_agreement": {
+                "agree": agree, "disagree": disagree, "no_verdict": no_verdict,
+                "rate": round(agree/(agree+disagree)*100) if agree+disagree > 0 else 0
+            },
+            "by_type": by_type,
+            "hypothesis_results": hypothesis_results,
+            "all_hypotheses": all_hypotheses,
+        })
+
+    @app.route('/api/wave-status')
+    def wave_status():
+        """Check if a wave generation is running, with progress from log."""
+        import subprocess, re
+        result = subprocess.run(["pgrep", "-f", "run_self_improving_loop|run_ab_from_real|run_ab_full_pipeline"], capture_output=True, text=True)
+        running = result.returncode == 0
+
+        # Parse progress from log file (e.g. "[37/50] Monster's Medicine")
+        progress = ""
+        pairs_done = 0
+        pairs_total = 0
+        try:
+            with open("/tmp/self_improving_loop.log", "r") as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                m = re.search(r'\[(\d+)/(\d+)\]', line)
+                if m:
+                    pairs_done = int(m.group(1))
+                    pairs_total = int(m.group(2))
+                    concept = line.split(']', 1)[1].strip() if ']' in line else ''
+                    progress = f"{pairs_done}/{pairs_total} — {concept}"
+                    break
+                if '✓ Pair #' in line:
+                    m2 = re.search(r'Pair #(\d+)', line)
+                    if m2:
+                        pairs_done = int(m2.group(1))
+                        progress = f"{pairs_done} pairs done"
+                        break
+        except:
+            pass
+
+        return jsonify({
+            "running": running,
+            "progress": progress,
+            "pairs_done": pairs_done,
+            "pairs_total": pairs_total,
+            "images_today": pairs_done * 2,  # 2 images per pair
+        })
+
+    @app.route('/api/vote', methods=['POST'])
+    def save_vote():
+        """Save a human vote on an A/B pair."""
+        import tempfile
+        data = request.get_json()
+        if not data or 'pair_id' not in data or 'vote' not in data:
+            return jsonify({"error": "pair_id and vote required"}), 400
+
+        votes_file = settings.output_dir.parent / 'data' / 'votes.json'
+        try:
+            with open(votes_file) as f:
+                votes_data = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            votes_data = {"votes": [], "stats": {"total": 0, "original_wins": 0, "enhanced_wins": 0, "ties": 0}}
+
+        # Check if this pair was already voted on — update it
+        existing_idx = next((i for i, v in enumerate(votes_data["votes"]) if v["pair_id"] == data["pair_id"]), None)
+
+        vote_entry = {
+            "pair_id": data["pair_id"],
+            "vote": data["vote"],
+            "concept": data.get("concept", ""),
+            "iter1_prompt": data.get("iter1_prompt", ""),
+            "iter2_prompt": data.get("iter2_prompt", ""),
+            "iter1_path_rel": data.get("iter1_path_rel", ""),
+            "iter2_path_rel": data.get("iter2_path_rel", ""),
+            "timestamp": data.get("timestamp", "")
+        }
+
+        if existing_idx is not None:
+            old_vote = votes_data["votes"][existing_idx]["vote"]
+            votes_data["votes"][existing_idx] = vote_entry
+            # Update stats (subtract old, add new)
+            if old_vote == "original": votes_data["stats"]["original_wins"] -= 1
+            elif old_vote == "enhanced": votes_data["stats"]["enhanced_wins"] -= 1
+            elif old_vote == "tie": votes_data["stats"]["ties"] -= 1
+        else:
+            votes_data["votes"].append(vote_entry)
+            votes_data["stats"]["total"] += 1
+
+        if data["vote"] == "original": votes_data["stats"]["original_wins"] += 1
+        elif data["vote"] == "enhanced": votes_data["stats"]["enhanced_wins"] += 1
+        elif data["vote"] == "tie": votes_data["stats"]["ties"] += 1
+
+        # Atomic write
+        fd, tmp = tempfile.mkstemp(dir=str(votes_file.parent), suffix='.json')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(votes_data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, str(votes_file))
+        except Exception:
+            os.unlink(tmp)
+            raise
+
+        return jsonify({"success": True, "stats": votes_data["stats"]})
+
+    @app.route('/api/votes')
+    def get_votes():
+        """Return saved votes, optionally filtered by reviewer."""
+        reviewer = request.args.get('reviewer', '')
+        votes_file = settings.output_dir.parent / 'data' / 'votes.json'
+        try:
+            with open(votes_file) as f:
+                data = json.load(f)
+            all_votes = data.get('votes', []) if isinstance(data, dict) else data
+            if reviewer:
+                # Return only this reviewer's votes (or legacy votes with no reviewer = "emerson")
+                filtered = [v for v in all_votes if v.get('reviewer', 'emerson') == reviewer]
+            else:
+                filtered = all_votes
+            return jsonify({"votes": filtered})
+        except (FileNotFoundError, json.JSONDecodeError):
+            return jsonify({"votes": []})
+
+    @app.route('/api/loop-metrics')
+    def loop_metrics():
+        """Return autonomous loop metrics."""
+        metrics_file = settings.output_dir.parent / 'data' / 'loop_metrics.json'
+        try:
+            with open(metrics_file) as f:
+                return jsonify(json.load(f))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return jsonify({"generations": [], "cumulative_win_rate": 0, "pattern_history": []})
+
+    @app.route('/api/loop-state')
+    def loop_state():
+        """Return autonomous loop operational state."""
+        state_file = settings.output_dir.parent / 'data' / 'loop_state.json'
+        try:
+            with open(state_file) as f:
+                return jsonify(json.load(f))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return jsonify({"running": False, "images_today": 0})
+
+    @app.route('/api/experiment-results')
+    def experiment_results():
+        """Return all experiment results with relative image paths for the review page."""
+        import glob
+        all_results = []
+        output_str = str(settings.output_dir)
+        # Load from all experiment directories
+        for subdir in ['experiment', 'enhancer_experiment', 'ab_test', 'loop']:
+            # Load batch results files
+            results_files = sorted(glob.glob(str(settings.output_dir / subdir / 'results_*.json')))
+            for rf in results_files:
+                with open(rf) as f:
+                    batch = json.load(f)
+                for r in batch:
+                    if 'error' in r:
+                        continue
+                    p1 = r.get('iter1_path', '')
+                    p2 = r.get('iter2_path', '')
+                    r['iter1_path_rel'] = p1.replace(output_str + '/', '').replace(output_str, '') if p1 else ''
+                    r['iter2_path_rel'] = p2.replace(output_str + '/', '').replace(output_str, '') if p2 else ''
+                    r['experiment_type'] = subdir
+                    all_results.append(r)
+            # Load individual comparison.json files (from run_ab_from_real.py and loop)
+            comp_files = sorted(glob.glob(str(settings.output_dir / subdir / '*/comparison.json')))
+            for cf in comp_files:
+                try:
+                    with open(cf) as f:
+                        r = json.load(f)
+                    if 'error' in r and not r.get('comparison'):
+                        continue
+                    # Ensure relative paths are set
+                    if not r.get('iter1_path_rel'):
+                        p1 = r.get('iter1_path', '')
+                        r['iter1_path_rel'] = p1.replace(output_str + '/', '').replace(output_str, '') if p1 else ''
+                    if not r.get('iter2_path_rel'):
+                        p2 = r.get('iter2_path', '')
+                        r['iter2_path_rel'] = p2.replace(output_str + '/', '').replace(output_str, '') if p2 else ''
+                    if not r.get('experiment_type'):
+                        r['experiment_type'] = subdir
+                    all_results.append(r)
+                except (json.JSONDecodeError, KeyError):
+                    continue
+        return jsonify(all_results)
 
     # Use PORT from environment (Railway/production) or default to 5050 (local)
     port = int(os.getenv('PORT', 5050))

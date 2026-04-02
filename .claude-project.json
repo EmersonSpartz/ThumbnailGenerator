@@ -5,6 +5,7 @@
     "test_after_edit": "",
     "deploy_url": "https://web-production-d277.up.railway.app",
     "post_deploy_command": "cd /Users/emersonspartz/Downloads/Claude/thumbnail_generator_v2 && node qa-flow.js",
+    "browser_qa_command": "Open Railway URL in Chrome MCP, then run: window.__runQA().then(r => JSON.stringify(r, null, 2)) — ALL tests must pass",
     "critical_files": ["app.py", "rubric.txt", "lib/image_generator.py", "lib/claude_client.py", "lib/agentic_refiner.py"],
     "review_checklist": [
         "Before deploying: grep -n 'add_result' app.py — every call must include video_name",
@@ -15,6 +16,9 @@
         "Verify deploy version: curl -s https://web-production-d277.up.railway.app/api/version — git_hash should match your commit",
         "If editing favorites: verify copy-on-save still backs up to data/favorites_images/",
         "If editing cleanup: verify favorites still exist after cleanup runs",
+        "If editing review page or A/B generation: load /review in Chrome, verify new pairs appear with BOTH images loading",
+        "If adding new experiment_type: check JS filter in review.html includes it (isSpecies variable, line ~218 AND ~241)",
+        "If adding new result storage format: check /api/experiment-results scans for it (app.py ~line 4285)",
         "Would Emerson be able to use this for 10 minutes without hitting an error?"
     ],
     "notes": ["Drew is the primary user", "Quality > cost", "Must handle full iteration cycles without freezing", "Server: python app.py on localhost:5050"]
