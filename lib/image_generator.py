@@ -102,6 +102,8 @@ class GeminiImageGenerator(ImageGeneratorBase):
             return {"success": False, "error": "google-generativeai not installed"}
 
         prompt = prompt_data.get('prompt', '')
+        if not prompt or len(prompt.strip()) < 10:
+            return {"success": False, "error": "No prompt provided — skipping generation (would produce random image)"}
         concept_name = prompt_data.get('concept_name', 'untitled')
 
         # Create filename - Gemini returns JPEG images
@@ -157,7 +159,7 @@ class GeminiImageGenerator(ImageGeneratorBase):
                         continue
                     return {"success": False, "error": "All API keys exhausted", "quota_exhausted": True}
                 # Retry once on transient network errors
-                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "503", "502", "500"]):
+                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "504", "503", "502", "500", "deadline"]):
                     time.sleep(2)
                     continue
                 return {"success": False, "error": error_str}
@@ -296,7 +298,7 @@ class ReplicateImageGenerator(ImageGeneratorBase):
 
             except Exception as e:
                 error_str = str(e)
-                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "503", "502", "500"]):
+                if attempt == 0 and any(t in error_str.lower() for t in ["timeout", "connection", "504", "503", "502", "500", "deadline"]):
                     time.sleep(2)
                     continue
                 return {"success": False, "error": error_str}
