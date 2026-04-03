@@ -313,6 +313,38 @@
             color: #ff0000;
             background: rgba(0,0,0,0.8);
         }
+        .quick-downvote {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            border: none;
+            color: #888;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+            line-height: 1;
+        }
+        .quick-downvote:hover {
+            background: rgba(0,0,0,0.8);
+            color: #ff4444;
+            transform: scale(1.15);
+        }
+        .quick-downvote.downvoted {
+            color: #ff4444;
+            background: rgba(180,0,0,0.8);
+        }
+        .thumbnail-card.downvoted {
+            opacity: 0.3;
+            filter: grayscale(0.8);
+        }
         .thumbnail-card, .model-card {
             position: relative;
         }
@@ -1465,6 +1497,13 @@
                                 MAX
                             </label>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="smart-enhance" style="width: auto;" checked>
+                            <span>Smart Enhance <span style="font-size: 11px; color: #888;">(optimizes prompts for thumbnail impact — dark bg, close-up, high contrast)</span></span>
+                        </label>
                     </div>
 
                     <div class="form-group">
@@ -3535,7 +3574,37 @@
 
         // =====================================================
         // Save per-video fields on page unload and as user types
-        window.addEventListener('beforeunload', () => saveVideoFields());
+        window.addEventListener('beforeunload', () => { saveVideoFields(); syncVideoConfigsToServer(); });
+
+        // Sync all localStorage video configs to server (for A/B review page)
+        function syncVideoConfigsToServer() {
+            try {
+                const configs = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('video_fields_')) {
+                        const videoName = key.replace('video_fields_', '');
+                        if (!videoName || videoName.toLowerCase() === 'test') continue;
+                        const data = JSON.parse(localStorage.getItem(key));
+                        configs.push({
+                            video_name: videoName,
+                            titles: [data.titles || data.genTitles || videoName],
+                            thumbnail_text: data.thumbnailCopy || '',
+                            creative_direction: data.genCreativeDirection || '',
+                        });
+                    }
+                }
+                if (configs.length > 0) {
+                    fetch('/api/video-configs', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({configs})
+                    }).catch(() => {});
+                }
+            } catch(e) { /* best effort */ }
+        }
+        // Sync on load too
+        syncVideoConfigsToServer();
         ['text-titles', 'text-thumbnail-copy', 'titles', 'creative-direction'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', () => saveVideoFields());
@@ -3700,7 +3769,7 @@
                     return;
                 }
 
-                url = `/api/full-parallel?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&concepts_per_llm=${conceptsPerLlm}&llms=${llms.join(',')}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}`;
+                url = `/api/full-parallel?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&concepts_per_llm=${conceptsPerLlm}&llms=${llms.join(',')}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}&smart_enhance=${document.getElementById('smart-enhance')?.checked || false}`;
                 jobType = 'MAX Diversity';
             } else if (generationMode === 'parallel') {
                 models = getSelectedModels();
@@ -3709,7 +3778,7 @@
                     return;
                 }
 
-                url = `/api/parallel-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}`;
+                url = `/api/parallel-generate?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(creativeDirection)}&count=${count}&models=${models.join(',')}&use_favorites=${useFavorites}&video_name=${encodeURIComponent(getVideoParam())}&smart_enhance=${document.getElementById('smart-enhance')?.checked || false}`;
                 jobType = 'Parallel';
             } else {
                 const model = document.getElementById('model').value;
@@ -5253,6 +5322,7 @@
             const displayTitle = String(Array.isArray(rawTitle) ? rawTitle[0] || '' : rawTitle);
             card.innerHTML = `
                 <div style="position:relative;">
+                    <button class="quick-downvote" title="Bad thumbnail (downvote)">👎</button>
                     <button class="quick-fav${isFav ? ' favorited' : ''}" title="Favorite (one click)">${isFav ? '♥' : '♡'}</button>
                     <img src="${data._img_prefix || '/output/'}${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
                          onerror="if(!this.dataset.retries){this.dataset.retries='0';}if(+this.dataset.retries<3){this.dataset.retries=+this.dataset.retries+1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now()},2000);}else{this.closest('.thumbnail-card').style.display='none';}">
@@ -5269,6 +5339,7 @@
                 <div class="thumbnail-actions">
                     <button class="btn btn-primary more-btn" title="Generate 5 more like this instantly">+5 More</button>
                     <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
+                    <button class="btn btn-secondary refine-btn" title="AI diagnoses weakness and generates improved version" style="background:#7c3aed;color:white;">Refine</button>
                 </div>
             `;
 
@@ -5337,7 +5408,40 @@
                 btn.classList.add('favorited');
                 btn.textContent = '♥';
                 card.classList.add('favorited');
+                card.classList.remove('downvoted');
+                card.querySelector('.quick-downvote')?.classList.remove('downvoted');
                 await quickFavorite(data);
+            });
+
+            // Downvote — mark as bad thumbnail
+            card.querySelector('.quick-downvote').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const btn = e.currentTarget;
+                const isDownvoted = btn.classList.toggle('downvoted');
+                card.classList.toggle('downvoted', isDownvoted);
+                if (isDownvoted) {
+                    // Remove favorite if it was favorited
+                    card.classList.remove('favorited');
+                    const favBtn = card.querySelector('.quick-fav');
+                    if (favBtn) { favBtn.classList.remove('favorited'); favBtn.textContent = '♡'; }
+                }
+                // Save downvote to server
+                try {
+                    await fetch('/api/downvote', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            file_path: data.file_path,
+                            concept_name: data.concept_name || '',
+                            prompt: data.prompt || '',
+                            layout: data.template || data.layout || '',
+                            category: data.category || '',
+                            video_name: getVideoParam(),
+                            downvoted: isDownvoted,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+                } catch(err) { console.error('Downvote save failed:', err); }
             });
 
             // One-click "More" - instantly generates 5 more with same prompt
@@ -5361,6 +5465,61 @@
                 document.getElementById('variations-modal').dataset.prompt = data.prompt || '';
                 document.getElementById('variations-modal').dataset.filePath = data.file_path || '';
                 document.getElementById('variations-modal').classList.add('active');
+            });
+
+            // Smart Refine — diagnose weakness, refine prompt, regenerate
+            card.querySelector('.refine-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const btn = e.target;
+                if (!data.file_path || !data.prompt) {
+                    alert('No image/prompt available to refine');
+                    return;
+                }
+                btn.textContent = 'Analyzing...';
+                btn.disabled = true;
+                try {
+                    const resp = await fetch('/api/smart-refine', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            file_path: data.file_path,
+                            prompt: data.prompt,
+                            concept_name: data.concept_name || '',
+                            video_name: getVideoParam()
+                        })
+                    });
+                    const result = await resp.json();
+                    if (result.success) {
+                        // Add the refined version as a new card right after this one
+                        const refinedData = {
+                            file_path: result.file_path,
+                            concept_name: (data.concept_name || '') + ' (Refined)',
+                            prompt: result.refined_prompt,
+                            model: data.model || 'nanobanana2',
+                            template: data.template,
+                            template_name: data.template_name,
+                            _gen_title: data._gen_title || data.title_ref,
+                            title_ref: data.title_ref,
+                            video_name: data.video_name
+                        };
+                        addThumbnailCard(card.parentElement, refinedData);
+                        btn.textContent = 'Refined!';
+                        btn.style.background = '#22c55e';
+                        // Show the diagnosis
+                        const diagDiv = document.createElement('div');
+                        diagDiv.style.cssText = 'padding:4px 8px;font-size:10px;color:#a78bfa;border-top:1px solid #333;';
+                        diagDiv.innerHTML = `<strong>Weakness:</strong> ${result.weakness}<br><strong>Pattern:</strong> ${result.pattern_used}`;
+                        card.appendChild(diagDiv);
+                    } else {
+                        btn.textContent = 'Failed';
+                        btn.style.background = '#ef4444';
+                        alert('Refine failed: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (err) {
+                    btn.textContent = 'Error';
+                    btn.style.background = '#ef4444';
+                    console.error('Refine error:', err);
+                }
             });
 
             // Insert at beginning so newest are first, unless append requested
@@ -5868,7 +6027,7 @@
                 return;
             }
 
-            const url = appendSpeciesStyle(`/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}`);
+            const url = appendSpeciesStyle(`/api/model-shootout?titles=${encodeURIComponent(titles)}&script=${encodeURIComponent(script)}&creative_direction=${encodeURIComponent(direction)}&count=${count}&models=${models.join(',')}&video_name=${encodeURIComponent(getVideoParam())}&smart_enhance=${document.getElementById('smart-enhance')?.checked || false}`);
 
             startShootout(url, models);
         });

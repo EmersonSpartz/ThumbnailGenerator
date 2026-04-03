@@ -4533,6 +4533,62 @@ if __name__ == '__main__':
             "images_today": pairs_done * 2,  # 2 images per pair
         })
 
+    @app.route('/api/downvote', methods=['POST'])
+    def save_downvote():
+        """Save a downvote (bad thumbnail signal) for template learning."""
+        import tempfile
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data"}), 400
+
+        downvotes_file = settings.data_dir / 'downvotes.json'
+        try:
+            with open(downvotes_file) as f:
+                downvotes = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            downvotes = {"downvotes": []}
+
+        # Toggle: if already downvoted, remove it
+        file_path = data.get('file_path', '')
+        if not data.get('downvoted', True):
+            downvotes["downvotes"] = [d for d in downvotes["downvotes"] if d.get('file_path') != file_path]
+        else:
+            # Add downvote (deduplicate)
+            downvotes["downvotes"] = [d for d in downvotes["downvotes"] if d.get('file_path') != file_path]
+            downvotes["downvotes"].append({
+                "file_path": file_path,
+                "concept_name": data.get("concept_name", ""),
+                "prompt": data.get("prompt", ""),
+                "layout": data.get("layout", ""),
+                "category": data.get("category", ""),
+                "video_name": data.get("video_name", ""),
+                "timestamp": data.get("timestamp", ""),
+            })
+
+        # Atomic write
+        fd, tmp = tempfile.mkstemp(dir=str(settings.data_dir), suffix='.json')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(downvotes, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, str(downvotes_file))
+        except Exception:
+            try: os.unlink(tmp)
+            except: pass
+
+        return jsonify({"success": True, "total_downvotes": len(downvotes["downvotes"])})
+
+    @app.route('/api/downvotes')
+    def get_downvotes():
+        """Get all downvoted thumbnails."""
+        downvotes_file = settings.data_dir / 'downvotes.json'
+        try:
+            with open(downvotes_file) as f:
+                return jsonify(json.load(f))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return jsonify({"downvotes": []})
+
     @app.route('/api/vote', methods=['POST'])
     def save_vote():
         """Save a human vote on an A/B pair."""
