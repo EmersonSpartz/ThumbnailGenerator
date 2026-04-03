@@ -4649,10 +4649,17 @@ Reply with JUST the number (1-10), nothing else."""}
             "results": results,
         })
 
-    @app.route('/api/claude-evaluations')
-    def get_claude_evaluations():
-        """Get Claude's thumbnail evaluations."""
+    @app.route('/api/claude-evaluations', methods=['GET', 'POST'])
+    def claude_evaluations():
+        """Get or save Claude's thumbnail evaluations."""
         eval_file = settings.data_dir / 'claude_evaluations.json'
+        if request.method == 'POST':
+            data = request.get_json()
+            if data and 'evaluations' in data:
+                with open(eval_file, 'w') as f:
+                    json.dump(data, f, indent=2)
+                return jsonify({"success": True, "count": len(data['evaluations'])})
+            return jsonify({"success": False}), 400
         try:
             with open(eval_file) as f:
                 return jsonify(json.load(f))
