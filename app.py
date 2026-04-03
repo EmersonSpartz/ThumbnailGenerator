@@ -4537,13 +4537,14 @@ if __name__ == '__main__':
     def claude_evaluate_batch():
         """Have Claude evaluate all thumbnails in the current batch as good/bad."""
         import base64
+        import anthropic
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         data = request.get_json() or {}
         video_name = data.get('video_name', '')
 
         # Get all thumbnails from history
-        history = _load_history()
+        history = job_manager.get_history(limit=500)
         thumbs = history.get('thumbnails', [])
         if video_name:
             thumbs = [t for t in thumbs if t.get('video_name', '') == video_name]
