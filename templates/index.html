@@ -5527,7 +5527,7 @@
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    const msg = `${data.bad} bad / ${data.okay} okay`;
+                    const msg = `${data.okay} above / ${data.bad} below avg`;
                     if (btn) btn.textContent = `🧠 ${msg}`;
                     if (floatBtn) floatBtn.textContent = `🧠 Done: ${msg}`;
                     if (floatStatus) floatStatus.textContent = `Evaluated ${data.evaluated} thumbnails`;
@@ -5566,13 +5566,12 @@
 
                 const badge = document.createElement('div');
                 badge.className = 'claude-eval-badge';
-                if (verdict.verdict === 'bad') {
+                if (verdict.verdict === 'below' || verdict.verdict === 'bad') {
                     badge.style.cssText = 'background:#4a0000;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
-                    badge.textContent = '🧠 Claude: 👎 ' + verdict.reason;
-                    card.classList.add('downvoted');
+                    badge.textContent = '🧠 Below avg: ' + verdict.reason;
                 } else {
                     badge.style.cssText = 'background:#052e16;color:#4ade80;border:1px solid #166534;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
-                    badge.textContent = '🧠 Claude: 👍 ' + verdict.reason;
+                    badge.textContent = '🧠 Above avg: ' + verdict.reason;
                 }
                 // Insert after image, before actions
                 const actions = card.querySelector('.thumbnail-actions') || card.querySelector('.model-card-footer');

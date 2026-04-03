@@ -4580,27 +4580,26 @@ if __name__ == '__main__':
                         {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_data}},
                         {"type": "text", "text": """You're evaluating a YouTube thumbnail for the Species channel (premium AI safety content, dark/ominous aesthetic).
 
-Be BRUTALLY honest. Most AI-generated thumbnails are mediocre. Only about 5-10% are actually good enough to use.
+Is this thumbnail above or below average compared to professional YouTube thumbnails in the science/tech space?
 
-Rate this: would you STOP SCROLLING on YouTube to click this? Be harsh.
+Judge the actual image quality, composition, and visual impact — not the layout type. A split-screen can be above average if well-executed.
 
-BAD means ANY of these: generic/boring composition, looks AI-generated, cluttered, no clear focal point at 320px, split-screen that looks like every other split-screen, stock-photo energy, subject doesn't fill the frame, weak colors, no emotional hook, would blend into a YouTube feed.
+ABOVE: has a clear focal point, bold colors, reads well at small size, creates visual interest
+BELOW: cluttered, weak composition, no clear subject, forgettable, or ugly
 
-GOOD means ALL of these: instantly eye-catching, bold single focal point, reads clearly at tiny size, creates genuine curiosity or emotion, feels premium not cheap, would stand out in a YouTube feed.
-
-Most thumbnails are BAD. Be honest. Reply EXACTLY:
-BAD: [reason]
+Aim for roughly 50/50 split — half above, half below. Reply EXACTLY:
+ABOVE: [one-sentence reason]
 or
-GOOD: [reason]"""}
+BELOW: [one-sentence reason]"""}
                     ]}]
                 )
                 verdict_text = resp.content[0].text.strip()
-                is_bad = verdict_text.upper().startswith('BAD')
+                is_below = verdict_text.upper().startswith('BELOW') or verdict_text.upper().startswith('BAD')
                 return {
                     "file_path": thumb['file_path'],
                     "concept_name": thumb.get('concept_name', ''),
                     "layout": thumb.get('layout', ''),
-                    "verdict": "bad" if is_bad else "good",
+                    "verdict": "below" if is_below else "above",
                     "reason": verdict_text.split(':', 1)[1].strip() if ':' in verdict_text else verdict_text,
                 }
             except Exception as e:
@@ -4641,8 +4640,8 @@ GOOD: [reason]"""}
         with open(eval_file, 'w') as f:
             json.dump(existing, f, indent=2)
 
-        bad_count = sum(1 for r in results if r['verdict'] == 'bad')
-        okay_count = sum(1 for r in results if r['verdict'] == 'good')
+        bad_count = sum(1 for r in results if r['verdict'] == 'below')
+        okay_count = sum(1 for r in results if r['verdict'] == 'above')
 
         return jsonify({
             "success": True,
