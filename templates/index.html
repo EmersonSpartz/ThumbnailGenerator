@@ -313,33 +313,10 @@
             color: #ff0000;
             background: rgba(0,0,0,0.8);
         }
-        .quick-downvote {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            border: none;
-            color: #888;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            z-index: 10;
-            line-height: 1;
-        }
-        .quick-downvote:hover {
-            background: rgba(0,0,0,0.8);
-            color: #ff4444;
-            transform: scale(1.15);
-        }
         .quick-downvote.downvoted {
-            color: #ff4444;
-            background: rgba(180,0,0,0.8);
+            color: #ff4444 !important;
+            background: #4a0000 !important;
+            border-color: #ff4444 !important;
         }
         .thumbnail-card.downvoted {
             opacity: 0.3;
@@ -5322,7 +5299,6 @@
             const displayTitle = String(Array.isArray(rawTitle) ? rawTitle[0] || '' : rawTitle);
             card.innerHTML = `
                 <div style="position:relative;">
-                    <button class="quick-downvote" title="Bad thumbnail (downvote)">👎</button>
                     <button class="quick-fav${isFav ? ' favorited' : ''}" title="Favorite (one click)">${isFav ? '♥' : '♡'}</button>
                     <img src="${data._img_prefix || '/output/'}${data.file_path}" alt="${data.concept_name || 'Thumbnail'}"
                          onerror="if(!this.dataset.retries){this.dataset.retries='0';}if(+this.dataset.retries<3){this.dataset.retries=+this.dataset.retries+1;setTimeout(()=>{this.src=this.src.split('?')[0]+'?r='+Date.now()},2000);}else{this.closest('.thumbnail-card').style.display='none';}">
@@ -5337,6 +5313,7 @@
                 </div>
                 ${data.prompt ? `<div class="yt-prompt" title="${data.prompt.replace(/"/g, '&quot;')}">${data.prompt}</div>` : ''}
                 <div class="thumbnail-actions">
+                    <button class="btn btn-secondary quick-downvote" title="Bad thumbnail" style="background:#1a0000;color:#f87171;border-color:#7f1d1d;padding:4px 10px;">👎 Bad</button>
                     <button class="btn btn-primary more-btn" title="Generate 5 more like this instantly">+5 More</button>
                     <button class="btn btn-secondary variations-btn" title="Variation options">Options</button>
                     <button class="btn btn-secondary refine-btn" title="AI diagnoses weakness and generates improved version" style="background:#7c3aed;color:white;">Refine</button>
@@ -6183,10 +6160,10 @@
                             const thumbJson = JSON.stringify(data).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                             const isFavModel = favoritedPaths.has(data.file_path);
                             modelCard.innerHTML = `
-                                <button class="quick-downvote" title="Bad thumbnail" onclick="event.stopPropagation(); quickDownvoteFromBtn(this, ${thumbJson})">👎</button>
                                 <button class="quick-fav${isFavModel ? ' favorited' : ''}" title="Favorite" onclick="event.stopPropagation(); quickFavFromBtn(this, ${thumbJson})">${isFavModel ? '♥' : '♡'}</button>
                                 <img src="/output/${data.file_path}" alt="${data.concept_name}">
                                 <div class="model-card-footer">
+                                    <button class="quick-downvote" title="Bad" onclick="event.stopPropagation(); quickDownvoteFromBtn(this, ${thumbJson})" style="background:#1a0000;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;">👎</button>
                                     <span class="model-name">${data.model}</span>
                                     <button class="model-vote-btn" onclick="voteForModel('${data.model}', '${data.concept_index}')">👍 Best</button>
                                 </div>
@@ -6397,10 +6374,10 @@
 
                             html += `
                                 <div class="model-card" data-thumbnail="${thumbData}">
-                                    <button class="quick-downvote" title="Bad thumbnail" onclick="event.stopPropagation(); quickDownvoteFromCard(this)">👎</button>
                                     <button class="quick-fav" title="Favorite" onclick="event.stopPropagation(); quickFavFromCard(this)">♡</button>
                                     <img src="/output/${modelData.file_path}" alt="${escapeHtml(concept.concept_name)}" onclick="openLightboxFromHistory(this)" style="cursor:zoom-in;" onerror="this.parentElement.innerHTML='<div style=\\'aspect-ratio:16/9;background:#1a0000;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px;\\'>Image not found</div><div class=\\'model-card-footer\\'><span class=\\'model-name\\'>${modelName}</span></div>'">
                                     <div class="model-card-footer">
+                                        <button class="quick-downvote" title="Bad" onclick="event.stopPropagation(); quickDownvoteFromCard(this)" style="background:#1a0000;color:#f87171;border:1px solid #7f1d1d;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;">👎</button>
                                         <span class="model-name">${modelName}</span>
                                     </div>
                                 </div>
