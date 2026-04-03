@@ -5581,12 +5581,17 @@
             });
         }
 
-        // Load existing Claude evaluations on page load
-        fetch('/api/claude-evaluations').then(r => r.json()).then(data => {
-            if (data.evaluations && data.evaluations.length > 0) {
-                showClaudeVerdicts(data.evaluations);
-            }
-        }).catch(() => {});
+        // Load existing Claude evaluations on page load (delay to let cards render first)
+        setTimeout(() => {
+            fetch('/api/claude-evaluations').then(r => r.json()).then(data => {
+                if (data.evaluations && data.evaluations.length > 0) {
+                    showClaudeVerdicts(data.evaluations);
+                    // Retry after more cards may have loaded
+                    setTimeout(() => showClaudeVerdicts(data.evaluations), 3000);
+                    setTimeout(() => showClaudeVerdicts(data.evaluations), 8000);
+                }
+            }).catch(() => {});
+        }, 2000);
 
         async function quickDownvoteFromBtn(btn, data) {
             const card = btn.closest('.model-card') || btn.closest('.thumbnail-card');
