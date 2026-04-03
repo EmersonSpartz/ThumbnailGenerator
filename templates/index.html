@@ -5514,8 +5514,11 @@
         // Global helpers for inline onclick on model cards
         async function runClaudeEvaluation() {
             const btn = document.getElementById('claude-evaluate-btn');
-            btn.disabled = true;
-            btn.textContent = '🧠 Evaluating...';
+            const floatBtn = document.getElementById('claude-float-btn');
+            const floatStatus = document.getElementById('claude-float-status');
+            if (btn) { btn.disabled = true; btn.textContent = '🧠 Evaluating...'; }
+            if (floatBtn) { floatBtn.disabled = true; floatBtn.textContent = '🧠 Evaluating...'; }
+            if (floatStatus) floatStatus.textContent = 'Sending thumbnails to Claude...';
             try {
                 const resp = await fetch('/api/claude-evaluate-batch', {
                     method: 'POST',
@@ -5524,16 +5527,24 @@
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    btn.textContent = `🧠 ${data.bad} bad / ${data.okay} okay`;
-                    // Overlay verdicts on cards
+                    const msg = `${data.bad} bad / ${data.okay} okay`;
+                    if (btn) btn.textContent = `🧠 ${msg}`;
+                    if (floatBtn) floatBtn.textContent = `🧠 Done: ${msg}`;
+                    if (floatStatus) floatStatus.textContent = `Evaluated ${data.evaluated} thumbnails`;
                     showClaudeVerdicts(data.results);
                 } else {
-                    btn.textContent = '🧠 ' + (data.error || 'Failed');
+                    const err = data.error || 'Failed';
+                    if (btn) btn.textContent = '🧠 ' + err;
+                    if (floatBtn) floatBtn.textContent = '🧠 ' + err;
                 }
             } catch(e) {
-                btn.textContent = '🧠 Error: ' + e.message;
+                if (btn) btn.textContent = '🧠 Error';
+                if (floatBtn) floatBtn.textContent = '🧠 Error: ' + e.message;
             }
-            setTimeout(() => { btn.disabled = false; }, 3000);
+            setTimeout(() => {
+                if (btn) { btn.disabled = false; }
+                if (floatBtn) { floatBtn.disabled = false; floatBtn.textContent = '🧠 Claude: Rate These Thumbnails'; }
+            }, 5000);
         }
 
         function showClaudeVerdicts(results) {
@@ -7351,5 +7362,13 @@
     };
 
     </script>
+
+    <!-- Floating Claude evaluate button - always visible -->
+    <div id="claude-float-bar" style="position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,0.95);border-top:1px solid #333;padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:9999;">
+        <button onclick="runClaudeEvaluation()" id="claude-float-btn" style="background:#7c3aed;color:white;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">
+            🧠 Claude: Rate These Thumbnails
+        </button>
+        <span id="claude-float-status" style="color:#888;font-size:12px;"></span>
+    </div>
 </body>
 </html>
