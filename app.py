@@ -4533,6 +4533,131 @@ if __name__ == '__main__':
             "images_today": pairs_done * 2,  # 2 images per pair
         })
 
+    @app.route('/api/claude-evaluate-batch', methods=['POST'])
+    def claude_evaluate_batch():
+        """Have Claude evaluate all thumbnails in the current batch as good/bad."""
+        import base64
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        data = request.get_json() or {}
+        video_name = data.get('video_name', '')
+
+        # Get all thumbnails from history
+        history = _load_history()
+        thumbs = history.get('thumbnails', [])
+        if video_name:
+            thumbs = [t for t in thumbs if t.get('video_name', '') == video_name]
+
+        # Filter to ones with images on disk
+        evaluatable = []
+        for t in thumbs:
+            fp = t.get('file_path', '')
+            full = settings.output_dir / fp
+            if full.exists() and fp:
+                evaluatable.append({**t, 'full_path': str(full)})
+
+        if not evaluatable:
+            return jsonify({"success": False, "error": "No thumbnails with images found"})
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+        def evaluate_one(thumb):
+            """Ask Claude: is this a bad thumbnail? Returns dict with verdict."""
+            try:
+                img_path = thumb['full_path']
+                with open(img_path, 'rb') as f:
+                    img_data = base64.b64encode(f.read()).decode()
+
+                ext = img_path.rsplit('.', 1)[-1].lower()
+                media_type = 'image/jpeg' if ext in ('jpg', 'jpeg') else 'image/png'
+
+                resp = client.messages.create(
+                    model="claude-sonnet-4-6",
+                    max_tokens=300,
+                    timeout=15.0,
+                    messages=[{"role": "user", "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_data}},
+                        {"type": "text", "text": """You're evaluating a YouTube thumbnail for the Species channel (premium AI safety content, dark/ominous aesthetic).
+
+Rate this thumbnail. Is it BAD (would never use) or OKAY (worth considering)?
+
+BAD means: generic, boring, cluttered, stock-photo-like, wrong aesthetic, unreadable at 320px, no clear focal point, or just ugly.
+OKAY means: has at least one compelling visual element, readable composition, fits the dark/ominous Species aesthetic.
+
+Reply with EXACTLY one line:
+BAD: [one-sentence reason]
+or
+OKAY: [one-sentence reason]"""}
+                    ]}]
+                )
+                verdict_text = resp.content[0].text.strip()
+                is_bad = verdict_text.upper().startswith('BAD')
+                return {
+                    "file_path": thumb['file_path'],
+                    "concept_name": thumb.get('concept_name', ''),
+                    "layout": thumb.get('layout', ''),
+                    "verdict": "bad" if is_bad else "okay",
+                    "reason": verdict_text.split(':', 1)[1].strip() if ':' in verdict_text else verdict_text,
+                }
+            except Exception as e:
+                return {
+                    "file_path": thumb.get('file_path', ''),
+                    "concept_name": thumb.get('concept_name', ''),
+                    "verdict": "error",
+                    "reason": str(e)[:80],
+                }
+
+        # Run evaluations in parallel (5 at a time)
+        results = []
+        with ThreadPoolExecutor(max_workers=5) as tex:
+            futures = {tex.submit(evaluate_one, t): t for t in evaluatable}
+            for fut in as_completed(futures):
+                results.append(fut.result())
+
+        # Save results
+        eval_file = settings.data_dir / 'claude_evaluations.json'
+        try:
+            with open(eval_file) as f:
+                existing = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            existing = {"evaluations": []}
+
+        # Merge (deduplicate by file_path)
+        existing_paths = {e['file_path'] for e in existing['evaluations']}
+        for r in results:
+            if r['file_path'] not in existing_paths:
+                existing['evaluations'].append(r)
+            else:
+                # Update existing
+                for i, e in enumerate(existing['evaluations']):
+                    if e['file_path'] == r['file_path']:
+                        existing['evaluations'][i] = r
+                        break
+
+        with open(eval_file, 'w') as f:
+            json.dump(existing, f, indent=2)
+
+        bad_count = sum(1 for r in results if r['verdict'] == 'bad')
+        okay_count = sum(1 for r in results if r['verdict'] == 'okay')
+
+        return jsonify({
+            "success": True,
+            "evaluated": len(results),
+            "bad": bad_count,
+            "okay": okay_count,
+            "results": results,
+        })
+
+    @app.route('/api/claude-evaluations')
+    def get_claude_evaluations():
+        """Get Claude's thumbnail evaluations."""
+        eval_file = settings.data_dir / 'claude_evaluations.json'
+        try:
+            with open(eval_file) as f:
+                return jsonify(json.load(f))
+        except (FileNotFoundError, json.JSONDecodeError):
+            return jsonify({"evaluations": []})
+
     @app.route('/api/downvote', methods=['POST'])
     def save_downvote():
         """Save a downvote (bad thumbnail signal) for template learning."""

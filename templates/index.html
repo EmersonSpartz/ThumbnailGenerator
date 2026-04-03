@@ -1610,6 +1610,7 @@
                     </details>
 
                     <button class="btn btn-primary" id="generate-btn" style="margin-top: 10px;">Generate Thumbnails</button>
+                    <button class="btn btn-secondary" id="claude-evaluate-btn" onclick="runClaudeEvaluation()" style="margin-top: 10px; margin-left: 8px; background: #1a1a2e; color: #7c3aed; border-color: #7c3aed;">🧠 Claude: Rate These</button>
                 </div>
             </div>
 
@@ -5511,6 +5512,71 @@
         // QUICK FAVORITE (one-click, no modal)
         // =====================================================
         // Global helpers for inline onclick on model cards
+        async function runClaudeEvaluation() {
+            const btn = document.getElementById('claude-evaluate-btn');
+            btn.disabled = true;
+            btn.textContent = '🧠 Evaluating...';
+            try {
+                const resp = await fetch('/api/claude-evaluate-batch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({video_name: getVideoParam()})
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    btn.textContent = `🧠 ${data.bad} bad / ${data.okay} okay`;
+                    // Overlay verdicts on cards
+                    showClaudeVerdicts(data.results);
+                } else {
+                    btn.textContent = '🧠 ' + (data.error || 'Failed');
+                }
+            } catch(e) {
+                btn.textContent = '🧠 Error: ' + e.message;
+            }
+            setTimeout(() => { btn.disabled = false; }, 3000);
+        }
+
+        function showClaudeVerdicts(results) {
+            const verdictMap = {};
+            results.forEach(r => { verdictMap[r.file_path] = r; });
+
+            // Find all cards and overlay verdict
+            document.querySelectorAll('.thumbnail-card, .model-card').forEach(card => {
+                const img = card.querySelector('img');
+                if (!img) return;
+                const src = img.getAttribute('src') || '';
+                // Match by file_path (strip /output/ prefix)
+                const fp = src.replace(/^\/output\//, '').split('?')[0];
+                const verdict = verdictMap[fp];
+                if (!verdict) return;
+
+                // Remove existing verdict overlay
+                card.querySelector('.claude-eval-badge')?.remove();
+
+                const badge = document.createElement('div');
+                badge.className = 'claude-eval-badge';
+                if (verdict.verdict === 'bad') {
+                    badge.style.cssText = 'background:#4a0000;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
+                    badge.textContent = '🧠 Claude: 👎 ' + verdict.reason;
+                    card.classList.add('downvoted');
+                } else {
+                    badge.style.cssText = 'background:#052e16;color:#4ade80;border:1px solid #166534;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
+                    badge.textContent = '🧠 Claude: 👍 ' + verdict.reason;
+                }
+                // Insert after image, before actions
+                const actions = card.querySelector('.thumbnail-actions') || card.querySelector('.model-card-footer');
+                if (actions) actions.parentNode.insertBefore(badge, actions);
+                else card.appendChild(badge);
+            });
+        }
+
+        // Load existing Claude evaluations on page load
+        fetch('/api/claude-evaluations').then(r => r.json()).then(data => {
+            if (data.evaluations && data.evaluations.length > 0) {
+                showClaudeVerdicts(data.evaluations);
+            }
+        }).catch(() => {});
+
         async function quickDownvoteFromBtn(btn, data) {
             const card = btn.closest('.model-card') || btn.closest('.thumbnail-card');
             const isDown = btn.classList.toggle('downvoted');
