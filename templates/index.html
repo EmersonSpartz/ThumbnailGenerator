@@ -5534,6 +5534,42 @@
         // QUICK FAVORITE (one-click, no modal)
         // =====================================================
         // Global helpers for inline onclick on model cards
+        async function quickDownvoteFromBtn(btn, data) {
+            const card = btn.closest('.model-card') || btn.closest('.thumbnail-card');
+            const isDown = btn.classList.toggle('downvoted');
+            if (card) card.classList.toggle('downvoted', isDown);
+            if (isDown && card) {
+                const favBtn = card.querySelector('.quick-fav');
+                if (favBtn) { favBtn.classList.remove('favorited'); favBtn.textContent = '♡'; }
+                card.classList.remove('favorited');
+            }
+            try {
+                await fetch('/api/downvote', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        file_path: data.file_path || '',
+                        concept_name: data.concept_name || '',
+                        prompt: data.prompt || '',
+                        layout: data.template || data.layout || '',
+                        category: data.category || '',
+                        video_name: typeof getVideoParam === 'function' ? getVideoParam() : '',
+                        downvoted: isDown,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+            } catch(e) { console.error('Downvote failed:', e); }
+        }
+
+        function quickDownvoteFromCard(btn) {
+            const card = btn.closest('.model-card');
+            if (!card || !card.dataset.thumbnail) return;
+            try {
+                const data = JSON.parse(card.dataset.thumbnail.replace(/&quot;/g, '"'));
+                quickDownvoteFromBtn(btn, data);
+            } catch(e) { console.error('Failed to parse thumbnail data for downvote:', e); }
+        }
+
         async function quickFavFromBtn(btn, data) {
             if (btn.classList.contains('favorited')) return;
             btn.classList.add('favorited');
@@ -6147,6 +6183,7 @@
                             const thumbJson = JSON.stringify(data).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
                             const isFavModel = favoritedPaths.has(data.file_path);
                             modelCard.innerHTML = `
+                                <button class="quick-downvote" title="Bad thumbnail" onclick="event.stopPropagation(); quickDownvoteFromBtn(this, ${thumbJson})">👎</button>
                                 <button class="quick-fav${isFavModel ? ' favorited' : ''}" title="Favorite" onclick="event.stopPropagation(); quickFavFromBtn(this, ${thumbJson})">${isFavModel ? '♥' : '♡'}</button>
                                 <img src="/output/${data.file_path}" alt="${data.concept_name}">
                                 <div class="model-card-footer">
@@ -6360,6 +6397,7 @@
 
                             html += `
                                 <div class="model-card" data-thumbnail="${thumbData}">
+                                    <button class="quick-downvote" title="Bad thumbnail" onclick="event.stopPropagation(); quickDownvoteFromCard(this)">👎</button>
                                     <button class="quick-fav" title="Favorite" onclick="event.stopPropagation(); quickFavFromCard(this)">♡</button>
                                     <img src="/output/${modelData.file_path}" alt="${escapeHtml(concept.concept_name)}" onclick="openLightboxFromHistory(this)" style="cursor:zoom-in;" onerror="this.parentElement.innerHTML='<div style=\\'aspect-ratio:16/9;background:#1a0000;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px;\\'>Image not found</div><div class=\\'model-card-footer\\'><span class=\\'model-name\\'>${modelName}</span></div>'">
                                     <div class="model-card-footer">
