@@ -5566,12 +5566,14 @@
 
                 const badge = document.createElement('div');
                 badge.className = 'claude-eval-badge';
+                const score = verdict.score || 0;
                 if (verdict.verdict === 'below' || verdict.verdict === 'bad') {
-                    badge.style.cssText = 'background:#4a0000;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
-                    badge.textContent = '🧠 Below avg: ' + verdict.reason;
+                    badge.style.cssText = 'background:#4a0000;color:#f87171;border:1px solid #7f1d1d;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;font-weight:700;';
+                    badge.textContent = `🧠 ${score}/10 — Bottom 25%`;
+                    card.classList.add('downvoted');
                 } else {
-                    badge.style.cssText = 'background:#052e16;color:#4ade80;border:1px solid #166534;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
-                    badge.textContent = '🧠 Above avg: ' + verdict.reason;
+                    badge.style.cssText = 'background:#0a0a0a;color:#888;border:1px solid #333;padding:3px 8px;font-size:11px;border-radius:4px;margin:4px 8px;';
+                    badge.textContent = `🧠 ${score}/10`;
                 }
                 // Insert after image, before actions
                 const actions = card.querySelector('.thumbnail-actions') || card.querySelector('.model-card-footer');

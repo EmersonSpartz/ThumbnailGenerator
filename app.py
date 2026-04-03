@@ -4580,27 +4580,28 @@ if __name__ == '__main__':
                         {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_data}},
                         {"type": "text", "text": """You're evaluating a YouTube thumbnail for the Species channel (premium AI safety content, dark/ominous aesthetic).
 
-Is this thumbnail above or below average compared to professional YouTube thumbnails in the science/tech space?
+Rate this YouTube thumbnail on a scale of 1-10 for visual impact, composition, and click-worthiness.
 
-Judge the actual image quality, composition, and visual impact — not the layout type. A split-screen can be above average if well-executed.
+1-3: Bad — weak composition, cluttered, no focal point, forgettable
+4-5: Below average — some issues but not terrible
+6-7: Above average — decent composition, clear subject, some visual appeal
+8-10: Strong — bold, eye-catching, would stop scrolling
 
-ABOVE: has a clear focal point, bold colors, reads well at small size, creates visual interest
-BELOW: cluttered, weak composition, no clear subject, forgettable, or ugly
-
-Aim for roughly 50/50 split — half above, half below. Reply EXACTLY:
-ABOVE: [one-sentence reason]
-or
-BELOW: [one-sentence reason]"""}
+Reply with JUST the number (1-10), nothing else."""}
                     ]}]
                 )
                 verdict_text = resp.content[0].text.strip()
-                is_below = verdict_text.upper().startswith('BELOW') or verdict_text.upper().startswith('BAD')
+                import re as _re
+                m = _re.search(r'(\d+)', verdict_text)
+                score = int(m.group(1)) if m else 5
+                score = max(1, min(10, score))
                 return {
                     "file_path": thumb['file_path'],
                     "concept_name": thumb.get('concept_name', ''),
                     "layout": thumb.get('layout', ''),
-                    "verdict": "below" if is_below else "above",
-                    "reason": verdict_text.split(':', 1)[1].strip() if ':' in verdict_text else verdict_text,
+                    "score": score,
+                    "verdict": "pending",  # Will be set after all scores are in
+                    "reason": f"Score: {score}/10",
                 }
             except Exception as e:
                 return {
@@ -4617,28 +4618,25 @@ BELOW: [one-sentence reason]"""}
             for fut in as_completed(futures):
                 results.append(fut.result())
 
-        # Save results
-        eval_file = settings.data_dir / 'claude_evaluations.json'
-        try:
-            with open(eval_file) as f:
-                existing = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            existing = {"evaluations": []}
-
-        # Merge (deduplicate by file_path)
-        existing_paths = {e['file_path'] for e in existing['evaluations']}
+        # Compute bottom 25% from scores
+        scored = [r for r in results if r.get('score')]
+        scored.sort(key=lambda x: x['score'])
+        cutoff_idx = max(1, len(scored) // 4)
+        cutoff_score = scored[cutoff_idx - 1]['score'] if scored else 5
         for r in results:
-            if r['file_path'] not in existing_paths:
-                existing['evaluations'].append(r)
+            s = r.get('score', 5)
+            if s <= cutoff_score and results.index(r) < cutoff_idx:
+                r['verdict'] = 'below'
+                r['reason'] = f"Bottom 25% — score {s}/10"
             else:
-                # Update existing
-                for i, e in enumerate(existing['evaluations']):
-                    if e['file_path'] == r['file_path']:
-                        existing['evaluations'][i] = r
-                        break
+                r['verdict'] = 'above'
+                r['reason'] = f"Score {s}/10"
+
+        # Save results (replace all)
+        eval_file = settings.data_dir / 'claude_evaluations.json'
 
         with open(eval_file, 'w') as f:
-            json.dump(existing, f, indent=2)
+            json.dump({"evaluations": results}, f, indent=2)
 
         bad_count = sum(1 for r in results if r['verdict'] == 'below')
         okay_count = sum(1 for r in results if r['verdict'] == 'above')
