@@ -1965,7 +1965,7 @@
                         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
                             <button class="preset-btn" onclick="loadPreset('starter')" style="padding:5px 10px; background:#1a2a1a; border:1px solid #4ade80; border-radius:16px; color:#4ade80; cursor:pointer; font-size:11px; white-space:nowrap;">Load Split-Screen (51)</button>
                             <button class="preset-btn" onclick="addMoreTemplates()" id="more-templates-btn" style="padding:5px 10px; background:#1a1a2e; border:1px solid #6366f1; border-radius:16px; color:#6366f1; cursor:pointer; font-size:11px; white-space:nowrap;">+ A-Tier Layouts</button>
-                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 71</button>
+                            <button class="preset-btn" onclick="loadPreset('full')" style="padding:5px 10px; background:#2a1a1a; border:1px solid #f87171; border-radius:16px; color:#f87171; cursor:pointer; font-size:11px; white-space:nowrap;">Load All 101</button>
                             <button class="preset-btn" onclick="loadPreset('clear')" style="padding:5px 10px; background:#222; border:1px solid #555; border-radius:16px; color:#888; cursor:pointer; font-size:11px; white-space:nowrap;">Clear All</button>
                         </div>
                     </div>
@@ -3990,6 +3990,37 @@
             'Smoke / Fog Forming Shape \u2014 Smoke or mist forming a recognizable shape \u2014 face, skull, symbol. Not solid but unmistakably there. Ethereal and ominous.',
             'Glowing Eyes in Darkness \u2014 Just glowing eyes visible in total darkness \u2014 watching, predatory. Rest of entity invisible. Primal fear.',
             'Crowd with One Different \u2014 Uniform mass of identical things with ONE visibly different \u2014 glowing, different color, facing wrong way. Outlier is focal point.',
+            // === EXPERIMENTAL (30): New structural templates being tested ===
+            'Dripping / Oozing Down \u2014 The main subject or substance drips heavily from the top of the frame, forming thick rivulets and pooling at the bottom. Use a dark or contrasting background to make the drips visually prominent.',
+            'Hand Reaching for Object \u2014 A dramatic close-up of a hand stretching toward a glowing or significant object just out of reach, centered in the frame. The gap between fingertips and object is the focal tension.',
+            'Domino Chain Reaction \u2014 A sequence of domino-like elements arranged in a curving line from foreground to background, with the first ones already falling and the last ones still standing. Use topic-relevant objects rather than literal dominoes.',
+            'X-Ray / See-Through \u2014 Show an object or figure where the outer surface is partially transparent or cut away, revealing an unexpected internal structure beneath. The interior should contrast with the exterior.',
+            'Giant Hand Controlling from Above \u2014 A massive hand enters from the top of the frame, manipulating or positioning a smaller subject below. The scale difference should be extreme. Dramatic top-down lighting.',
+            'Sinking / Submerging \u2014 The main subject is captured mid-submersion, half above and half below a liquid surface. The waterline cuts across the middle of the frame. Above is clear and lit; below is murky and ominous.',
+            'Vortex / Spiral Pull \u2014 Everything in the frame spirals inward toward a central point, as if being sucked into a whirlpool or black hole. The edges are relatively intact while the center is a compressed point of intensity.',
+            'Shadow Doesn\'t Match \u2014 A subject stands in clear light, but its shadow on the wall or ground is a completely different shape \u2014 revealing a hidden nature or consequence. Keep the composition simple so the shadow contrast reads instantly.',
+            'Hourglass / Timer Frame \u2014 Compose the image within or around an hourglass shape, with one concept in the top bulb and a contrasting concept in the bottom, connected by a narrow stream of particles flowing between them.',
+            'Grid of Repeating Elements \u2014 Fill the frame with a tight grid or array of identical small objects, creating a pattern \u2014 except one element in the grid is conspicuously different, wrong, or breaking formation.',
+            'Object as Monument \u2014 A single topic-relevant object placed on a pedestal or platform, shot from a low angle to make it look monumental and imposing against a dramatic sky. Lit like a statue or memorial.',
+            'Watched by Many Eyes \u2014 A subject in the center of the frame is surrounded by dozens of eyes or watching faces emerging from the darkness. The subject is lit; the watchers are partially obscured. Claustrophobic surveillance pressure.',
+            'Lit Fuse / Countdown \u2014 A topic-relevant object styled as a bomb or explosive with a visibly burning fuse that\'s almost reached the end. The fuse trail creates a leading line. The moment is frozen just before detonation.',
+            'Peeling Back a Layer \u2014 The surface of the image or main subject peels back like wallpaper or skin, revealing a completely different reality underneath. The top layer and revealed layer should have starkly different colors and textures.',
+            'Crosshairs / Targeting Reticle \u2014 The main subject is framed within a targeting reticle, scope view, or crosshairs overlay, as if being aimed at or selected. The subject is in sharp focus at the center.',
+            'Wall of Something Approaching \u2014 A massive wave, wall, or avalanche of topic-relevant material surges toward the camera. A tiny figure or object in the foreground faces the oncoming wall, emphasizing impossible scale.',
+            'Hanging by a Thread \u2014 A heavy or significant object dangles from a single thin thread from the top of the frame, hovering over a dangerous drop or void below. The thread should be visibly fraying or nearly snapped.',
+            'Captured in a Jar / Bottle \u2014 The main subject is miniaturized and trapped inside a glass jar or container, viewed from eye level. The glass distorts and refracts the subject slightly. Sealed, suggesting capture.',
+            'Roots / Network Underneath \u2014 The surface shows something simple, but beneath the ground line an elaborate root system or network spreads across the lower half. The underground portion should be far more complex than what\'s visible above.',
+            'Selective Color Pop \u2014 The entire image is desaturated to near-monochrome EXCEPT for one key object that remains in vivid, saturated color. Everything else is muted grays to maximize the visual pop.',
+            'Fork / Diverging Paths \u2014 Two paths diverge from a single point in the foreground, leading to dramatically different destinations. One path looks inviting, the other ominous. A figure sits at the decision point.',
+            'Stacked / Layered Cross-Section \u2014 The subject is shown as horizontal stacked layers or strata, with each layer representing a different stage or component. At least 4-5 distinct layers visible, each with different colors and textures.',
+            'Magnifying Glass Reveal \u2014 A large magnifying glass dominates the center of the frame. Through it we see a drastically different or enlarged version of what\'s behind it. The circular lens creates a natural focal point.',
+            'Bite Taken / Chunk Missing \u2014 A large topic-relevant object has a massive bite mark or chunk ripped out of it, exposing its interior. The missing piece implies something enormous consumed part of the subject.',
+            'Digital Glitch / Distortion \u2014 The main subject appears to be glitching, with scan lines, RGB color separation, and pixel displacement fragmenting the image. Still recognizable but visually breaking apart.',
+            'Single Spotlight in Void \u2014 A single harsh spotlight beam cuts through complete darkness, illuminating only the subject in a tight circle of light. The rest of the frame is pure black void.',
+            'Wrapped / Bound / Tangled \u2014 The main subject is wrapped, entangled, or bound by chains, vines, cables, or constraining material. The binding material is visibly straining as the subject pushes against it.',
+            'Frozen Moment Before Impact \u2014 Two objects or forces captured milliseconds before collision, with energy crackling between them. The gap between the two elements is tiny. Freeze the action at maximum tension.',
+            'Overgrowth / Overtaking \u2014 Something is aggressively growing over, consuming, or overtaking a structure or object. The growth has covered roughly 70% of the subject and is visibly advancing.',
+            'Nesting Layers / Matryoshka \u2014 The subject is shown as nested containers opening to reveal smaller versions or different things inside. At least 3 visible layers, each opened to expose the next.',
         ];
 
         const DEFAULT_COUNT = 51;

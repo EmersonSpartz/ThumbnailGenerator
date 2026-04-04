@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "dripping_from_above",
+      "name": "Dripping / Oozing Down",
+      "instruction": "The main subject or substance drips heavily from the top of the frame, forming thick rivulets and pooling at the bottom. The dripping material should relate to the video topic, creating a sense of something leaking, overflowing, or being poured out. Use a dark or contrasting background to make the drips visually prominent."
+    },
+    {
+      "id": "hand_reaching_for_object",
+      "name": "Hand Reaching for Object",
+      "instruction": "A dramatic close-up of a hand stretching toward a glowing or significant object just out of reach, centered in the frame. The gap between fingertips and object is the focal tension. Use dramatic lighting from the object itself to illuminate the hand, with the background falling to darkness."
+    },
+    {
+      "id": "domino_chain",
+      "name": "Domino Chain Reaction",
+      "instruction": "A sequence of domino-like elements arranged in a curving line from foreground to background, with the first ones already falling and the last ones still standing. The elements should be topic-relevant objects rather than literal dominoes. Use shallow depth of field to emphasize the chain reaction moment."
+    },
+    {
+      "id": "xray_see_through",
+      "name": "X-Ray / See-Through",
+      "instruction": "Show an object or figure where the outer surface is partially transparent or cut away, revealing an unexpected internal structure beneath. The interior should contrast with the exterior \u2014 mechanical guts inside organic shells, or vice versa. Use a clinical blue-white glow for the see-through portions."
+    },
+    {
+      "id": "puppet_hand_from_above",
+      "name": "Giant Hand Controlling from Above",
+      "instruction": "A massive hand enters from the top of the frame, manipulating or positioning a smaller subject below like a chess piece or toy. The scale difference should be extreme \u2014 the hand takes up the top third, the subject sits in the lower center. Dramatic top-down lighting casts the hand's shadow over everything."
+    },
+    {
+      "id": "sinking_submerging",
+      "name": "Sinking / Submerging",
+      "instruction": "The main subject is captured mid-submersion, half above and half below a liquid surface. The waterline cuts across the middle of the frame. Above the surface is clear and lit; below is murky, distorted, and ominous. The subject appears to be sinking rather than floating."
+    },
+    {
+      "id": "vortex_spiral",
+      "name": "Vortex / Spiral Pull",
+      "instruction": "Everything in the frame spirals inward toward a central point, as if being sucked into a whirlpool or black hole. Objects, particles, and debris orbit and stretch toward the center. The edges of the frame are relatively intact while the center is a compressed point of intensity."
+    },
+    {
+      "id": "shadow_mismatch",
+      "name": "Shadow Doesn't Match",
+      "instruction": "A subject stands in clear light, but its shadow on the wall or ground is a completely different shape \u2014 revealing a hidden nature, alternate identity, or consequence. The subject should be well-lit and centered, with the mismatched shadow large and unmistakable. Keep the composition simple so the shadow contrast reads instantly."
+    },
+    {
+      "id": "hourglass_frame",
+      "name": "Hourglass / Timer Frame",
+      "instruction": "Compose the image within or around an hourglass shape, with one concept in the top bulb and a contrasting concept in the bottom, connected by a narrow stream of particles flowing between them. The hourglass structure itself frames the entire thumbnail. The sense of time running out should be palpable."
+    },
+    {
+      "id": "grid_of_multiples",
+      "name": "Grid of Repeating Elements",
+      "instruction": "Fill the frame with a tight grid or array of identical small objects or faces, creating a pattern \u2014 except one element in the grid is conspicuously different, wrong, or breaking formation. The grid should be at least 4x4. The anomaly should be near the visual center and immediately draw the eye."
+    },
+    {
+      "id": "object_casting_wrong_shadow",
+      "name": "Object as Monument",
+      "instruction": "A single topic-relevant object is placed on a pedestal or platform, shot from a low angle to make it look monumental and imposing against a dramatic sky. The object is lit like a statue or memorial. The low camera angle and empty sky background create a sense of significance and reverence."
+    },
+    {
+      "id": "being_watched_many_eyes",
+      "name": "Watched by Many Eyes",
+      "instruction": "A subject in the center of the frame is surrounded by dozens of eyes or watching faces emerging from the darkness, walls, or background. The subject is lit; the watchers are partially obscured. The composition creates claustrophobic surveillance pressure from all directions converging on the center."
+    },
+    {
+      "id": "fuse_lit_about_to_explode",
+      "name": "Lit Fuse / Countdown",
+      "instruction": "A topic-relevant object styled as a bomb or explosive with a visibly burning fuse that's almost reached the end. The fuse trail creates a leading line through the composition. The flame at the fuse tip glows intensely, and the object sits center-frame against a dark background. The moment is frozen just before detonation."
+    },
+    {
+      "id": "peeling_layer_reveal",
+      "name": "Peeling Back a Layer",
+      "instruction": "The surface of the image or main subject peels back like wallpaper, a sticker, or skin, revealing a completely different reality underneath. One corner or edge curls up dramatically. The top layer and the revealed layer should have starkly different colors and textures to maximize contrast."
+    },
+    {
+      "id": "crosshairs_target",
+      "name": "Crosshairs / Targeting Reticle",
+      "instruction": "The main subject is framed within a targeting reticle, scope view, or crosshairs overlay, as if being aimed at or selected. The edges of the frame should have a vignette or scope-ring effect. The subject is in sharp focus at the center while the targeting graphics add menace and precision."
+    },
+    {
+      "id": "avalanche_wall_approaching",
+      "name": "Wall of Something Approaching",
+      "instruction": "A massive wave, wall, or avalanche of topic-relevant material surges toward the camera from the background, filling the top two-thirds of the frame. A tiny figure or object in the foreground faces the oncoming wall, emphasizing impossible scale. The approaching mass should feel seconds from impact."
+    },
+    {
+      "id": "hanging_by_a_thread",
+      "name": "Hanging by a Thread",
+      "instruction": "A heavy or significant object dangles from a single thin thread, string, or wire from the top of the frame, hovering over a dangerous drop or void below. The thread should be visibly fraying or nearly snapped. Center the composition vertically to emphasize the precarious tension between holding and falling."
+    },
+    {
+      "id": "jar_bottle_contained",
+      "name": "Captured in a Jar / Bottle",
+      "instruction": "The main subject \u2014 no matter how large or abstract \u2014 is miniaturized and trapped inside a glass jar, bottle, or container, which sits on a surface and is viewed from eye level. The glass distorts and refracts the subject slightly. The container should be sealed, suggesting capture and preservation."
+    },
+    {
+      "id": "roots_network_underneath",
+      "name": "Roots / Network Underneath",
+      "instruction": "The surface shows something simple and singular, but beneath the ground line an elaborate root system, network, or web of connections spreads across the lower half of the frame. The underground portion should be far more complex and extensive than what's visible above. Use a cross-section view with a clear soil or surface line."
+    },
+    {
+      "id": "one_color_pop",
+      "name": "Selective Color Pop",
+      "instruction": "The entire image is desaturated to near-monochrome EXCEPT for one key object or element that remains in vivid, saturated color. The colored element is the focal point and should be topic-relevant. Everything else is muted grays to maximize the visual pop of the single colored subject."
+    },
+    {
+      "id": "fork_in_the_road",
+      "name": "Fork / Diverging Paths",
+      "instruction": "Two paths, roads, or corridors diverge from a single point in the foreground, leading to dramatically different destinations or outcomes in the background left and right. One path should look inviting, the other ominous. A figure or object sits at the decision point. Strong one-point perspective enhances the fork."
+    },
+    {
+      "id": "stacked_layers",
+      "name": "Stacked / Layered Cross-Section",
+      "instruction": "The subject is shown as horizontal stacked layers or strata, like a geological cross-section or layered cake, with each layer representing a different stage, version, or component. At least 4-5 distinct layers should be visible, each with different colors and textures. The layers are viewed from a slight angle to show depth."
+    },
+    {
+      "id": "magnifying_glass_reveal",
+      "name": "Magnifying Glass Reveal",
+      "instruction": "A large magnifying glass or lens dominates the center of the frame, and through it we see a drastically different or enlarged version of what's behind it. The area outside the lens is normal; inside the lens reveals hidden truth, fine detail, or an alternate reality. The circular lens creates a natural focal point."
+    },
+    {
+      "id": "eaten_bitten_chunk_missing",
+      "name": "Bite Taken / Chunk Missing",
+      "instruction": "A large topic-relevant object has a massive bite mark or chunk ripped out of it, exposing its interior. The bite should be cartoonishly large and jagged. The missing piece implies something enormous consumed part of the subject. Frame the object prominently with the bite mark facing the viewer."
+    },
+    {
+      "id": "glitch_distortion",
+      "name": "Digital Glitch / Distortion",
+      "instruction": "The main subject appears to be glitching, with horizontal scan lines, RGB color separation, pixel displacement, and data corruption artifacts fragmenting the image. The subject is still recognizable but visually breaking apart in a digital way. The glitch effect is heaviest at the center and creates a sense of instability."
+    },
+    {
+      "id": "spotlight_in_darkness",
+      "name": "Single Spotlight in Void",
+      "instruction": "A single harsh spotlight beam cuts through complete darkness, illuminating only the subject in a tight circle of light on the ground. The rest of the frame is pure black void. The spotlight comes from above at an angle, creating dramatic shadows. The isolation and emptiness around the lit subject create intense focus."
+    },
+    {
+      "id": "wrapped_bound_restrained",
+      "name": "Wrapped / Bound / Tangled",
+      "instruction": "The main subject is wrapped, entangled, or bound by chains, vines, cables, tape, or other constraining material that winds tightly around it. The binding material is visibly straining as the subject pushes against it. The wrapping should cover about 60% of the subject, leaving enough visible to identify what's trapped."
+    },
+    {
+      "id": "before_impact_frozen",
+      "name": "Frozen Moment Before Impact",
+      "instruction": "Two objects or forces are captured in the frame milliseconds before collision, with motion blur and energy crackling between them. The gap between the two elements is tiny \u2014 almost touching. Freeze the action at maximum tension. Debris, sparks, or shockwave distortion around the near-impact point sells the moment."
+    },
+    {
+      "id": "growing_overtaking",
+      "name": "Overgrowth / Overtaking",
+      "instruction": "Something is aggressively growing over, consuming, or overtaking a structure or object \u2014 vines over a building, rust over metal, code over a screen, moss over a statue. The growth has covered roughly 70% of the subject and is visibly advancing. The remaining uncovered portion shows what's being lost."
+    },
+    {
+      "id": "russian_nesting_reveal",
+      "name": "Nesting Layers / Matryoshka",
+      "instruction": "The subject is shown as nested containers opening to reveal smaller versions or different things inside, like Russian nesting dolls. At least 3 visible layers, each one opened to expose the next. Arrange them in a slight arc or diagonal so all layers are simultaneously visible. Each inner layer reveals something more essential or surprising."
+    }
+  ],
+  "status": "untested"
+}
