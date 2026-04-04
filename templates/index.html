@@ -3960,7 +3960,7 @@
             'Split: Mirror Reflection Different \u2014 Subject in center with a mirror or reflective surface. The reflection shows something DIFFERENT \u2014 a darker version, future form, true nature. Reality vs reflection.',
             'Split: Zoomed In / Zoomed Out \u2014 Vertical split. Left: extreme close-up of a detail \u2014 texture, eye, component. Right: zoomed all the way out showing the full thing that detail belongs to. Scale reveal.',
             'Split: Two-Tone Color Contrast \u2014 Vertical split defined purely by COLOR \u2014 left half bathed in one dramatic color (red, warm), right half in the opposite (blue, cold). Same subject spans both halves.',
-            'Split: Sunglasses Reflection — Extreme close-up of a face wearing sunglasses. Each lens reflects a different dramatic scene — explosions, destruction, chaos, or two opposing forces. The face is stoic; the lenses show the drama.',
+            'Split: Sunglasses Reflection — EXTREME close-up of oversized sunglasses filling 80-90% of the frame — the glasses ARE the thumbnail. Only the bridge of the nose and top of cheekbones visible. Beautiful woman but barely visible behind massive lenses. Each lens reflects a completely different dramatic scene. Reflections are the focal point, not the face.',
             'Split: Eye Split in Half — Extreme close-up of a single eye, split down the middle. Left half of the iris/eye is one color/reality, right half is a completely different color/reality. The split goes right through the pupil.',
             'Split: Blueprint \u2192 Disaster \u2014 Vertical split. Left: a clean plan, schematic, idealized design. Right: the actual result \u2014 chaotic, broken, nothing like the plan. Design vs reality.',
             'Split: Prototype \u2192 Final Form \u2014 Vertical split. Left: early, rough, crude, small prototype. Right: the evolved final form \u2014 massive, refined, powerful, or terrifyingly different from the original.',
@@ -5639,19 +5639,15 @@
                 const badge = document.createElement('div');
                 badge.className = 'claude-eval-badge';
                 if (verdict.verdict === 'below' || verdict.verdict === 'bad') {
-                    badge.style.cssText = 'background:#ff0000;color:#fff;padding:6px 10px;font-size:12px;border-radius:4px;margin:4px 8px;font-weight:700;';
+                    badge.style.cssText = 'background:#ff0000;color:#fff;padding:8px 12px;font-size:13px;border-radius:6px;margin:8px;font-weight:700;display:block;';
                     badge.textContent = verdict.reason ? `👎 ${verdict.reason}` : '👎 Bottom 25%';
-                    // Also add red border to the card
                     card.style.outline = '3px solid #ff0000';
                     card.style.outlineOffset = '-3px';
                 } else {
-                    // Don't show badge for above-average (keep it clean)
                     return;
                 }
-                // Insert after image, before actions
-                const actions = card.querySelector('.thumbnail-actions') || card.querySelector('.model-card-footer');
-                if (actions) actions.parentNode.insertBefore(badge, actions);
-                else card.appendChild(badge);
+                // Always append at end of card (most reliable across card types)
+                card.appendChild(badge);
             });
         }
 

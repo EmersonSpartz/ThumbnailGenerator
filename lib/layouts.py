@@ -258,7 +258,7 @@ TIER_S = [
     {
         "id": "split_sunglasses_reflection",
         "name": "Split: Sunglasses Reflection",
-        "instruction": "Extreme close-up of a face wearing sunglasses. Each lens reflects a different dramatic scene — explosions, destruction, chaos, or two opposing forces. The face is stoic; the lenses show the drama.",
+        "instruction": "EXTREME close-up of oversized sunglasses filling 80-90% of the frame — the glasses ARE the thumbnail. Only the bridge of the nose and the top of the cheekbones visible. The face is a beautiful woman but barely visible behind the massive lenses. Each lens reflects a completely different dramatic scene. The reflections are the focal point, not the face.",
     },
     {
         "id": "split_eye_two_worlds",
