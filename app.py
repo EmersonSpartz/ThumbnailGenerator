@@ -4638,8 +4638,21 @@ Reply ONLY with JSON: [{{"num": 1, "reason": "8 words max why it's bad"}}]"""})
             except (FileNotFoundError, json.JSONDecodeError):
                 stats = {"version": 1, "stats": {}}
 
+            # Match evaluations to thumbnails to get template names
+            thumb_templates = {}
+            try:
+                hist = job_manager.get_history(limit=500)
+                for t in hist.get('thumbnails', []):
+                    fp = t.get('file_path', '')
+                    tmpl = t.get('template', '') or t.get('layout', '')
+                    if fp and tmpl:
+                        thumb_templates[fp] = tmpl
+            except:
+                pass
+
             for r in results:
-                layout = r.get('layout', '') or 'unknown'
+                layout = thumb_templates.get(r.get('file_path', ''), '') or r.get('layout', '') or 'unknown'
+                r['layout'] = layout  # Update result with template name
                 if layout not in stats['stats']:
                     stats['stats'][layout] = {"generated": 0, "bottom25": 0, "favorited": 0}
                 stats['stats'][layout]['generated'] += 1
