@@ -525,6 +525,22 @@ class ClaudeIdeator:
             pass
         return ""
 
+    def _get_avoid_rules(self) -> str:
+        """Load failure-avoidance rules from bottom-25% analysis."""
+        try:
+            avoid_file = (self.data_dir if self.data_dir else Path(__file__).parent.parent / 'data') / 'avoid_patterns.json'
+            with open(avoid_file) as f:
+                data = json.load(f)
+            rules = data.get('avoid_rules', [])
+            if not rules:
+                return ""
+            lines = []
+            for r in rules:
+                lines.append(f"- {r['rule']}")
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
     def _build_prompts_prompt(self, concepts: list[dict]) -> str:
         """Build prompt for STEP 2: NanoBanana Pro prompt writing."""
         concepts_formatted = "\n\n".join([
@@ -539,6 +555,9 @@ class ClaudeIdeator:
 
         # Get learned patterns from A/B testing
         learned_patterns = self._get_learned_patterns()
+
+        # Get avoid rules from failure analysis
+        avoid_rules = self._get_avoid_rules()
 
         # Get image prompt template if available
         image_template = ""
@@ -571,6 +590,12 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 ## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
 
 {learned_patterns if learned_patterns else "(No learned patterns yet)"}
+
+---
+
+## KNOWN FAILURE PATTERNS — AVOID THESE (from bottom-25% analysis)
+
+{avoid_rules if avoid_rules else "(No avoid rules yet)"}
 
 ---
 
@@ -620,6 +645,7 @@ Return as JSON:
         # Get prompting guide for image prompts
         prompting_guide = self._get_prompting_guide()
         learned_patterns = self._get_learned_patterns()
+        avoid_rules = self._get_avoid_rules()
         image_template = self.prompt_manager.get_prompt('image_prompt_template') if self.prompt_manager else ""
         template_instruction = image_template if image_template else "Write detailed cinematic image prompts."
 
@@ -649,6 +675,12 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 ## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
 
 {learned_patterns if learned_patterns else "(No learned patterns yet)"}
+
+---
+
+## KNOWN FAILURE PATTERNS — AVOID THESE (from bottom-25% analysis)
+
+{avoid_rules if avoid_rules else "(No avoid rules yet)"}
 
 ---
 

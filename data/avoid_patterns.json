@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-04",
+  "source": "claude_evaluation_bottom_25_analysis",
+  "avoid_rules": [
+    {
+      "id": "too_dark_muddy",
+      "rule": "NEVER make both halves of a split dark. At least one half must have bright, vivid, high-contrast elements. If the background is dark, the subject MUST pop with bright saturated color — not dark red on dark background.",
+      "frequency": "72% of failures",
+      "examples": ["dark underwater with dark red elements", "dark muddy palette where nothing is distinguishable", "red-tinted everything blending together"]
+    },
+    {
+      "id": "empty_wasted_half",
+      "rule": "In split compositions, BOTH halves must have strong visual content. Never leave one half empty, plain, or minimal. A closed laptop, blank wall, or empty dark space wastes 50% of the thumbnail.",
+      "frequency": "27% of failures",
+      "examples": ["left half is just a closed laptop on a desk", "right half is completely dark with nothing visible", "left half is empty white space"]
+    },
+    {
+      "id": "no_focal_point",
+      "rule": "Every thumbnail MUST have one element your eye goes to instantly. If someone glances at it for 0.5 seconds at 320px, they should see ONE clear thing. Generic busy compositions with no hierarchy fail.",
+      "frequency": "27% of failures",
+      "examples": ["wall of monitors with no clear subject", "generic soldier silhouettes with nothing standing out", "busy split where both sides compete equally"]
+    },
+    {
+      "id": "color_mud",
+      "rule": "Avoid monochromatic dark palettes. Every thumbnail needs at least TWO clearly different colors with high contrast between them. Red-on-black only works if the red is BRIGHT and SATURATED, not dark maroon.",
+      "frequency": "observed across multiple failures",
+      "examples": ["everything is dark red and black — no contrast", "dark blue underwater with dark red dots — invisible"]
+    }
+  ]
+}
