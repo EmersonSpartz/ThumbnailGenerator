@@ -4535,9 +4535,14 @@ if __name__ == '__main__':
 
     @app.route('/api/claude-evaluate-batch', methods=['POST'])
     def claude_evaluate_batch():
-        """Have Claude evaluate all thumbnails in the current batch as good/bad."""
+        """Have Claude pick the worst 25% by comparing thumbnails against each other.
+
+        Uses batched comparison (20 images per message) + forced ranking.
+        Then gets specific reasons for each bad thumbnail.
+        """
         import base64
         import anthropic
+        import re as _re
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         data = request.get_json() or {}
@@ -4546,7 +4551,7 @@ if __name__ == '__main__':
         # Get all thumbnails from history
         history = job_manager.get_history(limit=500)
         thumbs = history.get('thumbnails', [])
-        if video_name:
+        if video_name and video_name != '_skip_eval_just_save_':
             thumbs = [t for t in thumbs if t.get('video_name', '') == video_name]
 
         # Filter to ones with images on disk
@@ -4562,79 +4567,61 @@ if __name__ == '__main__':
 
         client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
-        def evaluate_one(thumb):
-            """Ask Claude: is this a bad thumbnail? Returns dict with verdict."""
-            try:
-                img_path = thumb['full_path']
+        # STEP 1: Forced ranking in batches of 20 — pick worst 25%
+        def rank_batch(batch):
+            """Send up to 20 images, ask Claude to pick the worst 25%."""
+            content = []
+            for i, t in enumerate(batch):
+                img_path = t['full_path']
                 with open(img_path, 'rb') as f:
                     img_data = base64.b64encode(f.read()).decode()
-
                 ext = img_path.rsplit('.', 1)[-1].lower()
                 media_type = 'image/jpeg' if ext in ('jpg', 'jpeg') else 'image/png'
+                content.append({"type": "text", "text": f"#{i+1}: {t.get('concept_name', '?')}"})
+                content.append({"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_data}})
 
+            quarter = max(1, len(batch) // 4)
+            content.append({"type": "text", "text": f"""Compare these {len(batch)} thumbnails AGAINST EACH OTHER. Pick the WORST {quarter}.
+
+Reply ONLY with JSON: [{{"num": 1, "reason": "8 words max why it's bad"}}]"""})
+
+            try:
                 resp = client.messages.create(
-                    model="claude-sonnet-4-6",
-                    max_tokens=300,
-                    timeout=15.0,
-                    messages=[{"role": "user", "content": [
-                        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": img_data}},
-                        {"type": "text", "text": """You're evaluating a YouTube thumbnail for the Species channel (premium AI safety content, dark/ominous aesthetic).
-
-Rate this YouTube thumbnail on a scale of 1-10 for visual impact, composition, and click-worthiness.
-
-1-3: Bad — weak composition, cluttered, no focal point, forgettable
-4-5: Below average — some issues but not terrible
-6-7: Above average — decent composition, clear subject, some visual appeal
-8-10: Strong — bold, eye-catching, would stop scrolling
-
-Reply with JUST the number (1-10), nothing else."""}
-                    ]}]
+                    model="claude-sonnet-4-6", max_tokens=500, timeout=60.0,
+                    messages=[{"role": "user", "content": content}]
                 )
-                verdict_text = resp.content[0].text.strip()
-                import re as _re
-                m = _re.search(r'(\d+)', verdict_text)
-                score = int(m.group(1)) if m else 5
-                score = max(1, min(10, score))
-                return {
-                    "file_path": thumb['file_path'],
-                    "concept_name": thumb.get('concept_name', ''),
-                    "layout": thumb.get('layout', ''),
-                    "score": score,
-                    "verdict": "pending",  # Will be set after all scores are in
-                    "reason": f"Score: {score}/10",
-                }
+                text = resp.content[0].text.strip()
+                start = text.find("["); end = text.rfind("]") + 1
+                if start >= 0 and end > start:
+                    parsed = json.loads(_re.sub(r',\s*]', ']', text[start:end]))
+                    return {batch[b['num']-1].get('file_path', ''): b.get('reason', 'Bottom 25%')
+                            for b in parsed if b.get('num', 0) <= len(batch)}
             except Exception as e:
-                return {
-                    "file_path": thumb.get('file_path', ''),
-                    "concept_name": thumb.get('concept_name', ''),
-                    "verdict": "error",
-                    "reason": str(e)[:80],
-                }
+                print(f"[EVAL] Batch ranking failed: {e}")
+            return {}
 
-        # Run evaluations in parallel (5 at a time)
+        # Process in batches of 20
+        bottom_map = {}  # file_path -> reason
+        batch_size = 20
+        for i in range(0, len(evaluatable), batch_size):
+            batch = evaluatable[i:i+batch_size]
+            bottom_map.update(rank_batch(batch))
+
+        # Build results
         results = []
-        with ThreadPoolExecutor(max_workers=5) as tex:
-            futures = {tex.submit(evaluate_one, t): t for t in evaluatable}
-            for fut in as_completed(futures):
-                results.append(fut.result())
+        for t in evaluatable:
+            fp = t.get('file_path', '')
+            is_bottom = fp in bottom_map
+            results.append({
+                "file_path": fp,
+                "concept_name": t.get('concept_name', ''),
+                "layout": t.get('layout', ''),
+                "verdict": "below" if is_bottom else "above",
+                "reason": bottom_map.get(fp, ''),
+            })
 
-        # Compute bottom 25% from scores
-        scored = [r for r in results if r.get('score')]
-        scored.sort(key=lambda x: x['score'])
-        cutoff_idx = max(1, len(scored) // 4)
-        cutoff_score = scored[cutoff_idx - 1]['score'] if scored else 5
-        for r in results:
-            s = r.get('score', 5)
-            if s <= cutoff_score and results.index(r) < cutoff_idx:
-                r['verdict'] = 'below'
-                r['reason'] = f"Bottom 25% — score {s}/10"
-            else:
-                r['verdict'] = 'above'
-                r['reason'] = f"Score {s}/10"
-
-        # Save results (replace all)
+        # Save
         eval_file = settings.data_dir / 'claude_evaluations.json'
-
         with open(eval_file, 'w') as f:
             json.dump({"evaluations": results}, f, indent=2)
 
