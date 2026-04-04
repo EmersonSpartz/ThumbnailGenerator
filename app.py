@@ -4684,6 +4684,86 @@ Reply ONLY with JSON: [{{"num": 1, "reason": "8 words max why it's bad"}}]"""})
             "results": results,
         })
 
+    @app.route('/api/learning-stats')
+    def learning_stats():
+        """Dashboard of all learning data: template stats, failure patterns, evaluation history."""
+        from collections import Counter
+
+        # Template stats
+        stats_file = settings.data_dir / 'template_stats.json'
+        try:
+            with open(stats_file) as f:
+                template_stats = json.load(f).get('stats', {})
+        except:
+            template_stats = {}
+
+        # Sort by bottom25 rate
+        template_ranked = []
+        for layout, s in template_stats.items():
+            gen = s.get('generated', 0)
+            bad = s.get('bottom25', 0)
+            rate = round(bad / gen * 100) if gen > 0 else 0
+            template_ranked.append({"layout": layout, "generated": gen, "bottom25": bad, "bad_rate": rate})
+        template_ranked.sort(key=lambda x: -x['bad_rate'])
+
+        # Failure log
+        log_file = settings.data_dir / 'failure_log.json'
+        try:
+            with open(log_file) as f:
+                failure_log = json.load(f).get('entries', [])
+        except:
+            failure_log = []
+
+        # Aggregate failure reasons across all evaluations
+        all_reasons = []
+        for entry in failure_log:
+            all_reasons.extend(entry.get('reasons', []))
+        reason_counts = Counter()
+        for r in all_reasons:
+            r_lower = r.lower()
+            if 'dark' in r_lower or 'muddy' in r_lower:
+                reason_counts['Too dark/muddy'] += 1
+            elif 'abstract' in r_lower or 'unclear' in r_lower or 'confusing' in r_lower:
+                reason_counts['Abstract/unclear concept'] += 1
+            elif 'generic' in r_lower or 'cliché' in r_lower or 'cliche' in r_lower:
+                reason_counts['Generic/cliché'] += 1
+            elif 'empty' in r_lower or 'boring' in r_lower or 'plain' in r_lower or 'blank' in r_lower:
+                reason_counts['Empty/boring composition'] += 1
+            elif 'small' in r_lower or 'lost' in r_lower or 'too zoomed' in r_lower:
+                reason_counts['Subject too small/lost'] += 1
+            elif 'off-brand' in r_lower or 'logo' in r_lower or 'legally' in r_lower:
+                reason_counts['Off-brand/logo issues'] += 1
+            elif 'cluttered' in r_lower or 'busy' in r_lower:
+                reason_counts['Cluttered/busy'] += 1
+            else:
+                reason_counts['Other: ' + r[:40]] += 1
+
+        # Current evaluations summary
+        eval_file = settings.data_dir / 'claude_evaluations.json'
+        try:
+            with open(eval_file) as f:
+                evals = json.load(f).get('evaluations', [])
+        except:
+            evals = []
+
+        total_evals = len(evals)
+        total_bad = sum(1 for e in evals if e.get('verdict') == 'below')
+
+        return jsonify({
+            "total_evaluated": total_evals,
+            "total_bottom25": total_bad,
+            "bottom25_rate": round(total_bad / total_evals * 100) if total_evals > 0 else 0,
+            "template_rankings": template_ranked[:20],
+            "failure_patterns": [{"pattern": k, "count": v} for k, v in reason_counts.most_common(10)],
+            "evaluation_history": [{
+                "timestamp": e.get('timestamp', ''),
+                "video": e.get('video_name', ''),
+                "total": e.get('total_evaluated', 0),
+                "bottom25": e.get('bottom25_count', 0),
+            } for e in failure_log[-10:]],
+            "all_failure_reasons": all_reasons[-50:],
+        })
+
     @app.route('/api/claude-evaluations', methods=['GET', 'POST'])
     def claude_evaluations():
         """Get or save Claude's thumbnail evaluations."""

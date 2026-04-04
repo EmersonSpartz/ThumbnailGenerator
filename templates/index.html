@@ -7401,7 +7401,99 @@
         <button onclick="runClaudeEvaluation()" id="claude-float-btn" style="background:#7c3aed;color:white;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">
             🧠 Claude: Rate These Thumbnails
         </button>
+        <button onclick="toggleLearningStats()" style="background:#1a1a1a;color:#4ade80;border:1px solid #333;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">
+            📊 Learning Stats
+        </button>
         <span id="claude-float-status" style="color:#888;font-size:12px;"></span>
     </div>
+
+    <!-- Learning Stats Panel -->
+    <div id="learning-stats-panel" style="display:none;position:fixed;bottom:50px;left:50%;transform:translateX(-50%);width:90%;max-width:800px;max-height:60vh;overflow-y:auto;background:#111;border:1px solid #333;border-radius:12px;padding:20px;z-index:10000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;color:#fff;">📊 Learning Stats</h3>
+            <button onclick="toggleLearningStats()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+        </div>
+        <div id="learning-stats-content" style="color:#ccc;font-size:13px;">Loading...</div>
+    </div>
+
+    <script>
+    function toggleLearningStats() {
+        const panel = document.getElementById('learning-stats-panel');
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            loadLearningStats();
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    async function loadLearningStats() {
+        const el = document.getElementById('learning-stats-content');
+        try {
+            const resp = await fetch('/api/learning-stats');
+            const d = await resp.json();
+
+            let html = `
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div style="background:#1a1a1a;padding:12px;border-radius:8px;text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#fff;">${d.total_evaluated}</div>
+                        <div style="font-size:11px;color:#888;">Thumbnails Evaluated</div>
+                    </div>
+                    <div style="background:#1a1a1a;padding:12px;border-radius:8px;text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#f87171;">${d.total_bottom25}</div>
+                        <div style="font-size:11px;color:#888;">Flagged Bottom 25%</div>
+                    </div>
+                    <div style="background:#1a1a1a;padding:12px;border-radius:8px;text-align:center;">
+                        <div style="font-size:24px;font-weight:700;color:#fbbf24;">${d.bottom25_rate}%</div>
+                        <div style="font-size:11px;color:#888;">Failure Rate</div>
+                    </div>
+                </div>
+            `;
+
+            // Failure patterns
+            if (d.failure_patterns && d.failure_patterns.length > 0) {
+                html += '<h4 style="color:#f87171;margin:12px 0 8px;">Top Failure Patterns</h4>';
+                d.failure_patterns.forEach(p => {
+                    const barW = Math.min(100, p.count * 5);
+                    html += `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+                        <span style="width:200px;font-size:12px;">${p.pattern}</span>
+                        <div style="background:#4a0000;height:12px;width:${barW}%;border-radius:2px;flex:1;max-width:200px;"></div>
+                        <span style="color:#f87171;font-size:12px;font-weight:700;">${p.count}</span>
+                    </div>`;
+                });
+            }
+
+            // Template rankings
+            if (d.template_rankings && d.template_rankings.length > 0) {
+                html += '<h4 style="color:#fbbf24;margin:16px 0 8px;">Template Performance (worst first)</h4>';
+                const worst = d.template_rankings.filter(t => t.generated >= 3).slice(0, 10);
+                if (worst.length > 0) {
+                    worst.forEach(t => {
+                        const color = t.bad_rate > 40 ? '#f87171' : t.bad_rate > 25 ? '#fbbf24' : '#4ade80';
+                        html += `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a1a1a;font-size:12px;">
+                            <span>${t.layout}</span>
+                            <span>${t.generated} gen, <span style="color:${color};font-weight:700;">${t.bad_rate}% bad</span></span>
+                        </div>`;
+                    });
+                } else {
+                    html += '<div style="color:#666;font-size:12px;">Need more data (3+ generations per template)</div>';
+                }
+            }
+
+            // Recent evaluation history
+            if (d.evaluation_history && d.evaluation_history.length > 0) {
+                html += '<h4 style="color:#888;margin:16px 0 8px;">Evaluation History</h4>';
+                d.evaluation_history.forEach(e => {
+                    const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '?';
+                    html += `<div style="font-size:11px;color:#666;padding:2px 0;">${ts} — ${e.total} evaluated, ${e.bottom25} flagged</div>`;
+                });
+            }
+
+            el.innerHTML = html;
+        } catch(e) {
+            el.innerHTML = '<div style="color:#f87171;">Failed to load: ' + e.message + '</div>';
+        }
+    }
+    </script>
 </body>
 </html>
