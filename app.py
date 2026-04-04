@@ -4620,13 +4620,61 @@ Reply ONLY with JSON: [{{"num": 1, "reason": "8 words max why it's bad"}}]"""})
                 "reason": bottom_map.get(fp, ''),
             })
 
-        # Save
+        # Save evaluations
         eval_file = settings.data_dir / 'claude_evaluations.json'
         with open(eval_file, 'w') as f:
             json.dump({"evaluations": results}, f, indent=2)
 
         bad_count = sum(1 for r in results if r['verdict'] == 'below')
         okay_count = sum(1 for r in results if r['verdict'] == 'above')
+
+        # Track template stats (for future retirement decisions)
+        try:
+            from collections import defaultdict
+            stats_file = settings.data_dir / 'template_stats.json'
+            try:
+                with open(stats_file) as f:
+                    stats = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                stats = {"version": 1, "stats": {}}
+
+            for r in results:
+                layout = r.get('layout', '') or 'unknown'
+                if layout not in stats['stats']:
+                    stats['stats'][layout] = {"generated": 0, "bottom25": 0, "favorited": 0}
+                stats['stats'][layout]['generated'] += 1
+                if r['verdict'] == 'below':
+                    stats['stats'][layout]['bottom25'] += 1
+
+            with open(stats_file, 'w') as f:
+                json.dump(stats, f, indent=2)
+        except Exception as e:
+            print(f"[TEMPLATE STATS] Failed to update: {e}")
+
+        # Accumulate failure reasons (don't inject into prompts yet — avoid overfitting)
+        try:
+            bad_reasons = [r.get('reason', '') for r in results if r['verdict'] == 'below' and r.get('reason')]
+            if bad_reasons:
+                log_file = settings.data_dir / 'failure_log.json'
+                try:
+                    with open(log_file) as f:
+                        log = json.load(f)
+                except (FileNotFoundError, json.JSONDecodeError):
+                    log = {"entries": []}
+
+                from datetime import datetime
+                log['entries'].append({
+                    "timestamp": datetime.now().isoformat(),
+                    "video_name": video_name,
+                    "total_evaluated": len(results),
+                    "bottom25_count": bad_count,
+                    "reasons": bad_reasons,
+                })
+
+                with open(log_file, 'w') as f:
+                    json.dump(log, f, indent=2)
+        except Exception as e:
+            print(f"[FAILURE LOG] Failed to update: {e}")
 
         return jsonify({
             "success": True,

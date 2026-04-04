@@ -3061,6 +3061,32 @@
                 activeJobs[jobId].progress.phase = success ? 'Done!' : 'Failed';
                 updateJobsPanel();
 
+                // Auto-run Claude evaluation on completion
+                if (success) {
+                    setTimeout(() => {
+                        console.log('[AUTO-EVAL] Running Claude evaluation on completed batch...');
+                        const floatBtn = document.getElementById('claude-float-btn');
+                        const floatStatus = document.getElementById('claude-float-status');
+                        if (floatBtn) floatBtn.textContent = '🧠 Auto-evaluating...';
+                        if (floatStatus) floatStatus.textContent = 'Rating thumbnails...';
+                        fetch('/api/claude-evaluate-batch', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({video_name: typeof getVideoParam === 'function' ? getVideoParam() : ''})
+                        }).then(r => r.json()).then(data => {
+                            if (data.success) {
+                                console.log(`[AUTO-EVAL] Done: ${data.bad} below / ${data.okay} above`);
+                                if (floatBtn) floatBtn.textContent = `🧠 ${data.okay} above / ${data.bad} below`;
+                                if (floatStatus) floatStatus.textContent = 'Auto-evaluated after generation';
+                                showClaudeVerdicts(data.results);
+                            }
+                        }).catch(e => {
+                            console.error('[AUTO-EVAL] Failed:', e);
+                            if (floatBtn) floatBtn.textContent = '🧠 Claude: Rate These Thumbnails';
+                        });
+                    }, 3000); // Wait 3s for images to finish saving
+                }
+
                 // Keep completed job visible longer, then remove
                 setTimeout(() => {
                     delete activeJobs[jobId];
