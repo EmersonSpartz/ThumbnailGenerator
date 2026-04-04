@@ -4566,8 +4566,23 @@
                 const savedState = JSON.parse(localStorage.getItem('batch_queue_state_v1') || '[]');
                 if (savedState.length === 0) return;
 
-                // Show reconnection banner
-                showReconnectBanner('Reconnecting to generation in progress...');
+                // Reset any "running" batches to "queued" — they died when the browser disconnected
+                for (const saved of savedState) {
+                    if (saved.status === 'running') {
+                        saved.status = 'queued';
+                    }
+                }
+
+                const doneCount = savedState.filter(s => s.status === 'done').length;
+                const remainingCount = savedState.filter(s => s.status === 'queued').length;
+
+                if (remainingCount > 0) {
+                    showReconnectBanner(`Resuming generation: ${doneCount} batches done, ${remainingCount} remaining. Auto-continuing...`);
+                } else {
+                    showReconnectBanner(`Generation complete: ${doneCount} batches finished. Refresh to see all thumbnails.`);
+                    localStorage.removeItem('batch_queue_state_v1');
+                    return;
+                }
 
                 const grid = document.getElementById('text-thumbnail-grid');
                 let reconnectedAny = false;
@@ -4633,8 +4648,8 @@
                     updateBatchProgress();
                     updateJobsPanel();
 
-                    // If nothing is running but there are queued batches, start the next one
-                    if (!reconnectedAny) {
+                    // Always check for queued batches and start them (handles laptop-sleep recovery)
+                    {
                         const nextQueued = batchQueue.find(b => b.status === 'queued');
                         if (nextQueued) launchBatch(nextQueued, () => launchBatchSequential(nextQueued.index + 1));
                     }
