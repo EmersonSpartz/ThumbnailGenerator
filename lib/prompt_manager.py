@@ -46,6 +46,11 @@ class PromptManager:
             self.prompts['image_prompt_template'] = self._get_default_image_prompt_template()
             self._save_prompts()
 
+        # Add image prompt template name if not present
+        if 'image_prompt_template_name' not in self.prompts:
+            self.prompts['image_prompt_template_name'] = 'Default'
+            self._save_prompts()
+
         # Migrate stale prompts (e.g. old Railway persistent volume with hardcoded counts)
         self.migrate_if_needed()
 
@@ -78,9 +83,10 @@ Mood: Ominous, technological, documentary-grade, slightly dystopian.
 
 ## Style Keywords
 - Cinematic, dramatic, ominous, dystopian
-- Hyper-realistic, photorealistic, surveillance footage
+- Graphic design, photorealistic cinematic, conceptual, symbolic
 - CRT glow, dithered texture, film grain, chromatic aberration
 - Dark room, red emergency lighting, sci-fi atmosphere
+- NEVER photorealistic stock photos — ALWAYS bold graphic/symbolic compositions
 
 ## Species Color Palette
 - Shoggoth Red #E20020 (primary accent)
@@ -93,35 +99,47 @@ Mood: Ominous, technological, documentary-grade, slightly dystopian.
 ## What to AVOID
 - Text or words in the image
 - Bright, cheerful, or colorful backgrounds
-- Generic stock photo look
+- Generic stock photo look — NO realistic office scenes, people at computers, mundane environments
 - Clickbait shock faces
-- Cliché AI imagery (glowing brains, circuit boards, matrix rain)"""
+- Cliché AI imagery (glowing brains, circuit boards, matrix rain)
+- Photorealistic scenes of everyday life — thumbnails should be BOLD and SYMBOLIC, not literal
+
+## What Species Thumbnails ACTUALLY Look Like (study these)
+- A melting/dripping OpenAI logo against dark textured background with red glow
+- A graph/chart with dramatic red crash line and CRT texture overlay
+- A giant mechanical eye with a silhouette walking beneath it
+- A red Minecraft figure standing alone on a red-lit platform with dark cityscape
+- A tentacle monster erupting from an OpenAI logo
+- Bold iconic SYMBOLS, not realistic scenes"""
 
     def _get_default_image_prompt_template(self) -> str:
         """Default template for how Claude writes image prompts."""
-        return """Write bold, cinematic image prompts for each thumbnail concept. These should produce images that are visually STRIKING and scroll-stopping while still looking premium and professional.
+        return """Write bold, SYMBOLIC image prompts for each thumbnail concept. Species thumbnails look like graphic design/photorealistic cinematic — NOT photographs, NOT nature scenes, NOT landscapes.
 
-SPECIES BRAND STYLE (MANDATORY):
-- Dark/black backgrounds with ominous red (#E20020) accent lighting as the PRIMARY color
-- Sci-fi documentary aesthetic — think "28 Years Later" poster, not generic tech
-- Accent colors: cyan (#22E2FF) for tech/glitch, magenta (#F732EF) for digital effects, orange (#FBB500) for tension
-- The mood is ALWAYS ominous, technological, slightly dystopian
-- Include textural elements: film grain, atmospheric haze, dithered/pixelated textures
-- Reference the Species look: dark room with red emergency lighting, CRT monitor glow, surveillance footage aesthetic
+THE SPECIES LOOK (study real examples):
+- ONE iconic symbolic element against a dark textured background
+- Red (#E20020) is the dominant accent — red glow, red backlighting, red elements everywhere
+- Compositions are CONCEPTUAL and METAPHORICAL — represent ideas with bold symbols, not literal scenes
+- Think: a cracked planet, a melting logo, a glowing red eye, chess pieces on fire, a red string connecting objects
+- The style is closer to movie poster / photorealistic cinematic than photography
+- Accent colors: cyan (#22E2FF) for tech/glitch, magenta (#F732EF) for digital, orange (#FBB500) for tension
+- EVERYTHING should feel TECHNOLOGICAL, DIGITAL, SCI-FI — even natural metaphors (iceberg, ocean, road) must be rendered as digital/glitch/holographic versions, never photorealistic nature
 
-CRITICAL RULES:
-- ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS IN THE IMAGE
-- Keep prompts focused on ONE clear visual — bold but not cluttered
-- HIGH CONTRAST is essential — dark backgrounds with bright subjects
-- Include cinematic lighting direction (not just "dramatic lighting") — prefer red-tinted or warm/cool split lighting
-- Add atmosphere and texture (fog, grain, depth of field, particles, dither patterns)
-- Specify a visual style when helpful (e.g. "surveillance footage aesthetic", "shot on ARRI Alexa", "CRT monitor glow", "thermal imaging")
-- End every prompt with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, dark ominous mood, red accent lighting
+ABSOLUTE RULES:
+- NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR WATERMARKS
+- NEVER generate realistic nature scenes — no photorealistic forests, mountains, oceans, landscapes, sunsets, waterfalls, meadows, or outdoor scenery
+- NEVER generate realistic office scenes, people at desks, mundane everyday settings
+- NEVER generate generic stock-photo-style compositions
+- If a concept involves a natural element (iceberg, road, tree, etc.), render it as a DIGITAL/HOLOGRAPHIC/GLITCH version — glowing wireframe, made of code, pixelated, circuit-board texture — NOT a photograph of the real thing
+- ONE clear visual idea per image — bold, minimal, iconic
+- Dark background with TEXTURE (grain, noise, subtle pattern) — not pure black void
+- High contrast: dark background, bright/glowing subject
+- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
 
 Follow the prompting guide provided."""
 
     # Version marker — bump this string to force migration of old Railway prompts
-    PROMPT_VERSION = "v6-species-brand"
+    PROMPT_VERSION = "v8-layouts"
 
     def _get_default_prompts(self) -> dict:
         """Get default prompts."""
@@ -153,11 +171,12 @@ Bold AND premium. These thumbnails need to GRAB attention in a sea of content wh
 
 ### Forbidden (The Cringe List)
 - Cartoonish or childish imagery (this is NOT for kids)
-- Stock photo aesthetic (posed people, fake smiles, generic offices)
+- Stock photo aesthetic (posed people, fake smiles, generic offices, people at desks, mundane real-world scenes)
 - Clickbait shock faces (open mouths, pointing at nothing)
 - Cliché AI imagery (glowing brains, circuit boards, matrix rain, robot hands)
 - Over-busy compositions with too many competing elements
 - That specific "AI-generated" look: perfect symmetry, plastic skin, neon everything
+- Literal/photorealistic interpretations — Species uses SYMBOLIC, METAPHORICAL visuals (a melting logo = AI failing, a cracked chess piece = AI strategy breaking down, a red eye = AI surveillance)
 
 ### Color Philosophy — SPECIES BRAND PALETTE
 The Species channel has a distinct visual identity. USE THESE COLORS:
@@ -221,6 +240,7 @@ Return ALL {{COUNT}} concepts as JSON:
     {
       "title_ref": "The video title this is for",
       "concept_name": "Short memorable name (2-4 words)",
+      "layout": "The compositional layout used (from the LAYOUTS section above, or your own if none assigned)",
       "category": "Which angle (Cinematic Scale, Intimate Portrait, Bold Metaphor, Dramatic Contrast, etc.)",
       "description": "Vivid 2-3 sentence description of the visual"
     }
@@ -393,8 +413,12 @@ Return ALL {{COUNT}} concepts as JSON:
                     return True
             return False
 
-    def build_full_prompt(self, titles: list[str], script: str = "", creative_direction: str = "", count: int = 20) -> str:
-        """Build the full Claude prompt by filling in the template."""
+    def build_full_prompt(self, titles: list[str], script: str = "", creative_direction: str = "", count: int = 20, use_layouts: bool = True) -> str:
+        """Build the full Claude prompt by filling in the template.
+
+        Returns the prompt string. If use_layouts is True, also stores
+        self._last_picked_layouts for downstream tagging.
+        """
         with self._lock:
             template = self.prompts.get('claude_prompt', '')
 
@@ -418,10 +442,28 @@ This is a HARD REQUIREMENT, not a suggestion. The creative direction MUST be the
 
 """
 
+        # Build layout section
+        layout_section = ""
+        self._last_picked_layouts = []
+        if use_layouts:
+            from .layouts import build_layout_prompt_section
+            layout_section, self._last_picked_layouts = build_layout_prompt_section(count)
+            layout_section = layout_section + "\n\n"
+
         # Fill in placeholders
         prompt = template.replace('{{TITLES}}', titles_formatted)
         prompt = prompt.replace('{{SCRIPT_SECTION}}', script_section)
         prompt = prompt.replace('{{CREATIVE_DIRECTION_SECTION}}', cd_section)
         prompt = prompt.replace('{{COUNT}}', str(count))
 
+        # Insert layout section before the CRITICAL RULES section
+        if layout_section and "## CRITICAL RULES" in prompt:
+            prompt = prompt.replace("## CRITICAL RULES", layout_section + "## CRITICAL RULES")
+        elif layout_section:
+            prompt = prompt + "\n\n" + layout_section
+
         return prompt
+
+    def get_last_picked_layouts(self):
+        """Return layouts picked during the last build_full_prompt call."""
+        return getattr(self, '_last_picked_layouts', [])
