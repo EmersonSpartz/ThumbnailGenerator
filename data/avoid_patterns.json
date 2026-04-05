@@ -26,6 +26,12 @@
       "rule": "Avoid monochromatic dark palettes. Every thumbnail needs at least TWO clearly different colors with high contrast between them. Red-on-black only works if the red is BRIGHT and SATURATED, not dark maroon.",
       "frequency": "observed across multiple failures",
       "examples": ["everything is dark red and black — no contrast", "dark blue underwater with dark red dots — invisible"]
+    },
+    {
+      "id": "cartoon_style",
+      "rule": "NEVER use cartoon, comic book, cel-shaded, or animated art styles. Every prompt MUST end with: 'photorealistic rendering, NOT cartoon, NOT illustration, NOT comic book style, NOT cel-shaded, NOT animated'. NanoBanana defaults to cartoonish rendering unless explicitly told not to.",
+      "frequency": "recurring across many batches",
+      "examples": ["cartoonish fire effects", "comic-book-style explosion", "cel-shaded faces that look like a game"]
     }
   ]
 }

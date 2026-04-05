@@ -579,7 +579,7 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 - NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
 - ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
 - The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
-- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting
+- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
 
 ## CONCEPTS:
 
@@ -670,7 +670,7 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 - NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
 - ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
 - The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
-- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting
+- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
 
 ## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
 
@@ -720,7 +720,7 @@ Return ALL {count} concepts with their image prompts as JSON:
                     # Ensure every concept has a prompt — synthesize from description if missing
                     for c in concepts:
                         if not c.get('prompt') and c.get('description'):
-                            c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, editorial illustration style, digital art'
+                            c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded'
                             print(f"[PARSE] Synthesized prompt from description for '{c.get('concept_name', '?')}'")
                     if any(c.get('prompt') for c in concepts):
                         return concepts
@@ -733,7 +733,7 @@ Return ALL {count} concepts with their image prompts as JSON:
             concepts = data.get('concepts', [])
             for c in concepts:
                 if not c.get('prompt') and c.get('description'):
-                    c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, editorial illustration style, digital art'
+                    c['prompt'] = c['description'] + ', no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded'
             return concepts
         except json.JSONDecodeError:
             pass
