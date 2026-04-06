@@ -1407,6 +1407,7 @@ def generate():
     batch_size = int(request.args.get('batch_size', 20))
     model_key = request.args.get('model', 'gemini')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
+    thumbnail_text = request.args.get('thumbnail_text', '').strip()
 
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
 
@@ -1475,7 +1476,8 @@ def generate():
                     favorites_context="",
                     category_hint=category_hint,
                     creative_direction=creative_direction,
-                    count=this_batch_count
+                    count=this_batch_count,
+                    thumbnail_text=thumbnail_text
                 ):
                     if event['type'] == 'prompt':
                         yield sse_message({
@@ -2567,6 +2569,7 @@ def parallel_generate():
     models_str = request.args.get('models', 'nanobanana2')
     use_favorites = request.args.get('use_favorites', 'true').lower() == 'true'
     smart_enhance_enabled = request.args.get('smart_enhance', 'false').lower() == 'true'
+    thumbnail_text = request.args.get('thumbnail_text', '').strip()
 
     selected_models = [m.strip() for m in models_str.split(',') if m.strip()]
     titles = [t.strip() for t in titles_raw.split('\n') if t.strip()]
@@ -2612,7 +2615,8 @@ def parallel_generate():
                 batch_number=1,
                 script=script,
                 favorites_context=favorites_context,
-                count=count
+                count=count,
+                thumbnail_text=thumbnail_text
             )
         except Exception as e:
             yield sse_message({'type': 'error', 'message': f'Claude error: {str(e)}'})
@@ -3059,7 +3063,8 @@ def _run_agentic_generation(store_job_id, titles, titles_raw, script, creative_d
                 script=script,
                 favorites_context=favorites_context,
                 creative_direction=creative_direction,
-                count=count
+                count=count,
+                thumbnail_text=thumbnail_text
             ):
                 combined_queue.put(event)
         except Exception as e:

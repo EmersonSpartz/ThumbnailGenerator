@@ -102,7 +102,8 @@ class ClaudeIdeator:
         favorites_context: str = "",
         category_hint: str = "",
         creative_direction: str = "",
-        count: int = 20
+        count: int = 20,
+        thumbnail_text: str = ""
     ):
         """
         COMBINED: Generate concepts AND image prompts in a single Claude call.
@@ -113,7 +114,8 @@ class ClaudeIdeator:
 
         prompt = self._build_combined_prompt(
             titles, used_ideas, batch_number, script,
-            favorites_context, category_hint, creative_direction, count
+            favorites_context, category_hint, creative_direction, count,
+            thumbnail_text=thumbnail_text
         )
 
         tls.last_prompt = prompt
@@ -167,7 +169,8 @@ class ClaudeIdeator:
         favorites_context: str = "",
         category_hint: str = "",
         creative_direction: str = "",
-        count: int = 20
+        count: int = 20,
+        thumbnail_text: str = ""
     ) -> list[dict]:
         """
         COMBINED (non-streaming): Generate concepts AND image prompts in a single Claude call.
@@ -177,7 +180,8 @@ class ClaudeIdeator:
 
         prompt = self._build_combined_prompt(
             titles, used_ideas, batch_number, script,
-            favorites_context, category_hint, creative_direction, count
+            favorites_context, category_hint, creative_direction, count,
+            thumbnail_text=thumbnail_text
         )
 
         tls.last_prompt = prompt
@@ -577,7 +581,7 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 - Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
 - CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
 - NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
-- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
+- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, photorealistic cinematic rendering
 - The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
 - End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
 
@@ -627,7 +631,8 @@ Return as JSON:
         favorites_context: str = "",
         category_hint: str = "",
         creative_direction: str = "",
-        count: int = 20
+        count: int = 20,
+        thumbnail_text: str = ""
     ) -> str:
         """Build a single prompt that generates BOTH concepts AND image prompts."""
         if self.prompt_manager is None:
@@ -649,7 +654,21 @@ Return as JSON:
         image_template = self.prompt_manager.get_prompt('image_prompt_template') if self.prompt_manager else ""
         template_instruction = image_template if image_template else "Write detailed cinematic image prompts."
 
+        # Add thumbnail text context if provided
+        thumbnail_text_section = ""
+        if thumbnail_text:
+            thumbnail_text_section = f"""
+## THUMBNAIL TEXT OVERLAY
+
+The text "{thumbnail_text}" will be overlaid on the final thumbnail. Design your concepts and compositions to COMPLEMENT this text:
+- Leave visual space for the text (don't put critical visual elements where text would go)
+- The imagery should enhance or contrast with the text's meaning
+- Consider how "{thumbnail_text}" changes what the viewer expects to see
+"""
+
         return f"""{base_prompt}
+
+{thumbnail_text_section}
 
 ---
 
@@ -668,7 +687,7 @@ Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these p
 - Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
 - CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
 - NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
-- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, editorial illustration style
+- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, photorealistic cinematic rendering
 - The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
 - End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
 

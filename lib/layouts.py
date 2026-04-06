@@ -258,7 +258,7 @@ TIER_S = [
     {
         "id": "split_sunglasses_reflection",
         "name": "Split: Sunglasses Reflection",
-        "instruction": "EXTREME close-up of oversized sunglasses filling 80-90% of the frame — the glasses ARE the thumbnail. Only the bridge of the nose and the top of the cheekbones visible. The face is a beautiful woman but barely visible behind the massive lenses. Each lens reflects a completely different dramatic scene. The reflections are the focal point, not the face.",
+        "instruction": "EXTREME close-up of oversized sunglasses filling 90% of the frame — the glasses ARE the entire thumbnail. Only the bridge of the nose barely visible. Each lens shows ONE single coherent reflected scene (not two things per lens). Left lens and right lens show contrasting scenes. The face behind the glasses is barely there — all attention on the reflections in the lenses.",
     },
     {
         "id": "split_eye_two_worlds",
