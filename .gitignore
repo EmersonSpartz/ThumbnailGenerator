@@ -18,6 +18,8 @@ data/history.json
 data/active_jobs.json
 data/freshness_tracker.json
 data/prompt_history.json
+data/editable_prompts.json
+data/prompting_guide.md
 data/performance.json
 data/favorites.json
 *.jpg
@@ -29,6 +31,11 @@ data/favorites.json
 .idea/
 *.swp
 *.swo
+
+# Node (puppeteer for visual checks)
+node_modules/
+package.json
+package-lock.json
 
 # OS
 .DS_Store
