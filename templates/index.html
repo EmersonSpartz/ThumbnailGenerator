@@ -1761,9 +1761,7 @@
             <!-- Sub-tabs for different settings -->
             <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; flex-wrap: wrap;">
                 <button class="subtab active" data-subtab="pipeline-overview" style="background: #333; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔍 Full Pipeline</button>
-                <button class="subtab" data-subtab="concept-prompt" style="background: #222; border: none; color: #888; padding: 8px 16px; border-radius: 6px; cursor: pointer;">1️⃣ Concepts</button>
-                <button class="subtab" data-subtab="image-prompt" style="background: #222; border: none; color: #888; padding: 8px 16px; border-radius: 6px; cursor: pointer;">2️⃣ Image Prompts</button>
-                <button class="subtab" data-subtab="prompting-guide" style="background: #222; border: none; color: #888; padding: 8px 16px; border-radius: 6px; cursor: pointer;">3️⃣ Guide</button>
+                <button class="subtab active" data-subtab="concept-prompt" style="background: #222; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">📝 Prompt</button>
                 <button class="subtab" data-subtab="models-info" style="background: #222; border: none; color: #888; padding: 8px 16px; border-radius: 6px; cursor: pointer;">📊 Models</button>
             </div>
 
@@ -1811,10 +1809,10 @@
             </div>
 
             <!-- SUBTAB 1: Concept Generation (Claude prompt) -->
-            <div id="subtab-concept-prompt" class="subtab-content" style="display: none; gap: 20px; height: calc(100vh - 300px);">
+            <div id="subtab-concept-prompt" class="subtab-content" style="display: flex; gap: 20px; height: calc(100vh - 300px);">
                 <div style="flex: 1; display: flex; flex-direction: column;">
                     <div class="prompt-editor-header" style="margin-bottom: 10px;">
-                        <h3>Claude Concept Generation Prompt</h3>
+                        <h3>Claude Prompt</h3>
                         <div class="prompt-actions">
                             <button class="btn btn-primary" id="save-prompt-btn">Save Changes</button>
                         </div>
@@ -1826,7 +1824,7 @@
                         <code style="background: #2a2a3e; padding: 2px 6px; border-radius: 3px; margin-left: 8px; color: #88f;">{{SCRIPT_SECTION}}</code>
                         <code style="background: #2a2a3e; padding: 2px 6px; border-radius: 3px; margin-left: 8px; color: #88f;">{{CREATIVE_DIRECTION_SECTION}}</code>
                     </div>
-                    <p style="color: #666; font-size: 11px; margin-bottom: 10px;">This is what Claude sees when generating thumbnail concepts. The concepts include title_ref, concept_name, category, and description.</p>
+                    <p style="color: #666; font-size: 11px; margin-bottom: 10px;">This is what Claude sees. It generates both concepts AND image prompts from this single prompt. Learned patterns and avoid rules are auto-appended.</p>
                     <textarea class="prompt-editor-textarea" id="prompt-editor" style="flex: 1; min-height: 400px; font-family: monospace; font-size: 12px; line-height: 1.5;"></textarea>
                 </div>
                 <div style="width: 300px;">
@@ -1839,8 +1837,8 @@
                 </div>
             </div>
 
-            <!-- SUBTAB 2: Image Prompt Template -->
-            <div id="subtab-image-prompt" class="subtab-content" style="display: none; flex-direction: column; height: calc(100vh - 300px);">
+            <!-- SUBTAB 2: Image Prompt Template (HIDDEN — consolidated into main prompt) -->
+            <div id="subtab-image-prompt" class="subtab-content" style="display: none !important; flex-direction: column; height: calc(100vh - 300px);">
                 <div class="prompt-editor-header" style="margin-bottom: 10px;">
                     <h3>Image Prompt Template</h3>
                     <div class="prompt-actions">
@@ -1857,8 +1855,8 @@
                 <textarea id="image-prompt-editor" style="flex: 1; min-height: 300px; font-family: monospace; font-size: 12px; line-height: 1.5; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 6px;"></textarea>
             </div>
 
-            <!-- SUBTAB 3: Prompting Guide -->
-            <div id="subtab-prompting-guide" class="subtab-content" style="display: none; flex-direction: column; height: calc(100vh - 300px);">
+            <!-- SUBTAB 3: Prompting Guide (HIDDEN — consolidated into main prompt) -->
+            <div id="subtab-prompting-guide" class="subtab-content" style="display: none !important; flex-direction: column; height: calc(100vh - 300px);">
                 <div class="prompt-editor-header" style="margin-bottom: 10px;">
                     <h3>Image Prompting Guide</h3>
                     <div class="prompt-actions">
