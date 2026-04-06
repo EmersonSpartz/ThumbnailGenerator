@@ -634,12 +634,12 @@ Return as JSON:
         count: int = 20,
         thumbnail_text: str = ""
     ) -> str:
-        """Build a single prompt that generates BOTH concepts AND image prompts."""
+        """Build a single, consolidated prompt — no redundancy."""
         if self.prompt_manager is None:
             from .prompt_manager import PromptManager
             self.prompt_manager = PromptManager(self.data_dir)
 
-        # Get the concept generation template
+        # Get the user-editable concept generation template
         base_prompt = self.prompt_manager.build_full_prompt(
             titles=titles,
             script=script or "",
@@ -647,81 +647,50 @@ Return as JSON:
             count=count
         )
 
-        # Get prompting guide for image prompts
-        prompting_guide = self._get_prompting_guide()
+        # Get learned patterns and avoid rules (these are the self-improving parts)
         learned_patterns = self._get_learned_patterns()
         avoid_rules = self._get_avoid_rules()
-        image_template = self.prompt_manager.get_prompt('image_prompt_template') if self.prompt_manager else ""
-        template_instruction = image_template if image_template else "Write detailed cinematic image prompts."
 
-        # Add thumbnail text context if provided
-        thumbnail_text_section = ""
-        if thumbnail_text:
-            thumbnail_text_section = f"""
-## THUMBNAIL TEXT OVERLAY
-
-The text "{thumbnail_text}" will be overlaid on the final thumbnail. Design your concepts and compositions to COMPLEMENT this text:
-- Leave visual space for the text (don't put critical visual elements where text would go)
-- The imagery should enhance or contrast with the text's meaning
-- Consider how "{thumbnail_text}" changes what the viewer expects to see
-"""
+        # Thumbnail text context
+        thumb_text_line = f'\n**THUMBNAIL TEXT**: "{thumbnail_text}" will be overlaid on the image. Design compositions that complement this text — leave space for it and let the imagery enhance its meaning.\n' if thumbnail_text else ''
 
         return f"""{base_prompt}
+{thumb_text_line}
+---
 
-{thumbnail_text_section}
+## IMAGE PROMPT RULES
+
+For each concept, also write a detailed image generation prompt. Rules:
+
+1. NO text/words/letters/numbers in the image
+2. Dark textured background (grain, dither — not pure void)
+3. ONE bold subject filling 60%+ of the frame — readable at 320px
+4. Red (#E20020) as primary accent. Secondary: cyan (#22E2FF), magenta (#F732EF)
+5. Photorealistic cinematic rendering — NOT cartoon, NOT comic book, NOT cel-shaded
+6. End every prompt with: no text, no words, no letters, 16:9, dark textured background, photorealistic, NOT cartoon
+{f'''
+## LEARNED PATTERNS (from A/B testing — apply these)
+
+{learned_patterns}''' if learned_patterns else ''}
+{f'''
+## AVOID THESE (from failure analysis)
+
+{avoid_rules}''' if avoid_rules else ''}
 
 ---
 
-## ALSO: Write Image Prompts For Each Concept
+## OUTPUT FORMAT
 
-After generating the concepts, ALSO write a detailed image generation prompt for each one.
-
-{template_instruction}
-
-CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
-
-SPECIES AESTHETIC MANDATE — THIS IS THE #1 PRIORITY:
-Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these patterns from the actual channel:
-- Dark background with visible TEXTURE (dithered grain, not pure black void)
-- ONE bold SYMBOLIC/ICONIC element — NOT a realistic scene. Think: a melting OpenAI logo, a cracked chess piece, a glowing red eye, an AI brain splitting apart
-- Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
-- CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
-- NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
-- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, photorealistic cinematic rendering
-- The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
-- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
-
-## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
-
-{learned_patterns if learned_patterns else "(No learned patterns yet)"}
-
----
-
-## KNOWN FAILURE PATTERNS — AVOID THESE (from bottom-25% analysis)
-
-{avoid_rules if avoid_rules else "(No avoid rules yet)"}
-
----
-
-## CINEMATIC PROMPTING GUIDE
-
-{prompting_guide}
-
----
-
-## COMBINED OUTPUT FORMAT
-
-Return ALL {count} concepts with their image prompts as JSON:
-
+Return {count} concepts as JSON:
 ```json
 {{
   "concepts": [
     {{
-      "title_ref": "The video title this is for",
-      "concept_name": "Short memorable name (2-4 words)",
-      "category": "Which angle (Cinematic Scale, Intimate Portrait, Bold Metaphor, etc.)",
-      "description": "Vivid 2-3 sentence description of the visual",
-      "prompt": "The complete cinematic image prompt for this concept (NO TEXT IN IMAGE). End with: no text, no words, no letters, no logos, 16:9 aspect ratio, high contrast, cinematic lighting"
+      "title_ref": "video title",
+      "concept_name": "2-4 word name",
+      "category": "Cinematic Scale / Intimate Portrait / Bold Metaphor / etc.",
+      "description": "2-3 sentence visual description",
+      "prompt": "Complete image prompt (end with: no text, no words, no letters, 16:9, photorealistic, NOT cartoon)"
     }}
   ]
 }}

@@ -5502,10 +5502,13 @@
                     alert('No prompt available for this thumbnail. Data: ' + JSON.stringify(data));
                     return;
                 }
-                // Quick variations with all models, 2 each = 8 total
+                // Target whichever grid is currently visible
+                const textGrid = document.getElementById('text-thumbnail-grid');
+                const genGrid = document.getElementById('thumbnail-grid');
+                const targetGrid = (textGrid && textGrid.offsetParent !== null) ? 'text-thumbnail-grid' : 'thumbnail-grid';
                 const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
-                console.log('+5 More URL:', url);
-                startGeneration(url, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
+                console.log('+5 More URL:', url, 'grid:', targetGrid);
+                startGeneration(url, targetGrid, 'Quick +5', ['nanobanana2']);
             });
 
             card.querySelector('.variations-btn').addEventListener('click', (e) => {
