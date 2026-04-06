@@ -5549,6 +5549,9 @@
             } else {
                 grid.insertBefore(card, grid.firstChild);
             }
+
+            // Apply Claude evaluation verdict if one exists in global map
+            applyVerdictToCard(card);
         }
 
         // =====================================================
@@ -5590,35 +5593,39 @@
             }, 5000);
         }
 
+        // Global verdict map — persists across card renders so new cards get badges too
+        window._claudeVerdicts = {};
+
+        function applyVerdictToCard(card) {
+            const img = card.querySelector('img');
+            if (!img) return;
+            const src = img.getAttribute('src') || '';
+            const fp = src.replace(/^\/output\//, '').replace(/^\//, '').split('?')[0];
+            const verdict = window._claudeVerdicts[fp];
+            if (!verdict || (verdict.verdict !== 'below' && verdict.verdict !== 'bad')) return;
+
+            // Don't double-apply
+            if (card.querySelector('.claude-eval-badge')) return;
+
+            const badge = document.createElement('div');
+            badge.className = 'claude-eval-badge';
+            badge.style.cssText = 'background:#ff0000;color:#fff;padding:8px 12px;font-size:13px;border-radius:6px;margin:8px;font-weight:700;display:block;';
+            badge.textContent = verdict.reason ? `👎 ${verdict.reason}` : '👎 Bottom 25%';
+            card.style.outline = '3px solid #ff0000';
+            card.style.outlineOffset = '-3px';
+            card.appendChild(badge);
+        }
+
         function showClaudeVerdicts(results) {
-            const verdictMap = {};
-            results.forEach(r => { verdictMap[r.file_path] = r; });
+            // Update global verdict map
+            results.forEach(r => { window._claudeVerdicts[r.file_path] = r; });
 
-            // Find all cards and overlay verdict
+            // Apply to all existing cards
             document.querySelectorAll('.thumbnail-card, .model-card').forEach(card => {
-                const img = card.querySelector('img');
-                if (!img) return;
-                const src = img.getAttribute('src') || '';
-                // Match by file_path (strip /output/ prefix)
-                const fp = src.replace(/^\/output\//, '').split('?')[0];
-                const verdict = verdictMap[fp];
-                if (!verdict) return;
-
-                // Remove existing verdict overlay
+                // Remove existing badge first (re-evaluation may change verdict)
                 card.querySelector('.claude-eval-badge')?.remove();
-
-                const badge = document.createElement('div');
-                badge.className = 'claude-eval-badge';
-                if (verdict.verdict === 'below' || verdict.verdict === 'bad') {
-                    badge.style.cssText = 'background:#ff0000;color:#fff;padding:8px 12px;font-size:13px;border-radius:6px;margin:8px;font-weight:700;display:block;';
-                    badge.textContent = verdict.reason ? `👎 ${verdict.reason}` : '👎 Bottom 25%';
-                    card.style.outline = '3px solid #ff0000';
-                    card.style.outlineOffset = '-3px';
-                } else {
-                    return;
-                }
-                // Always append at end of card (most reliable across card types)
-                card.appendChild(badge);
+                card.style.outline = '';
+                applyVerdictToCard(card);
             });
         }
 
@@ -6519,6 +6526,11 @@
 
             html += `</div>`;
             historyContainer.innerHTML = html;
+
+            // Re-apply Claude eval verdicts to newly rendered history cards
+            if (Object.keys(window._claudeVerdicts || {}).length > 0) {
+                historyContainer.querySelectorAll('.model-card').forEach(applyVerdictToCard);
+            }
         }
 
         // Clear history button
@@ -7346,6 +7358,34 @@
             else if (status === 'WARNING') pass(`Disk WARNING: ${disk.free_mb}MB free (generation may be slow)`);
             else pass(`Disk OK: ${disk.free_mb}MB free`);
         } catch(e) { fail('Disk status', e.message); }
+
+        // 21. Claude eval verdict map wired to cards (Bug: badges not showing on all cards)
+        try {
+            if (typeof window._claudeVerdicts !== 'object') throw new Error('Global _claudeVerdicts map missing');
+            if (typeof applyVerdictToCard !== 'function') throw new Error('applyVerdictToCard function missing');
+            const verdictCount = Object.keys(window._claudeVerdicts).length;
+            // If we have verdicts, check that cards with matching paths got badges
+            if (verdictCount > 0) {
+                let matchable = 0, badged = 0;
+                document.querySelectorAll('.thumbnail-card, .model-card').forEach(card => {
+                    const img = card.querySelector('img');
+                    if (!img) return;
+                    const fp = (img.getAttribute('src') || '').replace(/^\/output\//, '').replace(/^\//, '').split('?')[0];
+                    const v = window._claudeVerdicts[fp];
+                    if (v && (v.verdict === 'below' || v.verdict === 'bad')) {
+                        matchable++;
+                        if (card.querySelector('.claude-eval-badge')) badged++;
+                    }
+                });
+                if (matchable > 0 && badged < matchable) {
+                    fail('Claude eval badges', `${badged}/${matchable} flagged cards have badges — ${matchable - badged} missing`);
+                } else {
+                    pass(`Claude eval wired (${verdictCount} verdicts, ${badged} badges shown)`);
+                }
+            } else {
+                pass('Claude eval wired (no verdicts loaded yet)');
+            }
+        } catch(e) { fail('Claude eval badges', e.message); }
 
         // Summary
         const passed = results.filter(r => r.status === 'PASS').length;
