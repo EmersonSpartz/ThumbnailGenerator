@@ -536,6 +536,18 @@ class ClaudeIdeator:
         except Exception:
             return ""
 
+    def _extract_image_prompt_rules(self) -> str:
+        """Extract IMAGE PROMPT RULES section from the editable prompt (single source of truth)."""
+        if self.prompt_manager is None:
+            from .prompt_manager import PromptManager
+            self.prompt_manager = PromptManager(self.data_dir)
+        full_prompt = self.prompt_manager.get_prompt('claude_prompt') or ""
+        # Find the IMAGE PROMPT RULES section
+        match = re.search(r'## IMAGE PROMPT RULES\s*\n(.*?)(?=\n---|\n## |\Z)', full_prompt, re.DOTALL)
+        if match:
+            return match.group(0).strip()
+        return ""
+
     def _build_prompts_prompt(self, concepts: list[dict]) -> str:
         """Build prompt for STEP 2: image prompt writing from pre-existing concepts."""
         concepts_formatted = "\n\n".join([
@@ -547,48 +559,29 @@ class ClaudeIdeator:
 
         learned_patterns = self._get_learned_patterns()
         avoid_rules = self._get_avoid_rules()
+        image_rules = self._extract_image_prompt_rules()
 
-        return f"""Write a detailed image generation prompt for each thumbnail concept below.
+        parts = [
+            "Write a detailed image generation prompt for each thumbnail concept below.",
+            f"\n## CONCEPTS\n\n{concepts_formatted}",
+        ]
+        if image_rules:
+            parts.append(f"\n{image_rules}")
+        if learned_patterns:
+            parts.append(f"\n## LEARNED PATTERNS (from A/B testing — apply these)\n\n{learned_patterns}")
+        if avoid_rules:
+            parts.append(f"\n## AVOID THESE (from failure analysis)\n\n{avoid_rules}")
 
-## CONCEPTS
-
-{concepts_formatted}
-
----
-
-## IMAGE PROMPT RULES
-
-1. NO text/words/letters/numbers in the image
-2. Dark textured background (grain, dither — not pure void)
-3. ONE bold subject filling 60%+ of the frame — readable at 320px
-4. Red (#E20020) as primary accent. Secondary: cyan (#22E2FF), magenta (#F732EF)
-5. Photorealistic cinematic rendering — NOT cartoon, NOT comic book, NOT cel-shaded
-6. End every prompt with: no text, no words, no letters, 16:9, dark textured background, photorealistic, NOT cartoon
-{f'''
-## LEARNED PATTERNS (from A/B testing — apply these)
-
-{learned_patterns}''' if learned_patterns else ''}
-{f'''
-## AVOID THESE (from failure analysis)
-
-{avoid_rules}''' if avoid_rules else ''}
-
----
-
-## OUTPUT FORMAT
-
-Return as JSON:
-```json
-{{
-  "prompts": [
-    {{
-      "concept_name": "The concept name from above",
-      "title_ref": "The video title",
-      "prompt": "Complete image prompt (end with: no text, no words, no letters, 16:9, photorealistic, NOT cartoon)"
-    }}
-  ]
-}}
-```"""
+        # Output format is hardcoded here because the parser depends on this exact JSON structure
+        parts.append(
+            "\n---\n\n## OUTPUT FORMAT\n\nReturn as JSON:\n```json\n"
+            '{\n  "prompts": [\n    {\n'
+            '      "concept_name": "The concept name from above",\n'
+            '      "title_ref": "The video title",\n'
+            '      "prompt": "Complete image generation prompt"\n'
+            "    }\n  ]\n}\n```"
+        )
+        return "\n".join(parts)
 
     def _build_combined_prompt(
         self,
@@ -622,47 +615,16 @@ Return as JSON:
         # Thumbnail text context
         thumb_text_line = f'\n**THUMBNAIL TEXT**: "{thumbnail_text}" will be overlaid on the image. Design compositions that complement this text — leave space for it and let the imagery enhance its meaning.\n' if thumbnail_text else ''
 
-        return f"""{base_prompt}
-{thumb_text_line}
----
-
-## IMAGE PROMPT RULES
-
-For each concept, also write a detailed image generation prompt. Rules:
-
-1. NO text/words/letters/numbers in the image
-2. Dark textured background (grain, dither — not pure void)
-3. ONE bold subject filling 60%+ of the frame — readable at 320px
-4. Red (#E20020) as primary accent. Secondary: cyan (#22E2FF), magenta (#F732EF)
-5. Photorealistic cinematic rendering — NOT cartoon, NOT comic book, NOT cel-shaded
-6. End every prompt with: no text, no words, no letters, 16:9, dark textured background, photorealistic, NOT cartoon
-{f'''
-## LEARNED PATTERNS (from A/B testing — apply these)
-
-{learned_patterns}''' if learned_patterns else ''}
-{f'''
-## AVOID THESE (from failure analysis)
-
-{avoid_rules}''' if avoid_rules else ''}
-
----
-
-## OUTPUT FORMAT
-
-Return {count} concepts as JSON:
-```json
-{{
-  "concepts": [
-    {{
-      "title_ref": "video title",
-      "concept_name": "2-4 word name",
-      "category": "Cinematic Scale / Intimate Portrait / Bold Metaphor / etc.",
-      "description": "2-3 sentence visual description",
-      "prompt": "Complete image prompt (end with: no text, no words, no letters, 16:9, photorealistic, NOT cartoon)"
-    }}
-  ]
-}}
-```"""
+        # Assemble: editable prompt + dynamic inputs only
+        # All rules (aesthetic, image prompt, output format) live in the editable prompt
+        parts = [base_prompt]
+        if thumb_text_line:
+            parts.append(thumb_text_line)
+        if learned_patterns:
+            parts.append(f"\n## LEARNED PATTERNS (from A/B testing — apply these)\n\n{learned_patterns}")
+        if avoid_rules:
+            parts.append(f"\n## AVOID THESE (from failure analysis)\n\n{avoid_rules}")
+        return "\n".join(parts)
 
     def _parse_combined_response(self, text: str) -> list[dict]:
         """Parse the combined concepts+prompts response."""
