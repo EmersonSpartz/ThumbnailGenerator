@@ -1837,37 +1837,7 @@
                 </div>
             </div>
 
-            <!-- SUBTAB 2: Image Prompt Template (HIDDEN — consolidated into main prompt) -->
-            <div id="subtab-image-prompt" class="subtab-content" style="display: none !important; flex-direction: column; height: calc(100vh - 300px);">
-                <div class="prompt-editor-header" style="margin-bottom: 10px;">
-                    <h3>Image Prompt Template</h3>
-                    <div class="prompt-actions">
-                        <button class="btn btn-primary" id="save-image-template-btn">Save Changes</button>
-                    </div>
-                </div>
-                <p style="color: #666; font-size: 12px; margin-bottom: 10px;">This instructs Claude how to write image generation prompts for each concept. The prompting guide (tab 3) provides additional context.</p>
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-                    <label style="white-space:nowrap;font-size:12px;color:#888;">Template Name:</label>
-                    <input type="text" id="template-name-input" placeholder="Name this template version..."
-                           style="flex:1;background:#1a1a1a;border:1px solid #333;color:#fff;padding:6px 10px;border-radius:4px;font-size:13px;">
-                    <button class="btn btn-primary" id="save-template-name-btn" style="padding:6px 12px;font-size:12px;">Save Name</button>
-                </div>
-                <textarea id="image-prompt-editor" style="flex: 1; min-height: 300px; font-family: monospace; font-size: 12px; line-height: 1.5; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 6px;"></textarea>
-            </div>
-
-            <!-- SUBTAB 3: Prompting Guide (HIDDEN — consolidated into main prompt) -->
-            <div id="subtab-prompting-guide" class="subtab-content" style="display: none !important; flex-direction: column; height: calc(100vh - 300px);">
-                <div class="prompt-editor-header" style="margin-bottom: 10px;">
-                    <h3>Image Prompting Guide</h3>
-                    <div class="prompt-actions">
-                        <button class="btn btn-primary" id="save-guide-btn">Save Changes</button>
-                    </div>
-                </div>
-                <p style="color: #666; font-size: 12px; margin-bottom: 10px;">This guide teaches Claude how to write effective prompts for each image model. It's included when Claude writes image prompts.</p>
-                <textarea id="prompting-guide-editor" style="flex: 1; min-height: 300px; font-family: monospace; font-size: 12px; line-height: 1.5; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 6px;"></textarea>
-            </div>
-
-            <!-- SUBTAB 4: Models Info -->
+            <!-- SUBTAB 2: Models Info -->
             <div id="subtab-models-info" class="subtab-content" style="display: none; padding: 20px;">
                 <h3 style="margin-bottom: 15px;">Image Generation Models</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
@@ -6873,24 +6843,6 @@
                 // Load concept generation prompt
                 document.getElementById('prompt-editor').value = promptsData['claude_prompt'] || '';
 
-                // Load image prompt template
-                const imageTemplateEditor = document.getElementById('image-prompt-editor');
-                if (imageTemplateEditor) {
-                    imageTemplateEditor.value = promptsData['image_prompt_template'] || '';
-                }
-
-                // Load image prompt template name
-                const nameInput = document.getElementById('template-name-input');
-                if (nameInput && promptsData['image_prompt_template_name']) {
-                    nameInput.value = promptsData['image_prompt_template_name'];
-                }
-
-                // Load prompting guide
-                const guideEditor = document.getElementById('prompting-guide-editor');
-                if (guideEditor) {
-                    guideEditor.value = promptsData['prompting_guide'] || '';
-                }
-
                 updateChangeHistory(data.history);
             } catch (err) {
                 console.error('Failed to load prompts:', err);
@@ -6949,38 +6901,6 @@
         document.getElementById('save-prompt-btn').addEventListener('click', () => {
             savePrompt('claude_prompt', 'prompt-editor');
         });
-
-        // Save image prompt template
-        const saveImageBtn = document.getElementById('save-image-template-btn');
-        if (saveImageBtn) {
-            saveImageBtn.addEventListener('click', () => {
-                savePrompt('image_prompt_template', 'image-prompt-editor');
-            });
-        }
-
-        // Save template name
-        document.getElementById('save-template-name-btn').addEventListener('click', async () => {
-            const name = document.getElementById('template-name-input').value.trim();
-            if (!name) return;
-            const resp = await fetch('/api/save-template-name', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name})
-            });
-            const result = await resp.json();
-            if (result.success) {
-                document.getElementById('save-template-name-btn').textContent = 'Saved!';
-                setTimeout(() => document.getElementById('save-template-name-btn').textContent = 'Save Name', 1500);
-            }
-        });
-
-        // Save prompting guide
-        const saveGuideBtn = document.getElementById('save-guide-btn');
-        if (saveGuideBtn) {
-            saveGuideBtn.addEventListener('click', () => {
-                savePrompt('prompting_guide', 'prompting-guide-editor');
-            });
-        }
 
         // Load prompts when tab is opened
         document.querySelector('[data-tab="prompts"]').addEventListener('click', () => {

@@ -83,15 +83,6 @@ class ClaudeIdeator:
                 print(f"[Claude] Retry {attempt + 1}/{max_retries} after {type(e).__name__}: waiting {wait}s")
                 time.sleep(wait)
 
-    def _get_prompting_guide(self) -> str:
-        """Get prompting guide from prompt manager or file."""
-        if self.prompt_manager:
-            return self.prompt_manager.get_prompt('prompting_guide')
-        # Fallback to file
-        guide_path = self.data_dir / 'prompting_guide.md'
-        if guide_path.exists():
-            return guide_path.read_text()
-        return ""
 
     def generate_concepts_and_prompts_streaming(
         self,
@@ -546,7 +537,7 @@ class ClaudeIdeator:
             return ""
 
     def _build_prompts_prompt(self, concepts: list[dict]) -> str:
-        """Build prompt for STEP 2: NanoBanana Pro prompt writing."""
+        """Build prompt for STEP 2: image prompt writing from pre-existing concepts."""
         concepts_formatted = "\n\n".join([
             f"**{i+1}. {c.get('concept_name', 'Untitled')}** ({c.get('category', 'General')})\n"
             f"Title: {c.get('title_ref', 'Unknown')}\n"
@@ -554,60 +545,37 @@ class ClaudeIdeator:
             for i, c in enumerate(concepts)
         ])
 
-        # Get editable prompting guide
-        prompting_guide = self._get_prompting_guide()
-
-        # Get learned patterns from A/B testing
         learned_patterns = self._get_learned_patterns()
-
-        # Get avoid rules from failure analysis
         avoid_rules = self._get_avoid_rules()
 
-        # Get image prompt template if available
-        image_template = ""
-        if self.prompt_manager:
-            image_template = self.prompt_manager.get_prompt('image_prompt_template')
+        return f"""Write a detailed image generation prompt for each thumbnail concept below.
 
-        template_instruction = image_template if image_template else "Write NanoBanana Pro prompts for each of these thumbnail concepts. Follow the prompting guide below."
-
-        return f"""{template_instruction}
-
-CRITICAL: DO NOT include any text, words, letters, or numbers in the image. The thumbnail should be purely visual.
-
-SPECIES AESTHETIC MANDATE — THIS IS THE #1 PRIORITY:
-Real Species thumbnails look like GRAPHIC DESIGN, not photographs. Study these patterns from the actual channel:
-- Dark background with visible TEXTURE (dithered grain, not pure black void)
-- ONE bold SYMBOLIC/ICONIC element — NOT a realistic scene. Think: a melting OpenAI logo, a cracked chess piece, a glowing red eye, an AI brain splitting apart
-- Red (#E20020) as dominant accent — red emergency glow, red backlighting, red elements
-- CONCEPTUAL and METAPHORICAL imagery — represent the idea abstractly, don't illustrate it literally
-- NEVER generate: realistic office scenes, people at desks, stock-photo-style environments, mundane real-world settings
-- ALWAYS generate: bold symbolic objects, dramatic isolated subjects, surreal/sci-fi compositions, photorealistic cinematic rendering
-- The composition should read INSTANTLY as a thumbnail — one clear visual idea, not a complex scene
-- End every prompt with: no text, no words, no letters, 16:9 aspect ratio, dark textured background, bold minimal composition, ominous red accent lighting, photorealistic rendering, NOT cartoon, NOT comic book, NOT cel-shaded, NOT animated
-
-## CONCEPTS:
+## CONCEPTS
 
 {concepts_formatted}
 
 ---
 
-## LEARNED PATTERNS FROM A/B TESTING (apply these — they're validated by human preference data)
+## IMAGE PROMPT RULES
 
-{learned_patterns if learned_patterns else "(No learned patterns yet)"}
+1. NO text/words/letters/numbers in the image
+2. Dark textured background (grain, dither — not pure void)
+3. ONE bold subject filling 60%+ of the frame — readable at 320px
+4. Red (#E20020) as primary accent. Secondary: cyan (#22E2FF), magenta (#F732EF)
+5. Photorealistic cinematic rendering — NOT cartoon, NOT comic book, NOT cel-shaded
+6. End every prompt with: no text, no words, no letters, 16:9, dark textured background, photorealistic, NOT cartoon
+{f'''
+## LEARNED PATTERNS (from A/B testing — apply these)
+
+{learned_patterns}''' if learned_patterns else ''}
+{f'''
+## AVOID THESE (from failure analysis)
+
+{avoid_rules}''' if avoid_rules else ''}
 
 ---
 
-## KNOWN FAILURE PATTERNS — AVOID THESE (from bottom-25% analysis)
-
-{avoid_rules if avoid_rules else "(No avoid rules yet)"}
-
----
-
-## CINEMATIC PROMPTING GUIDE
-
-{prompting_guide}
-
----
+## OUTPUT FORMAT
 
 Return as JSON:
 ```json
@@ -616,7 +584,7 @@ Return as JSON:
     {{
       "concept_name": "The concept name from above",
       "title_ref": "The video title",
-      "prompt": "The complete cinematic image prompt (NO TEXT IN IMAGE)"
+      "prompt": "Complete image prompt (end with: no text, no words, no letters, 16:9, photorealistic, NOT cartoon)"
     }}
   ]
 }}

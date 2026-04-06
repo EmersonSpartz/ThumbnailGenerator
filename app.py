@@ -843,11 +843,7 @@ def get_pipeline_debug():
     # Get the ACTUAL last prompt that was sent to Claude
     last_concept_prompt = get_last_prompt()
 
-    # Stage 2: Image Prompt Template + Prompting Guide
-    image_prompt_template = prompt_manager.get_prompt('image_prompt_template')
-    prompting_guide = prompt_manager.get_prompt('prompting_guide')
-
-    # Build the full image prompt instruction (what Claude sees when writing image prompts)
+    # Build example image prompt (what Claude sees when writing image prompts in two-step flow)
     ideator = ClaudeIdeator(settings, prompt_manager=prompt_manager)
     sample_concepts = [
         {
@@ -859,31 +855,23 @@ def get_pipeline_debug():
     ]
     image_prompt_full = ideator._build_prompts_prompt(sample_concepts)
 
-    # Stage 3: What actually goes to image models
-    # This is the final prompt string that gets sent to Gemini/Flux/etc
-    sample_image_prompt = "Cinematic wide shot of massive metallic robot towering over tiny human silhouette, dramatic red and blue lighting, apocalyptic sky, extreme scale contrast showing robot 100x taller than human, bold graphic style, 16:9 YouTube thumbnail, high contrast"
-
     # Get available models
     multi_gen = _make_generator()
     available_models = multi_gen.get_available_models()
 
     return jsonify({
         "stage_1_concept_generation": {
-            "description": "This is sent to Claude to generate thumbnail CONCEPTS (ideas, not images yet)",
+            "description": "This is sent to Claude to generate thumbnail CONCEPTS + IMAGE PROMPTS in one call",
             "prompt": last_concept_prompt if last_concept_prompt else "(No generation run yet - run a generation first to see the actual prompt)",
             "placeholders_used": ["{{TITLES}}", "{{COUNT}}", "{{SCRIPT_SECTION}}", "{{CREATIVE_DIRECTION_SECTION}}"]
         },
         "stage_2_image_prompt_writing": {
-            "description": "After concepts are generated, this is sent to Claude to write IMAGE PROMPTS for each concept",
-            "template_instruction": image_prompt_template,
-            "prompting_guide": prompting_guide,
+            "description": "For variations/shootouts, this separate prompt writes image prompts for pre-existing concepts",
             "full_prompt_example": image_prompt_full
         },
         "stage_3_image_generation": {
-            "description": "The final prompt string that gets sent directly to each image model (Gemini, Flux, etc)",
-            "example_prompt": sample_image_prompt,
-            "models_available": available_models,
-            "note": "Each model receives the SAME prompt - they interpret it differently based on their training"
+            "description": "The final prompt string sent to each image model (Gemini, Flux, etc)",
+            "models_available": available_models
         },
         "last_actual_prompts": {
             "last_concept_prompt": get_last_prompt(),
