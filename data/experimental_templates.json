@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "templates": [
     {
       "id": "dripping_from_above",
@@ -150,7 +150,132 @@
       "id": "russian_nesting_reveal",
       "name": "Nesting Layers / Matryoshka",
       "instruction": "The subject is shown as nested containers opening to reveal smaller versions or different things inside, like Russian nesting dolls. At least 3 visible layers, each one opened to expose the next. Arrange them in a slight arc or diagonal so all layers are simultaneously visible. Each inner layer reveals something more essential or surprising."
+    },
+    {
+      "id": "lone_object_void",
+      "name": "Lone Object in Void",
+      "instruction": "Place a single, sharply lit object dead center against a pure black background. The object should fill about 40% of the frame and cast no shadow \u2014 as if floating in infinite darkness. Use a single dramatic color for the object against the black."
+    },
+    {
+      "id": "extreme_macro_texture",
+      "name": "Extreme Macro Texture",
+      "instruction": "Fill the entire frame (95%+) with an extreme close-up of a surface texture so zoomed in it becomes abstract and almost unrecognizable. Use vivid color and sharp detail. The viewer should feel like they're looking through a microscope at something massive."
+    },
+    {
+      "id": "eruption_from_below",
+      "name": "Erupting From Below",
+      "instruction": "Compose as if something is violently bursting upward from the bottom edge of the frame, with debris, particles, or energy scattering into the upper two-thirds. The bottom 20% should be dense and dark, the explosion of material fanning out toward the top in a bright contrasting color."
+    },
+    {
+      "id": "giant_looming_above",
+      "name": "Giant Looming Above",
+      "instruction": "Frame the shot from an extreme low angle looking up. A massive object or form fills the top 70% of the frame, towering and imposing. The bottom shows a tiny ground-level horizon for scale. Strong backlight creates a glowing rim around the giant form against a colored sky."
+    },
+    {
+      "id": "single_crack_spreading",
+      "name": "The Spreading Crack",
+      "instruction": "Show a smooth, pristine surface in a bold single color that fills the entire frame. A single dramatic crack originates from one corner and branches across the surface like lightning, with intense bright light or contrasting color bleeding through the fractures."
+    },
+    {
+      "id": "spotlight_circle",
+      "name": "Spotlight Circle",
+      "instruction": "The entire frame is near-black except for a harsh circular spotlight in the center illuminating one key object or symbol from directly above. The circle of light should take up about 30% of the frame. Everything outside the circle is swallowed by darkness."
+    },
+    {
+      "id": "object_dwarfs_landscape",
+      "name": "Object Dwarfs Landscape",
+      "instruction": "Place an impossibly oversized everyday object in a wide landscape so it dominates 60% of the frame, towering over mountains, buildings, or terrain. Use forced perspective \u2014 the landscape is tiny and detailed at the bottom, the enormous object rises from it filling the sky."
+    },
+    {
+      "id": "consumed_by_edge",
+      "name": "Consumed by Edge",
+      "instruction": "An object or form enters from one edge of the frame (left or right) and is clearly being swallowed, dissolved, or absorbed by a contrasting mass creeping in from that same edge. The center of the frame shows the moment of contact \u2014 the boundary where the two meet."
+    },
+    {
+      "id": "radial_explosion_center",
+      "name": "Radial Burst from Center",
+      "instruction": "Place a small dense core object at the exact center of the frame. Radiating outward from it in all directions are streaks, rays, or fragments creating a starburst pattern that fills the entire frame. The core should be one bold color, the rays a high-contrast opposing color."
+    },
+    {
+      "id": "sinking_into_surface",
+      "name": "Sinking Into Surface",
+      "instruction": "Show an object halfway submerged into a flat surface as if being pulled under \u2014 like sinking into quicksand or liquid metal. The surface should be reflective or glossy. Frame it at eye level so you see the object above and its distorted partial reflection below."
+    },
+    {
+      "id": "colossal_eye_view",
+      "name": "Colossal Eye View",
+      "instruction": "Fill 80%+ of the frame with an extreme close-up of a single non-human eye (reptilian, mechanical, insectoid, cosmic). The iris should contain unusual colors or patterns. The eye should be looking slightly off-center, creating unease. Deep blacks in the pupil, vivid color in the iris."
+    },
+    {
+      "id": "cliff_edge_drop",
+      "name": "Cliff Edge Drop",
+      "instruction": "Compose from the perspective of looking over a sharp edge or precipice. The top third shows the flat surface we stand on, then a hard line, then a dramatic plunge into depth filling the bottom two-thirds. Place one small object right on the edge about to fall. Strong contrast between the safe surface color and the abyss below."
+    },
+    {
+      "id": "encased_in_amber",
+      "name": "Encased in Amber",
+      "instruction": "Show a single recognizable object or symbol trapped inside a translucent glowing material (amber, ice, crystal, resin) that fills most of the frame. Light passes through the encasing material creating warm or cool color shifts. The trapped object is frozen mid-action, preserved and unreachable."
+    },
+    {
+      "id": "hand_reaching_from_dark",
+      "name": "Reaching From Darkness",
+      "instruction": "A single stylized hand, claw, or tendril reaches from deep shadow on one side of the frame toward a brightly lit object on the other side. The hand should be detailed and dramatic but not quite touching the object. The frame is 60% darkness, 40% lit space \u2014 the reaching element bridges both."
+    },
+    {
+      "id": "toppling_domino_chain",
+      "name": "Domino Chain Moment",
+      "instruction": "Frame a diagonal line of increasingly larger identical objects arranged from one corner to the opposite corner, each tilting into the next in a cascade. Freeze the moment mid-topple. The smallest object at the origin corner, the largest filling the destination corner. Strong side lighting to create dramatic shadows."
+    },
+    {
+      "id": "massive_shadow_tiny_source",
+      "name": "Massive Shadow, Tiny Source",
+      "instruction": "A very small object sits in the lower portion of the frame, but it casts an enormous, dramatically different shadow that fills the upper 60% of the frame. The shadow should be a distorted, more menacing or grander version of the small source. Harsh single-direction lighting on a flat surface."
+    },
+    {
+      "id": "object_peeling_away",
+      "name": "Peeling Away Layers",
+      "instruction": "Show a single object or form where the outer surface is peeling or curling away like paint or skin, revealing a completely different material, color, or substance underneath. Frame it as a close-up filling 70% of the frame. The peeled layers should curl dramatically, and the revealed interior should be a contrasting vivid color."
+    },
+    {
+      "id": "vortex_drain_center",
+      "name": "Vortex Drain",
+      "instruction": "The entire frame is a swirling vortex or whirlpool pattern spiraling toward a dark point at the center. Objects, particles, or fragments are caught in the spiral, getting smaller as they approach the center. Use 2-3 bold contrasting colors for the spiral bands against a dark core."
+    },
+    {
+      "id": "grid_one_anomaly",
+      "name": "Grid With One Anomaly",
+      "instruction": "Fill the frame with a tight uniform grid of identical small objects in muted or cool tones. Exactly one cell in the grid is dramatically different \u2014 different color (vivid red or bright yellow), different state, or different form. The anomaly should be slightly off-center to create visual tension."
+    },
+    {
+      "id": "collision_freeze_frame",
+      "name": "Collision Freeze Frame",
+      "instruction": "Two distinct objects or masses are captured at the exact moment of impact in the center of the frame. Fragments, sparks, or energy radiate from the collision point. Each object enters from opposite sides. Use two strongly contrasting colors \u2014 one for each colliding element."
+    },
+    {
+      "id": "hourglass_squeeze",
+      "name": "Hourglass Squeeze",
+      "instruction": "Compose the frame so a large element fills the top third and another large element fills the bottom third, but they're connected by a tiny narrow pinch point in the center \u2014 like an hourglass shape. Material or energy appears to flow through the narrow center. Strong color difference between top and bottom sections."
+    },
+    {
+      "id": "emerging_from_fog_wall",
+      "name": "Emerging From Fog Wall",
+      "instruction": "The left or right half of the frame is a dense wall of fog, mist, or smoke in a single atmospheric color. A bold object or silhouette is partially emerging from this fog wall \u2014 only 40-50% visible, the rest swallowed by the haze. The visible portion is sharply detailed and brightly colored against the soft fog."
+    },
+    {
+      "id": "countdown_final_second",
+      "name": "Final Second Tension",
+      "instruction": "A single object is shown in extreme close-up at the precise moment before irreversible change \u2014 a bubble about to pop, a drop about to fall, a surface about to shatter. Fill 80% of the frame with this object. Use shallow depth-of-field style: razor-sharp focus on the tension point, everything else softly blurred."
+    },
+    {
+      "id": "nested_frames_deep",
+      "name": "Nested Frames Tunnel",
+      "instruction": "Create a composition of frames within frames receding toward a bright focal point deep in the center \u2014 like looking through a series of doorways, windows, or openings. Each successive frame is smaller and the colors shift from dark outer edges to an intensely bright or vivid center. The innermost frame contains one small bold object."
+    },
+    {
+      "id": "inverse_gravity_float",
+      "name": "Inverse Gravity Float",
+      "instruction": "Show multiple objects floating upward away from a surface at the bottom of the frame, as if gravity reversed. Objects near the bottom are large and detailed, getting smaller as they drift toward the top. The background is a single bold gradient color. Arrange objects in a loose upward spray pattern, not in a grid."
     }
   ],
-  "status": "untested"
+  "status": "testing"
 }
