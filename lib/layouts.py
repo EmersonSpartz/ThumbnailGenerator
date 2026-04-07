@@ -255,11 +255,7 @@ TIER_S = [
         "instruction": "Vertical split defined purely by COLOR — left half bathed in one dramatic color (red, warm), right half in the opposite (blue, cold). Same subject spans both halves.",
     },
 
-    {
-        "id": "split_sunglasses_reflection",
-        "name": "Split: Sunglasses Reflection",
-        "instruction": "EXTREME close-up of oversized sunglasses filling 90% of the frame — the glasses ARE the entire thumbnail. Only the bridge of the nose barely visible. Each lens shows ONE single coherent reflected scene (not two things per lens). Left lens and right lens show contrasting scenes. The face behind the glasses is barely there — all attention on the reflections in the lenses.",
-    },
+    # Sunglasses template REMOVED — NanoBanana can't render it well (faces look cringe, reflections show two things per lens)
     {
         "id": "split_eye_two_worlds",
         "name": "Split: Eye Split in Half",
