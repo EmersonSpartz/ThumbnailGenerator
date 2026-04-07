@@ -5516,7 +5516,9 @@
                 const textGrid = document.getElementById('text-thumbnail-grid');
                 const genGrid = document.getElementById('thumbnail-grid');
                 const targetGrid = (textGrid && textGrid.offsetParent !== null) ? 'text-thumbnail-grid' : 'thumbnail-grid';
-                const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
+                const thumbText = data.thumbnail_text || document.getElementById('thumbnail-copy')?.value || '';
+                let url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
+                if (thumbText) url += `&thumbnail_text=${encodeURIComponent(thumbText)}`;
                 console.log('+5 More URL:', url, 'grid:', targetGrid);
                 startGeneration(url, targetGrid, 'Quick +5', ['nanobanana2']);
             });
@@ -5990,6 +5992,11 @@
             }
 
             if (url) {
+                // Add thumbnail text to quick-variations URLs
+                if (url.includes('quick-variations')) {
+                    const thumbText = document.getElementById('thumbnail-copy')?.value || '';
+                    if (thumbText) url += `&thumbnail_text=${encodeURIComponent(thumbText)}`;
+                }
                 startGeneration(url, 'thumbnail-grid', 'Variations', models);
             } else {
                 alert('Could not generate variations. No prompt or favorite ID available.');
@@ -6095,8 +6102,10 @@
                 case 'r':
                     // Regenerate - same as +5 More
                     if (data.prompt) {
-                        const url = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
-                        startGeneration(url, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
+                        const rThumbText = data.thumbnail_text || document.getElementById('thumbnail-copy')?.value || '';
+                        let rUrl = `/api/quick-variations?prompt=${encodeURIComponent(data.prompt)}&num_variations=5&models=nanobanana2&video_name=${encodeURIComponent(getVideoParam())}`;
+                        if (rThumbText) rUrl += `&thumbnail_text=${encodeURIComponent(rThumbText)}`;
+                        startGeneration(rUrl, 'thumbnail-grid', 'Quick +5', ['nanobanana2']);
                     } else {
                         alert('No prompt available for this thumbnail');
                     }
