@@ -275,6 +275,106 @@
       "id": "inverse_gravity_float",
       "name": "Inverse Gravity Float",
       "instruction": "Show multiple objects floating upward away from a surface at the bottom of the frame, as if gravity reversed. Objects near the bottom are large and detailed, getting smaller as they drift toward the top. The background is a single bold gradient color. Arrange objects in a loose upward spray pattern, not in a grid."
+    },
+    {
+      "id": "reflection_pool",
+      "name": "Reflection Pool",
+      "instruction": "A subject in the upper half is reflected in a still, dark surface below \u2014 but the reflection shows something different or distorted. The surface line cuts horizontally across the center. Above is sharp and real; below is warped, darker, or reveals a hidden version."
+    },
+    {
+      "id": "color_bleed_boundary",
+      "name": "Color Bleed Boundary",
+      "instruction": "Two bold contrasting colors (e.g., red and cyan) meet along a jagged, irregular boundary line running roughly vertically through the center. Each side is a different world, mood, or state. The boundary itself is where the drama happens \u2014 bleeding, sparking, or dissolving where the colors touch."
+    },
+    {
+      "id": "negative_space_shape",
+      "name": "Negative Space Shape",
+      "instruction": "The main subject is NOT drawn directly \u2014 instead, it's formed by the empty space between other objects. Dense visual elements surround and define a clear shape of nothing in the center. The negative space silhouette should be instantly recognizable as something topic-relevant."
+    },
+    {
+      "id": "extreme_low_angle_looking_up",
+      "name": "Extreme Low Angle",
+      "instruction": "Shot from ground level looking straight up. The subject towers overhead, shot from below chin/base level. The sky or ceiling behind is a dramatic single color. This angle makes anything look monumental and threatening. The subject fills the top 70% of the frame."
+    },
+    {
+      "id": "trail_of_destruction",
+      "name": "Trail of Destruction",
+      "instruction": "Something has moved through the scene from background to foreground, leaving a clear path of damage, debris, or change behind it. The trail leads the eye from the background to a subject in the foreground. The untouched areas on either side contrast with the destroyed path."
+    },
+    {
+      "id": "countdown_numbers",
+      "name": "Bold Number / Countdown",
+      "instruction": "A single large bold number or countdown timer dominates 60%+ of the frame, rendered in a dramatic style \u2014 cracking, glowing, dripping, or dissolving. The number itself IS the subject. Dark background, vivid color on the number. Works best with single digits or short counts."
+    },
+    {
+      "id": "liquid_metal_form",
+      "name": "Liquid Metal / Chrome Form",
+      "instruction": "The main subject is rendered as if made entirely of liquid mercury or chrome \u2014 hyper-reflective, flowing, mid-transformation between solid and liquid. The reflective surface catches dramatic red/cyan lighting from the environment. The form should be 60%+ of the frame against a dark background."
+    },
+    {
+      "id": "radar_ping_scan",
+      "name": "Radar / Scan Sweep",
+      "instruction": "A circular radar or sonar display fills the frame, with a sweeping line revealing blips or targets. The background is dark with concentric rings. One blip is highlighted in red or stands out from the others. The sweeping line creates a wedge of bright color. Top-down surveillance aesthetic."
+    },
+    {
+      "id": "tilt_shift_miniature",
+      "name": "Tilt-Shift Miniature",
+      "instruction": "Make the subject look like a tiny miniature model by using extreme tilt-shift blur \u2014 sharp focus in a narrow horizontal band across the center, heavy blur above and below. Shot from above at ~45 degree angle. The miniature effect makes even epic scenes look like toys."
+    },
+    {
+      "id": "fisheye_distortion",
+      "name": "Fisheye / Wide Distortion",
+      "instruction": "Use extreme wide-angle fisheye distortion \u2014 the center of the frame bulges outward while edges curve away. Place the main subject dead center where distortion is least, making it pop against the warped environment. Creates an intense, in-your-face feeling."
+    },
+    {
+      "id": "backlit_edge_glow",
+      "name": "Backlit Edge Glow",
+      "instruction": "The subject is completely dark/silhouetted, but has an intense glowing rim light around its entire edge \u2014 as if a powerful light source is directly behind it. The rim is a vivid color (red, cyan). The subject's shape is readable only by its glowing outline against pure dark background."
+    },
+    {
+      "id": "object_mid_transformation",
+      "name": "Mid-Transformation",
+      "instruction": "A single object caught halfway between two states \u2014 partially melted, partially frozen; partially real, partially digital; partially intact, partially shattered. The transformation line crosses through the middle of the object. Each half is a different color/texture. The object fills 70%+ of the frame."
+    },
+    {
+      "id": "geometric_impossible",
+      "name": "Impossible Geometry",
+      "instruction": "An Escher-like impossible structure \u2014 stairs that loop, a surface that's simultaneously inside and outside, gravity working in multiple directions. The impossible geometry IS the subject. Use bold lighting with one vivid accent color against dark background. Must read as 'something is wrong here' at thumbnail size."
+    },
+    {
+      "id": "swarm_formation",
+      "name": "Swarm Forming Shape",
+      "instruction": "Hundreds of tiny identical elements (birds, drones, particles, fragments) are swarming together to form a larger recognizable shape or object. The swarm is mid-formation \u2014 edges are still dispersing while the center is dense and defined. Dark background, vivid color on the swarm elements."
+    },
+    {
+      "id": "single_red_element",
+      "name": "One Red Thing",
+      "instruction": "An entirely dark/monochrome scene with exactly ONE element colored in vivid Shoggoth Red (#E20020). Everything else is black, gray, or deep blue. The red element is the clear focal point and should be topic-relevant. Extremely simple composition \u2014 the color isolation does the work."
+    },
+    {
+      "id": "overhead_birds_eye",
+      "name": "Overhead / Bird's Eye",
+      "instruction": "Shot from directly above looking straight down. The subject is laid out flat on a dark surface, seen from a God's-eye perspective. This angle makes familiar objects look abstract and reveals patterns invisible from eye level. Strong directional shadow from one side."
+    },
+    {
+      "id": "double_exposure_blend",
+      "name": "Double Exposure",
+      "instruction": "Two images blended together in a double-exposure style \u2014 a close-up of a face or object with a landscape, cityscape, or pattern visible through it. The blend creates a ghostly layered effect. Use contrasting subject types (organic + geometric, natural + technological)."
+    },
+    {
+      "id": "neon_outline_dark",
+      "name": "Neon Wireframe Outline",
+      "instruction": "The main subject is rendered as just its glowing neon outline/wireframe against pure black background \u2014 no fill, just edges. The neon lines are vivid red or cyan. Like a hologram or blueprint. The shape must be bold enough to read at thumbnail size. Simple subject, complex lines."
+    },
+    {
+      "id": "keyhole_peek",
+      "name": "Keyhole / Peephole View",
+      "instruction": "The frame is mostly black/dark with a keyhole, peephole, or narrow opening in the center through which we see a dramatic scene. The opening shape frames the scene naturally. The viewer feels like they're spying on something they shouldn't see. The visible scene is vivid and detailed."
+    },
+    {
+      "id": "smoke_reveal_face",
+      "name": "Face in Smoke / Clouds",
+      "instruction": "Billowing smoke, clouds, or mist fills the frame, and within the shapes a face, skull, or creature is subtly but unmistakably visible \u2014 formed by the smoke itself, not overlaid. The face should be large (50%+ of frame) and slightly off-center. Use one accent color backlighting the smoke."
     }
   ],
   "status": "testing"
