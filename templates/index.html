@@ -5440,11 +5440,13 @@
                         card.querySelector('.text-adj-status').textContent = 'updating...';
 
                         try {
+                            // For favorites with backup images (data/), always use that since originals may be cleaned up
+                            let imgPath = data.file_path?.startsWith('data/') ? data.file_path : (data.original_file_path || data.file_path);
                             const resp = await fetch('/api/add-text', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
-                                    image_path: data.original_file_path || data.file_path,
+                                    image_path: imgPath,
                                     text: data.thumbnail_text,
                                     position: 'top-center',
                                     style: 'impact',
