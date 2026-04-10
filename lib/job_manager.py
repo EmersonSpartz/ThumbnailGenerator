@@ -155,7 +155,8 @@ class JobManager:
             extra = {}
             job = self.active_jobs.get(job_id, {})
             if job.get("params", {}).get("titles"):
-                extra["gen_title"] = job["params"]["titles"]
+                titles = job["params"]["titles"]
+                extra["gen_title"] = titles[0] if isinstance(titles, list) else str(titles)
             if job.get("params", {}).get("creative_direction"):
                 extra["gen_cd"] = job["params"]["creative_direction"]
             if job.get("params", {}).get("video_name"):
@@ -239,13 +240,33 @@ class JobManager:
             return dict(self.active_jobs)
 
     def get_history(self, limit=50, offset=0, video_name=None):
-        """Get thumbnail history, optionally filtered by video name."""
+        """Get thumbnail history, optionally filtered by video name.
+        Only returns entries whose image files still exist on disk."""
         thumbnails = list(reversed(self.history["thumbnails"]))
         sessions = list(reversed(self.history["sessions"]))
 
         if video_name:
+            # Only show thumbnails tagged with this specific video
             thumbnails = [t for t in thumbnails if t.get("video_name") == video_name]
             sessions = [s for s in sessions if s.get("params", {}).get("video_name") == video_name]
+
+        # Sanitize gen_title: older entries may have stored it as a list
+        for t in thumbnails:
+            gt = t.get("gen_title")
+            if isinstance(gt, list):
+                t["gen_title"] = gt[0] if gt else ""
+
+        # Filter out entries whose image files have been cleaned up
+        try:
+            from lib.config import Settings
+            output_dir = Settings().output_dir
+            before = len(thumbnails)
+            thumbnails = [t for t in thumbnails if t.get("file_path") and (output_dir / t["file_path"]).exists()]
+            after = len(thumbnails)
+            if before != after:
+                print(f"[HISTORY] Filtered {before - after} dead entries (output_dir={output_dir})")
+        except Exception as e:
+            print(f"[HISTORY] File filter failed: {e} — returning unfiltered")
 
         return {
             "thumbnails": thumbnails[offset:offset+limit],
@@ -254,7 +275,7 @@ class JobManager:
         }
 
     def get_all_video_names(self):
-        """Get all unique video names from history."""
+        """Get all unique video names from history, favorites, and video configs."""
         names = set()
         for t in self.history["thumbnails"]:
             vn = t.get("video_name")
@@ -264,6 +285,32 @@ class JobManager:
             vn = s.get("params", {}).get("video_name")
             if vn:
                 names.add(vn)
+        # Also check favorites (survive disk cleanup)
+        try:
+            fav_file = self.data_dir / 'favorites.json'
+            if fav_file.exists():
+                import json
+                with open(fav_file) as f:
+                    favs = json.load(f).get('favorites', [])
+                for fav in favs:
+                    vn = fav.get('video_name')
+                    if vn:
+                        names.add(vn)
+        except Exception:
+            pass
+        # Also check video configs
+        try:
+            cfg_file = self.data_dir / 'video_configs.json'
+            if cfg_file.exists():
+                import json
+                with open(cfg_file) as f:
+                    cfgs = json.load(f).get('configs', [])
+                for cfg in cfgs:
+                    vn = cfg.get('video_name')
+                    if vn:
+                        names.add(vn)
+        except Exception:
+            pass
         return sorted(names)
 
     def cleanup_old_jobs(self, max_age_seconds=3600):
